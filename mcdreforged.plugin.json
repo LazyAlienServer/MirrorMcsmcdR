@@ -1,0 +1,16 @@
+{
+	"id": "mirror_mcsmcdr",
+	"version": "0.1.0",
+	"name": "MirrorMcsmcdR",
+	"description": {
+		"en_us": "A mirror server manager MCDR plugin, based on MCSManager.",
+		"zh_cn": "一个基于MCSM的镜像服控制的MCDR插件"
+	},
+	"author": [
+		"tanh_Heng"
+	],
+	"link": "https://github.com/LazyAlienServer/MirrorMcsmcdR",
+	"dependencies": {
+		"mcdreforged": ">=2.1.2"
+	}
+}
