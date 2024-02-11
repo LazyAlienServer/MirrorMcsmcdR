@@ -38,7 +38,7 @@
         "url": "http://127.0.0.1:23333/", # MCSManager面板的地址，即请求api的地址
         "uuid": null,         # 应用实例的ID
         "remote_uuid": null,  # 远程节点ID
-        "apikey": null        # 调用API接口必须的密钥
+        "apikey": null        # 调用API接口必需的密钥
     },
     "command": {
         "prefix": "!!mirror", # 指令前缀，一般不需要更改
@@ -65,7 +65,7 @@
         ]
     },
     "server": {
-        "turn_off_auto_save": trur,  # 保存世界时关闭自动保存
+        "turn_off_auto_save": true,  # 保存世界时关闭自动保存
         "commands": {
             "save_all_worlds": "save-all flush",  # 保存世界的指令
             "auto_save_off": "save-off",          # 关闭自动保存的指令
