@@ -27,6 +27,14 @@ DEFAULT_CONFIG = {
                 "stop": 2,
                 "kill": 3,
                 "sync": 2,
+            },
+            "action": {
+                "sync": {
+                    "ensure_server_closed": True,
+                    "auto_server_restart": False,
+                    "check_status_interval": 5,
+                    "max_attempt_times": 3
+                }
             }
         },
         "display": {
@@ -46,6 +54,6 @@ DEFAULT_CONFIG = {
 }
 TITLE = "MirrorMcsmcdR"
 REPLY_TITLE = "§e[MirrorMcsmcdR]§f"
-VERSION = "v1.0.1"
+VERSION = "v1.1.0"
 
 
