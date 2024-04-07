@@ -260,7 +260,7 @@ class MirrorManager: # The single mirror server manager which manage a specific 
                     if status_code == 0:
                         break
                 else:
-                    source.reply(f"{REPLY_TITLE} §c自动关闭失败, 当前§b{self.server_name}§c状态: §a{self.mcsm_api.status_to_text()}")
+                    source.reply(f"{REPLY_TITLE} §c自动关闭失败, 当前§b{self.server_name}§c状态: §f{self.mcsm_api.status_to_text[status_code]}")
                     return
                 auto_restart_flag = True
 
