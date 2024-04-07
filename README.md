@@ -1,7 +1,7 @@
 # MirrorMcsmcdR
 一个MCDR插件，基于MCSM对镜像服进行控制与进行文件同步
 
-## 说明
+## 特性
 
 - 插件的功能基于[MCSManager](https://github.com/MCSManager/MCSManager)
   + 测试基于mcsm9.9, 不保证完全支持mcsm10
@@ -9,7 +9,7 @@
 - 基于哈希的文件同步，只同步镜像服与源服务端不同的文件
 - 高可自定义的、配置友好配置文件，多个镜像服配置时只需要书写变化的值
 
-**\[注意\]** 本插件不提供服务端创建/管理功能，请在镜像服创建完成并创建对应的MCSManager实例后再使用本插件
+**\[注意\]** 本插件不提供服务端创建/管理功能，请在镜像服创建完成并创建对应的MCSManager实例后再使用本插件。同样，本插件不提供镜像服启动/关闭成功的提示信息，建议搭配vchat等插件使用。
 
 ## 依赖
 
@@ -33,7 +33,11 @@
 
 `!!mirror sync` 进行文件同步
 
+`!!mirror reload` 热重载对应镜像服的配置文件
+
 ## 配置文件
+
+配置文件在`v1.1.0`支持了热重载, 同时添加了更完善的属性补全功能。当新版本的配置文件中新增了某一选项, 插件将会自动将默认值填写到你的旧配置文件中, 而不需要手动添加。
 
 ### 默认配置文件
 ```
@@ -66,6 +70,14 @@
                 "stop": 2,
                 "kill": 3,
                 "sync": 2
+            },
+            "action": {
+                "sync": {
+                    "ensure_server_closed": true,
+                    "auto_server_restart": false,
+                    "check_status_interval": 5,
+                    "max_attempt_times": 3
+                }
             }
         },
         "display": {
@@ -130,13 +142,22 @@
 | world | list | 需要同步的目录，当存档有多个世界文件时需要添加 |
 | source | str | 源服务端目录，source/world -> target/world |
 | target | str/list | 目标服务端目录, 只有一个目录时可只写字符串, 多个目录需为列表。将会为每个目标目录都同步一份源目录的文件 |
-| ignore_inexistent_target_path | bool | 若某个目标服务端目录不存在，当设置为false时，将会跳过对该目录的同步。当设置为true时，将会新建该目录并继续同步 |
+| ignore_inexistent_target_path | bool | 若某个目标服务端目录不存在，当设置为`false`时，将会跳过对该目录的同步。当设置为`true`时，将会新建该目录并继续同步 |
 | concurrency | int | 同步时进行哈希计算的线程数 |
 | ignore_files | list | 不进行同步的文件 |
 ### command: 指令相关的配置文件
 |参数|类型|解释|
 |---|---|---|
 | permission | dict | 各指令所需的最低的MCDR权限等级 |
+| action || 控制指令执行时的部分行为 |
+#### action: 控制指令执行时的部分行为
+**sync**
+|参数|类型|解释|
+|---|---|---|
+| ensure_server_closed | bool | 当此选项为`true`时, 同步时将会检查镜像服是否已停止。当此选项为`false`时, 无论镜像服是否停止, 都将直接进行同步。 |
+| auto_server_restart | bool | 此选项仅在`ensure_server_closed`为`true`时生效。当此选项为`true`时, 如果同步时镜像服未停止, 那么将在尝试自动停止镜像服后进行同步, 并在同步完成后自动重启镜像服 |
+| check_status_interval | int | 此选项仅在`auto_server_restart`生效时生效。同步时停止镜像服后, 插件需确认镜像服是否已停止。此选项为检查镜像服状态的时间间隔 |
+| max_attempt_times | int | 此选项仅在`auto_server_restart`生效时生效。检查镜像服状态的尝试次数, 超过此尝试次数后将不再尝试检查镜像服状态, 并输出`自动关闭失败`及镜像服当前状态信息。等效于超时时间 `timeout = check_status_interval * max_attempt_times`|
 ### display: 显示相关的配置文件
 |参数|类型|解释|
 |---|---|---|
@@ -185,6 +206,14 @@
                 "stop": 2,
                 "kill": 3,
                 "sync": 2
+            },
+            "action": {
+                "sync": {
+                    "ensure_server_closed": true,
+                    "auto_server_restart": false,
+                    "check_status_interval": 5,
+                    "max_attempt_times": 3
+                }
             }
         },
         "display": {
@@ -212,6 +241,19 @@
         },
         "display": {
             "server_name": "Mirror2"
+        }
+    },
+    "!!mirror3": {
+        "mcsm": {
+            "uuid": "dfb12?????82466cb864f840b8424226"
+        },
+        "sync": {
+            "target": [
+                "./Mirror3/server"
+            ]
+        },
+        "display": {
+            "server_name": "Mirror3"
         }
     }
 }
