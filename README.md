@@ -17,7 +17,7 @@
 
 ## 指令
 
-指令前缀默认为`!!mirror``, 控制多个镜像服时将通过指令前缀区分, 详见[配置文件](#"!!mirror")
+指令前缀默认为`!!mirror`, 控制多个镜像服时将通过指令前缀区分, 详见[配置文件](#"!!mirror")
 
 `!!mirror` 显示指令帮助
 
@@ -264,3 +264,9 @@
 - 哈希比对思路 / [better_backup](https://github.com/z0z0r4/better_backup)
 - 配置文件权限配置思路 / [PrimeBackup](https://github.com/TISUnion/PrimeBackup)
 - 保存世界思路 / [QuickBackupM](https://github.com/TISUnion/QuickBackupM)
+
+## ToDo
+
+- 指令执行确认&延迟
+- 指令禁用
+- ……
