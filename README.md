@@ -1,5 +1,7 @@
 # MirrorMcsmcdR
-一个[MCDR](https://github.com/Fallen-Breath/MCDReforged)插件，基于[MCSM](https://github.com/MCSManager/MCSManager)对镜像服进行控制与进行文件同步
+一个**~超级完善的~**[MCDR](https://github.com/Fallen-Breath/MCDReforged)插件，基于[MCSM](https://github.com/MCSManager/MCSManager)对镜像服进行控制与进行文件同步
+
+~CMD支持在写了, 所以都给我去用MCSM谢谢喵~
 
 ## 特性
 
