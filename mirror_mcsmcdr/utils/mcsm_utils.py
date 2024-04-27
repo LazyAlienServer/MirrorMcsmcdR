@@ -16,7 +16,8 @@ class MCSManagerApiError(Exception):
 
 class MCSManagerApi:
 
-    def __init__(self, url: str, uuid: str, remote_uuid: str, apikey: str) -> None:
+    def __init__(self, enable: bool, url: str, uuid: str, remote_uuid: str, apikey: str) -> None:
+        self.enable = enable
         self.url = url if url[-1] != "/" else url[:-1]
         self.params = {
             "uuid": uuid,

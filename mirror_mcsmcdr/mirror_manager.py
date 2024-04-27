@@ -1,10 +1,11 @@
-from mcdreforged.api.all import PluginServerInterface, CommandSource, CommandContext, Info, SimpleCommandBuilder, event_listener, new_thread
-from mirror_mcsmcdr.constants import DEFAULT_CONFIG, REPLY_TITLE, TITLE, VERSION
-from mirror_mcsmcdr.mcsm_api import MCSManagerApi, MCSManagerApiError
-from mirror_mcsmcdr.file_operation import WorldSync
+from mcdreforged.api.all import PluginServerInterface, CommandSource, CommandContext, Info, SimpleCommandBuilder, event_listener, new_thread, RText, RTextList, RColor, RAction
+from mirror_mcsmcdr.utils.constants import DEFAULT_CONFIG, REPLY_TITLE, TITLE, VERSION
+from mirror_mcsmcdr.utils.mcsm_utils import MCSManagerApi, MCSManagerApiError
+from mirror_mcsmcdr.utils.file_operation import WorldSync
 from typing import Callable
-from threading import Event
+from threading import Event, Timer
 from copy import deepcopy
+from functools import wraps
 import time, json, re
  
  
@@ -34,6 +35,7 @@ class MultiMirrorManager: # The manager at large which manage multi single mirro
                 single_conf = self._conf_update(default_conf, single_conf)
                 single_manager = MirrorManager(server, single_conf, command_prefix, reload_method=self.reload_config)
                 server.register_event_listener('mcdr.general_info', single_manager.on_info)
+                server.register_event_listener('mcdr.user_info', single_manager.on_user_info)
                 self.managers[command_prefix] = single_manager
                 succeed.append(command_prefix)
             except Exception as e:
@@ -78,7 +80,7 @@ class MultiMirrorManager: # The manager at large which manage multi single mirro
         manager.reload_config(single_config)
         
         
-class MirrorManager: # The single mirror server manager which manage a specific mirror server
+class MirrorManager: # The single mirror server manager which manages a specific mirror server
 
 
     def __init__(self, server: PluginServerInterface, config: dict, command_prefix: str, reload_method: Callable) -> None:
@@ -94,6 +96,8 @@ class MirrorManager: # The single mirror server manager which manage a specific 
         # init flag
         self.sync_flag = False
         self.save_world_wait = Event()
+
+        self.confirmation = {}
 
         # help info
         self.help_msg = [
@@ -124,20 +128,15 @@ class MirrorManager: # The single mirror server manager which manage a specific 
         builder.command(f"{command_prefix} stop", self.stop)
         builder.command(f"{command_prefix} kill", self.kill)
         builder.command(f"{command_prefix} sync", self.sync)
-        builder.command(f"{command_prefix} sync", self.sync)
         builder.command(f"{command_prefix} reload", lambda source, context: reload_method(command_prefix))
+        builder.command(f"{command_prefix} confirm", self.confirm)
         builder.register(server)
     
 
     def set_config(self, config):
-        if None in config["mcsm"].values():
-            self.server.logger.warn(f"请设置配置文件({self.command_prefix})")
-            self.server.say(f"§c请设置配置文件§7({self.command_prefix})")
-            self.config = None
-            return False
         try:
-            self.config, self.mcsm_api, self.world_sync, self.permission, self.server_name = config, MCSManagerApi(**config["mcsm"]), \
-                WorldSync(**config["sync"]), config["command"]["permission"], config["display"]["server_name"]
+            self.config, self.mcsm_api, self.world_sync, self.permission, self.command_action, self.server_name = config, MCSManagerApi(**config["mcsm"]), \
+                WorldSync(**config["sync"]), config["command"]["permission"], config["command"]["action"], config["display"]["server_name"]
             return True
         except:
             self.config_error()
@@ -173,17 +172,50 @@ class MirrorManager: # The single mirror server manager which manage a specific 
             source.reply(f"{REPLY_TITLE} §b{self.server_name}§c操作权限不足")
             return False
         return True
+    
+
+    def check_mcsm_api(self, source: CommandSource):
+        if not self.mcsm_api.enable:
+            source.reply(f"{REPLY_TITLE} §cMCSM-API未启用")
+            return False
+        return True
+
+
+    def pre_check(command):
+        def wrapper(func):
+            @wraps(func)
+            def sub_wrapper(self, source: CommandSource, context: CommandContext, confirm=False, *args, **kwargs):
+                operator = source.player if source.is_player else "[console]"
+                
+                # automatically cancel old operation
+                if operator in self.confirmation.keys():
+                    source.reply(f"{REPLY_TITLE} 先前操作§b{self.server_name}-{self.confirmation[operator]['action']}§c已取消")
+                    self.confirm_end(operator)
+
+                if not self.check_mcsm_api(source) and self.check_permission(source, command):
+                    return
+                if self.command_action[command]["require_confirm"] and not confirm:
+                    timer = Timer(self.command_action["confirm"]["timeout"], self.confirm_timer, args=[source, context, operator])
+                    self.confirmation[operator] = {"func":func, "timer":timer, "action":command}
+                    timer.start()
+
+                    run_command = f"{self.command_prefix} confirm"
+                    text = RTextList(RText(f"{REPLY_TITLE} "), RText(run_command, color=RColor.gray).set_click_event(RAction.run_command, run_command), RText(" 以确认操作", color=RColor.white))
+                    source.reply(text)
+                    return
+                return func(self, source, context, confirm, *args, **kwargs)
+            return sub_wrapper
+        return wrapper
 
 
     @catch_api_error
     def _execute(self, source: CommandSource, command: str, failed_prompt: dict, succeeded_prompt: dict): # <failed_prompt> & <succeeded_prompt> : {status_code: "prompt"}
-        if not self.check_permission(source, command): return
         status_code = self.mcsm_api.status()
         if status_code in failed_prompt.keys():
             source.reply(f"{REPLY_TITLE} §c操作失败: §b{self.server_name}§f"+failed_prompt[status_code])
             return False
         elif status_code in succeeded_prompt.keys():
-            rep = eval(f"self.mcsm_api.{command}()")
+            rep = getattr(self.mcsm_api, command)()
             self.server.logger.info(rep)
             self.broadcast(f"{REPLY_TITLE} §b{self.server_name}§a"+succeeded_prompt[status_code])
             return True
@@ -191,12 +223,13 @@ class MirrorManager: # The single mirror server manager which manage a specific 
         
     @catch_api_error
     def status(self, source: CommandSource, context: CommandContext):
-        if not self.check_permission(source, "status"): return
+        if not self.check_mcsm_api(source) or self.check_permission(source, "status"): return
         source.reply(f"{REPLY_TITLE} §b{self.server_name}§f{self.mcsm_api.status_to_text[self.mcsm_api.status()]}")
         return True
 
 
-    def start(self, source: CommandSource, context: CommandContext):
+    @pre_check(command="start")
+    def start(self, source: CommandSource, context: CommandContext, confirm=False):
         return self._execute(
             source,
             "start",
@@ -207,7 +240,8 @@ class MirrorManager: # The single mirror server manager which manage a specific 
             {0: f"正在启动..."})
     
 
-    def stop(self, source: CommandSource, context: CommandContext):
+    @pre_check(command="stop")
+    def stop(self, source: CommandSource, context: CommandContext, confirm=False):
         return self._execute(
             source,
             "stop",
@@ -218,7 +252,8 @@ class MirrorManager: # The single mirror server manager which manage a specific 
             {3: f"正在关闭..."})
     
 
-    def kill(self, source: CommandSource, context: CommandContext):
+    @pre_check(command="kill")
+    def kill(self, source: CommandSource, context: CommandContext, confirm=False):
         return self._execute(
             source,
             "stop",
@@ -229,11 +264,10 @@ class MirrorManager: # The single mirror server manager which manage a specific 
              3: f"强制终止..."})
 
 
+    @pre_check(command="sync")
     @new_thread(f"{TITLE}-sync")
     @catch_api_error
-    def sync(self, source: CommandSource, context: CommandContext):
-        if not self.check_permission(source, "sync"): return
-        
+    def sync(self, source: CommandSource, context: CommandContext, confirm=False):
         auto_restart_flag = False
         sync_action_config = self.config["command"]["action"]["sync"]
         if sync_action_config["ensure_server_closed"]:
@@ -300,6 +334,38 @@ class MirrorManager: # The single mirror server manager which manage a specific 
             self.start(source, context)
     
 
+    def confirm(self, source: CommandSource, context: CommandContext):
+        operator = source.player if source.is_player else "[console]"
+        if operator not in self.confirmation.keys():
+            if self.confirmation.keys():
+                source.reply(f"{REPLY_TITLE} §c你不能确认其他人的任务")
+                return
+            source.reply(f"{REPLY_TITLE} §c没有需要确认的任务")
+            return
+        self.confirm_end(operator, source, context)
+
+
+    def confirm_timer(self, source: CommandSource, context: CommandContext, operator):
+        source.reply(f"{REPLY_TITLE} 操作§b{self.server_name}-{self.confirmation[operator]['action']}§c超时已取消")
+        self.confirmation.pop(operator)
+    
+
+    def confirm_end(self, operator, source: CommandSource=None, context: CommandContext=None):
+        self.confirmation[operator]["timer"].cancel()
+        if source != None and context != None:
+            self.confirmation[operator]["func"](self, source, context, confirm=True)
+        self.confirmation.pop(operator)
+
+
     def on_info(self, server: PluginServerInterface, info: Info):
         if self.config and not self.save_world_wait.is_set() and info.is_from_server and re.match(self.config["server"]["saved_world_regex"], info.content):
             self.save_world_wait.set() # stop waiting in sync function
+    
+
+    def on_user_info(self, server: PluginServerInterface, info: Info):
+        operator = info.player
+        if info.content[:len(self.command_prefix)] == self.command_prefix:
+            return
+        if operator in self.confirmation.keys():
+            server.reply(info, f"{REPLY_TITLE} 操作§b{self.server_name}-{self.confirmation[operator]['action']}§c已取消")
+            self.confirm_end(operator)

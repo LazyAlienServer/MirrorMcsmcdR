@@ -1,6 +1,7 @@
 DEFAULT_CONFIG = {
     "!!mirror": {
         "mcsm": {
+            "enable": False,
             "url": "http://127.0.0.1:23333/",
             "uuid": None,
             "remote_uuid": None,
@@ -27,13 +28,35 @@ DEFAULT_CONFIG = {
                 "stop": 2,
                 "kill": 3,
                 "sync": 2,
+                "confirm": 0,
+                "abort": 0
             },
             "action": {
+                "start": {
+                    "enable_cmd": False,
+                    "path": "./Mirror",
+                    "command": "python -m mcdreforged",
+                    "require_confirm": False
+                },
+                "stop": {
+                    "require_confirm": True
+                },
+                "kill": {
+                    "require_confirm": True
+                },
                 "sync": {
                     "ensure_server_closed": True,
                     "auto_server_restart": False,
                     "check_status_interval": 5,
-                    "max_attempt_times": 3
+                    "max_attempt_times": 3,
+                    "require_confirm": True
+                },
+                "confirm": {
+                    "timeout": 30,
+                    "cancel_anymsg": True
+                },
+                "abort": {
+                    "operator": "everyone"
                 }
             }
         },
@@ -52,6 +75,8 @@ DEFAULT_CONFIG = {
         }
     }
 }
+
+PLUGIN_ID = "mirror_mcsmcdr"
 TITLE = "MirrorMcsmcdR"
 REPLY_TITLE = "§e[MirrorMcsmcdR]§f"
 VERSION = "v1.1.0"
