@@ -44,6 +44,7 @@
 {
     "!!mirror": {
         "mcsm": {
+            "enable": False,
             "url": "http://127.0.0.1:23333/",
             "uuid": null,
             "remote_uuid": null,
@@ -72,11 +73,31 @@
                 "sync": 2
             },
             "action": {
+                "start": {
+                    "enable_cmd": False,
+                    "path": "./Mirror",
+                    "command": "python -m mcdreforged",
+                    "require_confirm": False
+                },
+                "stop": {
+                    "require_confirm": True
+                },
+                "kill": {
+                    "require_confirm": True
+                },
                 "sync": {
-                    "ensure_server_closed": true,
-                    "auto_server_restart": false,
+                    "ensure_server_closed": True,
+                    "auto_server_restart": False,
                     "check_status_interval": 5,
-                    "max_attempt_times": 3
+                    "max_attempt_times": 3,
+                    "require_confirm": True
+                },
+                "confirm": {
+                    "timeout": 30,
+                    "cancel_anymsg": True
+                },
+                "abort": {
+                    "operator": "everyone"
                 }
             }
         },
@@ -128,6 +149,8 @@
 
 完整的示例详见[多镜像服配置文件示例](#多镜像服配置文件示例)
 
+<br>
+
 ### mcsm: MCSManager面板相关的配置文件
 此配置部分若有疑问，请参见[MCSManager官方文档](https://docs.mcsmanager.com/#/zh-cn/apis/readme)
 |参数|类型|解释|
@@ -136,6 +159,9 @@
 | uuid | str | 服务端实例的id，即实例显示的UID |
 | remote_uuid | str | 远程节点的id，即实例显示的GID |
 | apikey | str | 调用API接口必需的密钥，通常在用户界面可以查看 |
+
+<br>
+
 ### sync: 文件同步相关的配置文件
 |参数|类型|解释|
 |---|---|---|
@@ -145,23 +171,70 @@
 | ignore_inexistent_target_path | bool | 若某个目标服务端目录不存在，当设置为`false`时，将会跳过对该目录的同步。当设置为`true`时，将会新建该目录并继续同步 |
 | concurrency | int | 同步时进行哈希计算的线程数 |
 | ignore_files | list | 不进行同步的文件 |
+
+<br>
+
 ### command: 指令相关的配置文件
 |参数|类型|解释|
 |---|---|---|
 | permission | dict | 各指令所需的最低的MCDR权限等级 |
 | action || 控制指令执行时的部分行为 |
+
+<br>
+
 #### action: 控制指令执行时的部分行为
-**sync**
+
+**通用设置**
+|参数|类型|解释|
+|---|---|---|
+| require_confirm | bool | 当此选项为`true`时, 执行该指令后需要输入`!!mirror confirm`以确认操作 |
+
+<br>
+
+**sync设置**
 |参数|类型|解释|
 |---|---|---|
 | ensure_server_closed | bool | 当此选项为`true`时, 同步时将会检查镜像服是否已停止。当此选项为`false`时, 无论镜像服是否停止, 都将直接进行同步。 |
 | auto_server_restart | bool | 此选项仅在`ensure_server_closed`为`true`时生效。当此选项为`true`时, 如果同步时镜像服未停止, 那么将在尝试自动停止镜像服后进行同步, 并在同步完成后自动重启镜像服 |
 | check_status_interval | int | 此选项仅在`auto_server_restart`生效时生效。同步时停止镜像服后, 插件需确认镜像服是否已停止。此选项为检查镜像服状态的时间间隔 |
 | max_attempt_times | int | 此选项仅在`auto_server_restart`生效时生效。检查镜像服状态的尝试次数, 超过此尝试次数后将不再尝试检查镜像服状态, 并输出`自动关闭失败`及镜像服当前状态信息。等效于超时时间 `timeout = check_status_interval * max_attempt_times`|
+
+<br>
+
+**start设置**
+
+~此功能仍在开发~
+
+<br>
+
+**confirm设置**
+|参数|类型|解释|
+|---|---|---|
+| timeout | int | 执行某指令后超过`timeout`秒后, 该玩家未进行任何操作, 则此指令操作自动超时取消 |
+| cancel_anymsg | bool | 若玩家执行某指令后发送了其他无关消息, 则此指令操作自动取消 |
+
+除此之外, 若玩家执行了某指令后又执行了对应镜像服的其他指令, 则先前执行的指令自动取消
+
+注意：每个玩家只能确认自己执行的指令
+
+<br>
+
+**abort设置**
+
+~此功能仍在开发~
+|参数|类型|解释|
+|---|---|---|
+| operator | str | 正在开发 |
+
+<br>
+
 ### display: 显示相关的配置文件
 |参数|类型|解释|
 |---|---|---|
 | server_name | str | "镜像服"的名称，用以在显示时区分不同的镜像服 |
+
+<br>
+
 ### server: 与Minecraft服务端交互相关的配置文件
 一般无需更改
 |参数|类型|解释|
@@ -173,6 +246,7 @@
 | auto_save_on | str | 开启自动保存的指令 |
 | saved_world_regex | str | 匹配服务端"世界保存完成"日志的正则表达式 |
 | save_world_max_wait_sec | int | 保存世界的最大等待时间(秒)，超时将会跳过世界保存并进行同步 |
+<br>
 
 ### 多镜像服配置文件示例
 
@@ -180,6 +254,7 @@
 {
     "!!mirror": {
         "mcsm": {
+            "enable": True,
             "url": "http://127.0.0.1:23333/",
             "uuid": "71154?????8e4770a1a2f4dd90695609",
             "remote_uuid": "6e927?????5b4a6999f0e66bc404071b",
@@ -208,11 +283,31 @@
                 "sync": 2
             },
             "action": {
+                "start": {
+                    "enable_cmd": False,
+                    "path": "./Mirror",
+                    "command": "python -m mcdreforged",
+                    "require_confirm": False
+                },
+                "stop": {
+                    "require_confirm": True
+                },
+                "kill": {
+                    "require_confirm": True
+                },
                 "sync": {
-                    "ensure_server_closed": true,
-                    "auto_server_restart": false,
+                    "ensure_server_closed": True,
+                    "auto_server_restart": False,
                     "check_status_interval": 5,
-                    "max_attempt_times": 3
+                    "max_attempt_times": 3,
+                    "require_confirm": True
+                },
+                "confirm": {
+                    "timeout": 30,
+                    "cancel_anymsg": True
+                },
+                "abort": {
+                    "operator": "everyone"
                 }
             }
         },
@@ -267,8 +362,9 @@
 
 ## ToDo
 
-- [x] 指令执行确认 *beta*
+- [x] 指令执行确认
 - [ ] 指令执行延迟
+- [ ] lang语言文件
 - [ ] 指令禁用
 - [ ] RCON支持
 - [ ] 无MCSM下通过命令行启动服务端
