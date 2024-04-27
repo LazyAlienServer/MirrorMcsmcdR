@@ -246,7 +246,6 @@
 | auto_save_on | str | 开启自动保存的指令 |
 | saved_world_regex | str | 匹配服务端"世界保存完成"日志的正则表达式 |
 | save_world_max_wait_sec | int | 保存世界的最大等待时间(秒)，超时将会跳过世界保存并进行同步 |
-
 <br>
 
 ### 多镜像服配置文件示例
