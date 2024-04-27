@@ -33,6 +33,8 @@
 
 `!!mirror sync` 进行文件同步
 
+`!!mirror confirm` 确认某指令的操作
+
 `!!mirror reload` 热重载对应镜像服的配置文件
 
 ## 配置文件
@@ -155,6 +157,7 @@
 此配置部分若有疑问，请参见[MCSManager官方文档](https://docs.mcsmanager.com/#/zh-cn/apis/readme)
 |参数|类型|解释|
 |---|---|---|
+| enable | bool | 启用MCSM-API，你需要在配置完成此部分后将此选项设置为`true` |
 | url | str | MCSManager面板的访问地址，即请求api的地址 |
 | uuid | str | 服务端实例的id，即实例显示的UID |
 | remote_uuid | str | 远程节点的id，即实例显示的GID |
