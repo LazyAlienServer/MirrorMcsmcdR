@@ -14,7 +14,7 @@
 		"mcdreforged": ">=2.1.2"
 	},
 	"resources": [
-        "LICENSE",
+        	"LICENSE",
 		"lang"
     ]
 }
