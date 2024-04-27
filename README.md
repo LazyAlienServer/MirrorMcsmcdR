@@ -46,7 +46,7 @@
 {
     "!!mirror": {
         "mcsm": {
-            "enable": False,
+            "enable": true,
             "url": "http://127.0.0.1:23333/",
             "uuid": null,
             "remote_uuid": null,
@@ -76,27 +76,27 @@
             },
             "action": {
                 "start": {
-                    "enable_cmd": False,
+                    "enable_cmd": false,
                     "path": "./Mirror",
                     "command": "python -m mcdreforged",
-                    "require_confirm": False
+                    "require_confirm": false
                 },
                 "stop": {
-                    "require_confirm": True
+                    "require_confirm": true
                 },
                 "kill": {
-                    "require_confirm": True
+                    "require_confirm": true
                 },
                 "sync": {
-                    "ensure_server_closed": True,
-                    "auto_server_restart": False,
+                    "ensure_server_closed": true,
+                    "auto_server_restart": false,
                     "check_status_interval": 5,
                     "max_attempt_times": 3,
-                    "require_confirm": True
+                    "require_confirm": true
                 },
                 "confirm": {
                     "timeout": 30,
-                    "cancel_anymsg": True
+                    "cancel_anymsg": true
                 },
                 "abort": {
                     "operator": "everyone"
@@ -257,7 +257,7 @@
 {
     "!!mirror": {
         "mcsm": {
-            "enable": True,
+            "enable": true,
             "url": "http://127.0.0.1:23333/",
             "uuid": "71154?????8e4770a1a2f4dd90695609",
             "remote_uuid": "6e927?????5b4a6999f0e66bc404071b",
@@ -287,27 +287,27 @@
             },
             "action": {
                 "start": {
-                    "enable_cmd": False,
+                    "enable_cmd": false,
                     "path": "./Mirror",
                     "command": "python -m mcdreforged",
-                    "require_confirm": False
+                    "require_confirm": false
                 },
                 "stop": {
-                    "require_confirm": True
+                    "require_confirm": true
                 },
                 "kill": {
-                    "require_confirm": True
+                    "require_confirm": true
                 },
                 "sync": {
-                    "ensure_server_closed": True,
-                    "auto_server_restart": False,
+                    "ensure_server_closed": true,
+                    "auto_server_restart": false,
                     "check_status_interval": 5,
                     "max_attempt_times": 3,
-                    "require_confirm": True
+                    "require_confirm": true
                 },
                 "confirm": {
                     "timeout": 30,
-                    "cancel_anymsg": True
+                    "cancel_anymsg": true
                 },
                 "abort": {
                     "operator": "everyone"
