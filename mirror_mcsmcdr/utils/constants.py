@@ -32,6 +32,9 @@ DEFAULT_CONFIG = {
                 "abort": 0
             },
             "action": {
+                "status": {
+                    "require_confirm": False
+                },
                 "start": {
                     "enable_cmd": False,
                     "path": "./Mirror",
@@ -79,6 +82,6 @@ DEFAULT_CONFIG = {
 PLUGIN_ID = "mirror_mcsmcdr"
 TITLE = "MirrorMcsmcdR"
 REPLY_TITLE = "§e[MirrorMcsmcdR]§f"
-VERSION = "v1.2.0"
+VERSION = "v1.2.1"
 
 
