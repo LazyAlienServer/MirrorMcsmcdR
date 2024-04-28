@@ -372,6 +372,6 @@
 - [ ] 禁止同步`!!mirror sync enable/disable reason`
 - [ ] lang语言文件
 - [ ] 指令禁用
-- [ ] RCON支持
+- [ ] ~RCON支持~ Websocket连接支持更多功能
 - [ ] 无MCSM下通过命令行启动服务端 *(win和Linux的API写好了 能独立命令窗口/screen启动)*
 - [ ] 历史同步记录显示
