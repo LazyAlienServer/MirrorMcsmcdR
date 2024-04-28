@@ -1,5 +1,7 @@
 # MirrorMcsmcdR
-一个[MCDR](https://github.com/Fallen-Breath/MCDReforged)插件，基于[MCSM](https://github.com/MCSManager/MCSManager)对镜像服进行控制与进行文件同步
+一个**~超级完善的~**[MCDR](https://github.com/Fallen-Breath/MCDReforged)插件，基于[MCSM](https://github.com/MCSManager/MCSManager)对镜像服进行控制与进行文件同步
+
+~CMD支持在写了, 所以都给我去用MCSM谢谢喵~
 
 ## 特性
 
@@ -33,6 +35,8 @@
 
 `!!mirror sync` 进行文件同步
 
+`!!mirror confirm` 确认某指令的操作
+
 `!!mirror reload` 热重载对应镜像服的配置文件
 
 ## 配置文件
@@ -44,7 +48,7 @@
 {
     "!!mirror": {
         "mcsm": {
-            "enable": False,
+            "enable": true,
             "url": "http://127.0.0.1:23333/",
             "uuid": null,
             "remote_uuid": null,
@@ -74,27 +78,27 @@
             },
             "action": {
                 "start": {
-                    "enable_cmd": False,
+                    "enable_cmd": false,
                     "path": "./Mirror",
                     "command": "python -m mcdreforged",
-                    "require_confirm": False
+                    "require_confirm": false
                 },
                 "stop": {
-                    "require_confirm": True
+                    "require_confirm": true
                 },
                 "kill": {
-                    "require_confirm": True
+                    "require_confirm": true
                 },
                 "sync": {
-                    "ensure_server_closed": True,
-                    "auto_server_restart": False,
+                    "ensure_server_closed": true,
+                    "auto_server_restart": false,
                     "check_status_interval": 5,
                     "max_attempt_times": 3,
-                    "require_confirm": True
+                    "require_confirm": true
                 },
                 "confirm": {
                     "timeout": 30,
-                    "cancel_anymsg": True
+                    "cancel_anymsg": true
                 },
                 "abort": {
                     "operator": "everyone"
@@ -155,6 +159,7 @@
 此配置部分若有疑问，请参见[MCSManager官方文档](https://docs.mcsmanager.com/#/zh-cn/apis/readme)
 |参数|类型|解释|
 |---|---|---|
+| enable | bool | 启用MCSM-API，你需要在配置完成此部分后将此选项设置为`true` |
 | url | str | MCSManager面板的访问地址，即请求api的地址 |
 | uuid | str | 服务端实例的id，即实例显示的UID |
 | remote_uuid | str | 远程节点的id，即实例显示的GID |
@@ -254,7 +259,7 @@
 {
     "!!mirror": {
         "mcsm": {
-            "enable": True,
+            "enable": true,
             "url": "http://127.0.0.1:23333/",
             "uuid": "71154?????8e4770a1a2f4dd90695609",
             "remote_uuid": "6e927?????5b4a6999f0e66bc404071b",
@@ -284,27 +289,27 @@
             },
             "action": {
                 "start": {
-                    "enable_cmd": False,
+                    "enable_cmd": false,
                     "path": "./Mirror",
                     "command": "python -m mcdreforged",
-                    "require_confirm": False
+                    "require_confirm": false
                 },
                 "stop": {
-                    "require_confirm": True
+                    "require_confirm": true
                 },
                 "kill": {
-                    "require_confirm": True
+                    "require_confirm": true
                 },
                 "sync": {
-                    "ensure_server_closed": True,
-                    "auto_server_restart": False,
+                    "ensure_server_closed": true,
+                    "auto_server_restart": false,
                     "check_status_interval": 5,
                     "max_attempt_times": 3,
-                    "require_confirm": True
+                    "require_confirm": true
                 },
                 "confirm": {
                     "timeout": 30,
-                    "cancel_anymsg": True
+                    "cancel_anymsg": true
                 },
                 "abort": {
                     "operator": "everyone"
@@ -364,6 +369,7 @@
 
 - [x] 指令执行确认
 - [ ] 指令执行延迟
+- [ ] 禁止同步`!!mirror sync enable/disable reason`
 - [ ] lang语言文件
 - [ ] 指令禁用
 - [ ] RCON支持
