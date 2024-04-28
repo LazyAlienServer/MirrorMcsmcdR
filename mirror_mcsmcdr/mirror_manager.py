@@ -194,7 +194,7 @@ class MirrorManager: # The single mirror server manager which manages a specific
 
                 if not self.check_mcsm_api(source) and self.check_permission(source, command):
                     return
-                if self.command_action[command]["require_confirm"] and not confirm:
+                if not confirm and self.command_action[command]["require_confirm"]:
                     timer = Timer(self.command_action["confirm"]["timeout"], self.confirm_timer, args=[source, context, operator])
                     self.confirmation[operator] = {"func":func, "timer":timer, "action":command}
                     timer.start()
@@ -203,13 +203,13 @@ class MirrorManager: # The single mirror server manager which manages a specific
                     text = RTextList(RText(f"{REPLY_TITLE} "), RText(run_command, color=RColor.gray).set_click_event(RAction.run_command, run_command), RText(" 以确认操作", color=RColor.white))
                     source.reply(text)
                     return
-                return func(self, source, context, confirm, *args, **kwargs)
+                return func(self, source, context, *args, **kwargs)
             return sub_wrapper
         return wrapper
 
 
     @catch_api_error
-    def _execute(self, source: CommandSource, command: str, failed_prompt: dict, succeeded_prompt: dict): # <failed_prompt> & <succeeded_prompt> : {status_code: "prompt"}
+    def _execute(self, source: CommandSource, command: str, failed_prompt: dict, succeeded_prompt: dict, *args, **kwargs): # <failed_prompt> & <succeeded_prompt> : {status_code: "prompt"}
         status_code = self.mcsm_api.status()
         if status_code in failed_prompt.keys():
             source.reply(f"{REPLY_TITLE} §c操作失败: §b{self.server_name}§f"+failed_prompt[status_code])
@@ -220,16 +220,19 @@ class MirrorManager: # The single mirror server manager which manages a specific
             self.broadcast(f"{REPLY_TITLE} §b{self.server_name}§a"+succeeded_prompt[status_code])
             return True
 
-        
-    @catch_api_error
+    
+    @pre_check(command="status")
     def status(self, source: CommandSource, context: CommandContext):
-        if not self.check_mcsm_api(source) or self.check_permission(source, "status"): return
-        source.reply(f"{REPLY_TITLE} §b{self.server_name}§f{self.mcsm_api.status_to_text[self.mcsm_api.status()]}")
-        return True
+        return self._execute(
+            source,
+            "status",
+            {},
+            self.mcsm_api.status_to_text
+        )
 
 
     @pre_check(command="start")
-    def start(self, source: CommandSource, context: CommandContext, confirm=False):
+    def start(self, source: CommandSource, context: CommandContext):
         return self._execute(
             source,
             "start",
@@ -241,7 +244,7 @@ class MirrorManager: # The single mirror server manager which manages a specific
     
 
     @pre_check(command="stop")
-    def stop(self, source: CommandSource, context: CommandContext, confirm=False):
+    def stop(self, source: CommandSource, context: CommandContext):
         return self._execute(
             source,
             "stop",
@@ -253,7 +256,7 @@ class MirrorManager: # The single mirror server manager which manages a specific
     
 
     @pre_check(command="kill")
-    def kill(self, source: CommandSource, context: CommandContext, confirm=False):
+    def kill(self, source: CommandSource, context: CommandContext):
         return self._execute(
             source,
             "stop",
@@ -267,9 +270,9 @@ class MirrorManager: # The single mirror server manager which manages a specific
     @pre_check(command="sync")
     @new_thread(f"{TITLE}-sync")
     @catch_api_error
-    def sync(self, source: CommandSource, context: CommandContext, confirm=False):
+    def sync(self, source: CommandSource, context: CommandContext):
         auto_restart_flag = False
-        sync_action_config = self.config["command"]["action"]["sync"]
+        sync_action_config = self.command_action["sync"]
         if sync_action_config["ensure_server_closed"]:
             status_code = self.mcsm_api.status()
             
@@ -285,7 +288,7 @@ class MirrorManager: # The single mirror server manager which manages a specific
                 return
             else:
                 source.reply(f"{REPLY_TITLE} §b{self.server_name}§f未停止, 自动关闭{self.server_name}并进行同步...")
-                if not self.stop(source, context):
+                if not self.stop(source, context, confirm=True):
                     return
                 interval, times = sync_action_config["check_status_interval"], sync_action_config["max_attempt_times"]
                 for i in range(times):
@@ -353,7 +356,7 @@ class MirrorManager: # The single mirror server manager which manages a specific
     def confirm_end(self, operator, source: CommandSource=None, context: CommandContext=None):
         self.confirmation[operator]["timer"].cancel()
         if source != None and context != None:
-            self.confirmation[operator]["func"](self, source, context, confirm=True)
+            self.confirmation[operator]["func"](self, source, context)
         self.confirmation.pop(operator)
 
 
