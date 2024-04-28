@@ -1,6 +1,6 @@
 {
 	"id": "mirror_mcsmcdr",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"name": "MirrorMcsmcdR",
 	"description": {
 		"en_us": "A mirror server manager MCDR plugin, based on MCSManager.",
@@ -14,7 +14,7 @@
 		"mcdreforged": ">=2.1.2"
 	},
 	"resources": [
-        	"LICENSE",
+        "LICENSE",
 		"lang"
     ]
 }
