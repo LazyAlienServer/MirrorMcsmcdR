@@ -370,7 +370,7 @@
 - [x] 指令执行确认
 - [ ] 指令执行延迟
 - [ ] 禁止同步`!!mirror sync enable/disable reason`
-- [ ] lang语言文件
+- [x] lang语言文件
 - [ ] 指令禁用
 - [ ] RCON支持
 - [ ] 无MCSM下通过命令行启动服务端
