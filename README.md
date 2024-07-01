@@ -1,7 +1,7 @@
 # MirrorMcsmcdR
-一个**~超级完善的~**[MCDR](https://github.com/Fallen-Breath/MCDReforged)插件，基于[MCSM](https://github.com/MCSManager/MCSManager)对镜像服进行控制与进行文件同步
+一个**超级完善的**[MCDR](https://github.com/Fallen-Breath/MCDReforged)插件，基于[MCSM](https://github.com/MCSManager/MCSManager)对镜像服进行控制与进行文件同步
 
-~CMD支持在写了, 所以都给我去用MCSM谢谢喵~
+当前`dev`版本`v1.3.0-alpha`，已支持RCON和通过命令行启动
 
 ## 特性
 
@@ -43,81 +43,18 @@
 
 配置文件在`v1.1.0`支持了热重载, 同时添加了更完善的属性补全功能。当新版本的配置文件中新增了某一选项, 插件将会自动将默认值填写到你的旧配置文件中, 而不需要手动添加。
 
-### 默认配置文件
 ```
 {
     "!!mirror": {
-        "mcsm": {
-            "enable": true,
-            "url": "http://127.0.0.1:23333/",
-            "uuid": null,
-            "remote_uuid": null,
-            "apikey": null
-        },
-        "sync": {
-            "world": [
-                "world"
-            ],
-            "source": "./server",
-            "target": [
-                "./Mirror/server"
-            ],
-            "ignore_inexistent_target_path": false,
-            "concurrency": 4,
-            "ignore_files": [
-                "session.lock"
-            ]
-        },
+        "mcsm": {/* MCSManager配置 */},
+        "terminal": {/* 通过命令行启动镜像服终端的配置 */},
+        "rcon": {/* RCON配置 */},
+        "sync": {/* 存档同步配置 */},
         "command": {
-            "permission": {
-                "status": 0,
-                "start": 0,
-                "stop": 2,
-                "kill": 3,
-                "sync": 2
-            },
-            "action": {
-                "start": {
-                    "enable_cmd": false,
-                    "path": "./Mirror",
-                    "command": "python -m mcdreforged",
-                    "require_confirm": false
-                },
-                "stop": {
-                    "require_confirm": true
-                },
-                "kill": {
-                    "require_confirm": true
-                },
-                "sync": {
-                    "ensure_server_closed": true,
-                    "auto_server_restart": false,
-                    "check_status_interval": 5,
-                    "max_attempt_times": 3,
-                    "require_confirm": true
-                },
-                "confirm": {
-                    "timeout": 30,
-                    "cancel_anymsg": true
-                },
-                "abort": {
-                    "operator": "everyone"
-                }
-            }
+            "permission": {/* 指令权限配置 */},
+            "action": {/* 指令行为配置 */}
         },
-        "display": {
-            "server_name": "Mirror"
-        },
-        "server": {
-            "turn_off_auto_save": true,
-            "commands": {
-                "save_all_worlds": "save-all flush",
-                "auto_save_off": "save-off",
-                "auto_save_on": "save-on"
-            },
-            "saved_world_regex": "^Saved the game$",
-            "save_world_max_wait_sec": 60
-        }
+        "display": {/* 显示相关配置 */}
     }
 }
 ```
@@ -155,27 +92,124 @@
 
 <br>
 
-### mcsm: MCSManager面板相关的配置文件
+### mcsm: MCSManager配置
 此配置部分若有疑问，请参见[MCSManager官方文档](https://docs.mcsmanager.com/#/zh-cn/apis/readme)
-|参数|类型|解释|
-|---|---|---|
-| enable | bool | 启用MCSM-API，你需要在配置完成此部分后将此选项设置为`true` |
-| url | str | MCSManager面板的访问地址，即请求api的地址 |
-| uuid | str | 服务端实例的id，即实例显示的UID |
-| remote_uuid | str | 远程节点的id，即实例显示的GID |
-| apikey | str | 调用API接口必需的密钥，通常在用户界面可以查看 |
+```
+"mcsm": {
+    "enable": false,
+    "url": "http://127.0.0.1:23333/",
+    "uuid": null,
+    "remote_uuid": null,
+    "apikey": null
+}
+```
+**enable** `bool`
+- 是否启用MCSM，你需要在配置完成此部分后将此选项设置为`true`。
+
+**url** `str`
+- MCSManager面板的访问地址，即请求api的地址。
+
+**uuid** `str`
+- 服务端实例的id，即实例显示的UID。
+
+**remote_uuid** `str`
+- 远程节点的id，即实例显示的GID。
+
+**apikey** `str`
+- 调用API接口必需的密钥，通常在用户界面可以查看。
 
 <br>
 
+### terminal: 通过命令行启动镜像服终端的配置
+```
+"terminal": {
+    "enable": false,
+    "launch_path": "./Mirror",
+    "launch_command": "python -m mcdreforged",
+    "port": null,
+    "new_terminal": "Mirror",
+    "regex_strict": false,
+    "system": null
+}
+```
+**enable** `bool`
+- 是否启用终端，当MCSM未启用且此选项为`true`时将通过终端启动镜像服。在Windows系统下，插件将创建一个新的命令行终端来运行镜像服；在Linux系统下，插件将创建一个新的screen来运行镜像服。镜像服停止后，终端/screen都会自动关闭。
+
+**launch_path** `str`
+- 执行启动命令的路径，通常为镜像服所在的目录。
+
+**launch_command** `str`
+- 需要执行的启动命令，若简单的启动命令无法满足需求，你可以创建一个`.bat`（或`.sh`）文件，并将启动命令写在该文件中，然后执行该文件。
+
+**port** `int`
+- 镜像服运行的端口，插件将通过检查端口状态的方法检查镜像服的运行状态。
+
+**new_terminal** `str`
+- 新终端的标题或新screen的名称，便于镜像服运维。
+
+**regex_strict** `bool`
+- 在通过端口检查镜像服运行状态时，是否在找到端口后继续验证进程名必须为`java.exe`。若不同的进程在不同时间可能同时占用了设置的端口，此选项可以一定程度上避免将其他进程误判为java进程。
+
+**system** `str`
+- 系统类型，若为`null`则将自动获取系统类型。可选：`Linux` `Windows`（需首字母大写）
+
+<br>
+
+### rcon: RCON配置
+```
+"rcon": {
+    "enable": false,
+    "address": null,
+    "port": null,
+    "password": null
+}
+```
+**enable** `bool`
+- 是否启用RCON，当MCSM未启用时，插件将通过RCON执行`stop`指令和获取镜像服状态。若同时启用了RCON和终端，插件将优先通过检查RCON状态来获取镜像服状态，若RCON未连接，则将通过检查端口来获取状态。若RCON状态与端口状态不匹配将会提示。
+
+**adress** `bool`
+- RCON的连接地址，不包含端口。
+
+**port** `int`
+- RCON的连接端口
+
+**password** `str`
+- RCON的连接密码
+
 ### sync: 文件同步相关的配置文件
-|参数|类型|解释|
-|---|---|---|
-| world | list | 需要同步的目录，当存档有多个世界文件时需要添加 |
-| source | str | 源服务端目录，source/world -> target/world |
-| target | str/list | 目标服务端目录, 只有一个目录时可只写字符串, 多个目录需为列表。将会为每个目标目录都同步一份源目录的文件 |
-| ignore_inexistent_target_path | bool | 若某个目标服务端目录不存在，当设置为`false`时，将会跳过对该目录的同步。当设置为`true`时，将会新建该目录并继续同步 |
-| concurrency | int | 同步时进行哈希计算的线程数 |
-| ignore_files | list | 不进行同步的文件 |
+```
+"sync": {
+    "world": [
+		    "world"
+		],
+		"source": "./server",
+		"target": [
+				"./Mirror/server"
+		],
+		"ignore_inexistent_target_path": false,
+		"concurrency": 4,
+		"ignore_files": [
+				"session.lock"
+		]
+}
+```
+**world** `list`
+- 需要同步的目录，当存档有多个世界文件时需要添加
+
+**source** `str`
+- 源服务端目录，source/world -> target/world
+
+**target** `str, list`
+- 目标服务端目录, 只有一个目录时可只写字符串, 多个目录需为列表。将会为每个目标目录都同步一份源目录的文件
+
+**ignore_inexistent_target_path** `bool`
+- 若某个目标服务端目录不存在，当设置为`false`时，将会跳过对该目录的同步。当设置为`true`时，将会新建该目录并继续同步
+
+**concurrency** `int`
+- 同步时进行哈希计算的线程数
+
+**ignore_files** `list`
+- 不进行同步的文件
 
 <br>
 
