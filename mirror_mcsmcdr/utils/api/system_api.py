@@ -1,61 +1,81 @@
-import os, platform, re, importlib
+import os, re, importlib
 from abc import ABC, abstractmethod
 
 from mirror_mcsmcdr.utils.constants import PLUGIN_ID
-from mirror_mcsmcdr.utils.api.rcon_api import RConAPI
 
 class SystemAPI:
     
-    def __init__(self, new_terminal: str, rcon: RConAPI) -> None:
-        system = platform.system()
+    def __init__(self, new_terminal: str, launch_path: str, launch_command: str, port: int, regex_strict: bool, system: str) -> None:
         self.system_api: AbstractSystemAPI
         if system == "Linux":
-            self.system_api = LinuxAPI(new_terminal+PLUGIN_ID)
-        elif system == "windows":
-            self.system_api = WindowsAPI(new_terminal+PLUGIN_ID)
+            self.system_api = LinuxAPI(new_terminal+"_"+PLUGIN_ID, launch_path, launch_command, port, regex_strict)
+        elif system == "Windows":
+            self.system_api = WindowsAPI(new_terminal+"_"+PLUGIN_ID, launch_path, launch_command, port, regex_strict)
 
-    def start(self, path, command):
-        return self.system_api.start(path, command)
+    def start(self):
+        return self.system_api.start()
     
     def status(self):
         return self.system_api.status()
+    
+    def stop(self):
+        return self.system_api.stop()
 
 class AbstractSystemAPI(ABC):
 
-    def __init__(self, new_terminal: str) -> None:
-        self.new_terminal = new_terminal
+    def __init__(self, new_terminal: str, path: str, command: str, port: int, regex_strict: bool) -> None:
+        self.new_terminal, self.path, self.command = new_terminal, path, command
+        self.port, self.regex_strict =  port, regex_strict
     
     @abstractmethod
-    def start(self, path, command):
+    def start(self):
         ...
     
     @abstractmethod
-    def status(self):
+    def status(selfl) -> str:
+        ...
+    
+    @abstractmethod
+    def stop(self):
         ...
 
 class LinuxAPI(AbstractSystemAPI):
 
-    def start(self, path, command):
+    def start(self):
         new_terminal = self.new_terminal
-        command = f'screen -dmS {new_terminal} && screen -x -S {new_terminal} -p 0 -X stuff "{command} && exit\n"'
-        os.popen(f'cd "{path}" && {command}')
+        command = f'screen -dmS {new_terminal} && screen -x -S {new_terminal} -p 0 -X stuff "{self.command} && exit\n"'
+        os.popen(f'cd "{self.path}" && {command}')
+        return "success"
     
-    def status(self):
-        if re.search(r"\t[0-9]+.%s\t"%self.new_terminal, os.popen("screen -ls").read()):
-            return True
-        return False
+    def status(self) -> bool:
+        port = self.port
+        text = os.popen(f"lsof -i:{port}").read()
+        if not self.regex_strict or not text:
+            return "running" if text else "stopped"
+        return "running" if re.search(r"\njava.+:%s"%port, text) else "stopped"
+    
+    def stop(self):
+        command = f'screen -x -S {self.new_terminal} -p 0 -X stuff "\nstop\n"'
+        os.popen(command)
+        return "success"
 
 class WindowsAPI(AbstractSystemAPI):
 
-    def __init__(self, new_terminal: str) -> None:
-        self.pgw = importlib.import_module("pygetwindow")
-        super().__init__(new_terminal)
-
-    def start(self, path, command):
+    def start(self):
         new_terminal = self.new_terminal
-        command = f'''cd "{path}"&&start cmd.exe cmd /k python -c "import os;os.system('title {new_terminal}');os.system('{command}')"'''
-        os.popen(f'cd "{path}" && {command}')
+        command = f'''cd "{self.path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {new_terminal}');os.system('{self.command}')"'''
+        os.popen(command)
+        return "success"
     
     def status(self):
-        new_terminal = self.new_terminal
-        return sum([new_terminal in i.title for i in self.pgw.getWindowsWithTitle(new_terminal)]) > 0
+        port = self.port
+        text = os.popen(f"netstat -ano | findstr {port}").read()
+        if not self.regex_strict or not text:
+            return "running" if text else "stopped"
+        for pid in set(re.findall(":30001.*?([0-9]+)\n"), text):
+            if re.match("java.exe", os.popen(f"tasklist | findstr {pid}")):
+                return "running"
+        return "stopped"
+    
+    def stop(self):
+        return "unavailable_windows"

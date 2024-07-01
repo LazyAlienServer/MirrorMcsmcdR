@@ -4,14 +4,17 @@ class RConAPI:
 
     def __init__(self, address: str, port: int, password: str) -> None:
         self.rcon = RconConnection(address, port, password)
-        self.status = self.rcon.connect()
     
     def status(self):
         try:
-            return self.rcon.connect()
+            self.rcon.connect()
+            return "running"
         except:
-            return False
+            return "stopped"
     
     def stop(self):
-        if self.status():
-            return self.rcon.send_command("stop")
+        if self.status() == "stopped":
+            return "stopped"
+        self.rcon.send_command("stop")
+        return "success"
+        

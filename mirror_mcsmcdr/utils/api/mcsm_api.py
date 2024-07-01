@@ -43,13 +43,13 @@ class MCSManagerApi:
         return self.status_to_text[self._request("/api/instance")["data"]["status"]]
     
     def start(self):
-        return self._request("/api/protected_instance/open")
+        self._request("/api/protected_instance/open")
+        return "success"
     
     def stop(self):
-        return self._request("/api/protected_instance/stop")
-    
-    def restart(self):
-        return self._request("/api/protected_instance/restart")
+        self._request("/api/protected_instance/stop")
+        return "success"
     
     def kill(self):
-        return self._request("/api/protected_instance/kill")
+        self._request("/api/protected_instance/kill")
+        return "success"
