@@ -1,13 +1,14 @@
 from mcdreforged.api.all import PluginServerInterface, CommandSource, CommandContext, Info, SimpleCommandBuilder, event_listener, new_thread, RText, RTextList, RColor, RAction
-from mirror_mcsmcdr.utils.constants import DEFAULT_CONFIG, TITLE
-from mirror_mcsmcdr.utils.api.mcsm_api import MCSManagerApi, MCSManagerApiError
+from mirror_mcsmcdr.constants import DEFAULT_CONFIG, TITLE
+from mirror_mcsmcdr.utils.api.mcsm_api import MCSManagerApiError
+from mirror_mcsmcdr.utils.server_utils import ServerProxy
 from mirror_mcsmcdr.utils.file_operation import WorldSync
 from mirror_mcsmcdr.utils.display_utils import rtr, help_msg
 from typing import Callable
 from threading import Event, Timer
 from copy import deepcopy
 from functools import wraps
-import time, json, re
+import time, re
  
  
 def catch_api_error(func):
@@ -81,8 +82,8 @@ class MultiMirrorManager: # The manager at large which manage multi single mirro
             return False
         single_config = self._conf_update(default_conf, config[prefix])
         manager.reload_config(single_config)
-        
-        
+
+
 class MirrorManager: # The single mirror server manager which manages a specific mirror server
 
 
@@ -92,29 +93,30 @@ class MirrorManager: # The single mirror server manager which manages a specific
         server.logger.info(rtr("manager.load", prefix = command_prefix))
         self.command_prefix = command_prefix
 
-        # check config
-        if not self.set_config(config):
-            return
-
         # init flag
         self.sync_flag = False
         self.save_world_wait = Event()
-
+        self.save_world_wait.set()
         self.confirmation = {}
 
         # register mcdr command
         builder = SimpleCommandBuilder()
         builder.command(f"{command_prefix}", self.help)
+        builder.command(f"{command_prefix} reload", lambda source, context: reload_method(command_prefix))
+        
+        # check config
+        if not self.set_config(config):
+            builder.register(server)
+            return
         builder.command(f"{command_prefix} help", self.help)
         builder.command(f"{command_prefix} status", self.status)
         builder.command(f"{command_prefix} start", self.start)
         builder.command(f"{command_prefix} stop", self.stop)
         builder.command(f"{command_prefix} kill", self.kill)
         builder.command(f"{command_prefix} sync", self.sync)
-        builder.command(f"{command_prefix} reload", lambda source, context: reload_method(command_prefix))
         builder.command(f"{command_prefix} confirm", self.confirm)
         builder.register(server)
-    
+
 
     def rtr(self, key, title=True, *args, **kwargs):
         return rtr(key, title, prefix = self.command_prefix, server_name = self.server_name, *args, **kwargs)
@@ -122,13 +124,20 @@ class MirrorManager: # The single mirror server manager which manages a specific
 
     def set_config(self, config):
         try:
-            self.config, self.mcsm_api, self.world_sync, self.permission, self.command_action, self.server_name = config, MCSManagerApi(**config["mcsm"]), \
-                WorldSync(**config["sync"]), config["command"]["permission"], config["command"]["action"], config["display"]["server_name"]
+            self.config, self.world_sync, self.permission, self.command_action, self.server_name = \
+                config, WorldSync(**config["sync"]), config["command"]["permission"], config["command"]["action"], config["display"]["server_name"]
+            self.server_api = ServerProxy()
+            self.server_api.set_mcsm(**self.config["mcsm"])
+            self.server_api.set_rcon(**self.config["rcon"])
+            terminal = self.server_api.set_system(**self.config["terminal"])
+            if type(terminal) == str:
+                self.server.broadcast(self.rtr("manager.reload.fail.unavailable_system"))
             return True
-        except:
+        except Exception as e:
+            raise e
             self.config_error()
             return False
-    
+
 
     def reload_config(self, config):
         if not self.set_config(config):
@@ -157,13 +166,6 @@ class MirrorManager: # The single mirror server manager which manages a specific
             source.reply(self.rtr("manager.permission_denied"))
             return False
         return True
-    
-
-    def check_mcsm_api(self, source: CommandSource):
-        if not self.mcsm_api.enable:
-            source.reply(self.rtr("mcsm.disabled"))
-            return False
-        return True
 
 
     def pre_check(command):
@@ -177,7 +179,7 @@ class MirrorManager: # The single mirror server manager which manages a specific
                     source.reply(self.rtr("command.confirm.previous", action=self.confirmation[operator]['action']))
                     self.confirm_end(operator)
 
-                if not self.check_mcsm_api(source) and self.check_permission(source, command):
+                if not self.check_permission(source, command):
                     return
                 if not confirm and self.command_action[command]["require_confirm"]:
                     timer = Timer(self.command_action["confirm"]["timeout"], self.confirm_timer, args=[source, context, operator])
@@ -194,32 +196,37 @@ class MirrorManager: # The single mirror server manager which manages a specific
 
     @catch_api_error
     def _execute(self, source: CommandSource, command: str, available_status: list): # <failed_prompt> & <succeeded_prompt> : {status_code: "prompt"}
-        status_code = self.mcsm_api.status()
+        status_code = self.server_api.status()
         if status_code in available_status:
-            rep = getattr(self.mcsm_api, command)()
-            self.server.logger.info(rep)
-            self.broadcast(self.rtr("command._execute.success", prompt=self.rtr(f"command.{command}.success.{status_code}", title=False).to_legacy_text()))
-            return True
-        else:
-            source.reply(self.rtr("command._execute.fail", prompt=self.rtr(f"command.{command}.fail.{status_code}", title=False).to_legacy_text()))
-            return False
+            rep = getattr(self.server_api, command)()
+            if rep == "success":
+                self.broadcast(self.rtr("command._execute.success", prompt=self.rtr(f"command.{command}.success.{status_code}", title=False).to_legacy_text()))
+                return True
+            status_code = rep
+        source.reply(self.rtr("command._execute.fail", prompt=self.rtr(f"command.{command}.fail.{status_code}", title=False).to_legacy_text()))
+        return False
 
 
-    
+    def status_available(self, status):
+        return status in ["unknown", "stopped", "stopping", "starting", "running"]
+
+
     @pre_check(command="status")
     def status(self, source: CommandSource, context: CommandContext):
-        return self._execute(source, "status", ["unknown", "stopped", "stopping", "starting", "running"])
+        status_code = self.server_api.status()
+        flag = "success" if self.status_available(status_code) else "fail"
+        self.broadcast(self.rtr(f"command._execute.{flag}", prompt=self.rtr(f"command.status.{flag}.{status_code}", title=False).to_legacy_text()))
 
 
     @pre_check(command="start")
     def start(self, source: CommandSource, context: CommandContext):
         return self._execute(source, "start", ["stopped"])
-    
+
 
     @pre_check(command="stop")
     def stop(self, source: CommandSource, context: CommandContext):
         return self._execute(source, "stop", ["running"])
-    
+
 
     @pre_check(command="kill")
     def kill(self, source: CommandSource, context: CommandContext):
@@ -238,23 +245,26 @@ class MirrorManager: # The single mirror server manager which manages a specific
         auto_restart_flag = False
         sync_action_config = self.command_action["sync"]
         if sync_action_config["ensure_server_closed"]:
-            status_code = self.mcsm_api.status()
+            status_code = self.server_api.status()
             
             if status_code == "stopped":
                 pass
             elif status_code != "running" or not sync_action_config["auto_server_restart"]:
                 source.reply(self.rtr(f"command.sync.fail.{status_code}"))
                 return
-            else:
+            else: # restart server
                 source.reply(self.rtr("command.sync.auto_restart.restarting"))
                 if not self.stop(source, context, confirm=True):
                     return
                 interval, times = sync_action_config["check_status_interval"], sync_action_config["max_attempt_times"]
-                for i in range(times):
+                for i in range(times): # wait for server to stop
                     time.sleep(interval)
-                    status_code = self.mcsm_api.status()
+                    status_code = self.server_api.status()
                     if status_code == "stopped":
                         break
+                    if not self.status_available(status_code): # if status command is not available, skip and end
+                        source.reply(self.rtr("command.sync.auto_restart.fail", status=self.rtr(f"command.status.failed.{status_code}", title=False)))
+                        return
                 else:
                     source.reply(self.rtr("command.sync.auto_restart.fail", status=self.rtr(f"command.status.success.{status_code}", title=False)))
                     return
@@ -292,7 +302,7 @@ class MirrorManager: # The single mirror server manager which manages a specific
 
         if auto_restart_flag:
             self.start(source, context)
-    
+
 
     def confirm(self, source: CommandSource, context: CommandContext):
         operator = source.player if source.is_player else "[console]"
@@ -308,7 +318,7 @@ class MirrorManager: # The single mirror server manager which manages a specific
     def confirm_timer(self, source: CommandSource, context: CommandContext, operator):
         source.reply(self.rtr("command.confirm.timeout", action=self.confirmation[operator]['action']))
         self.confirmation.pop(operator)
-    
+
 
     def confirm_end(self, operator, source: CommandSource=None, context: CommandContext=None):
         self.confirmation[operator]["timer"].cancel()
@@ -318,9 +328,9 @@ class MirrorManager: # The single mirror server manager which manages a specific
 
 
     def on_info(self, server: PluginServerInterface, info: Info):
-        if self.config and not self.save_world_wait.is_set() and info.is_from_server and re.match(self.config["server"]["saved_world_regex"], info.content):
+        if self.config and not self.save_world_wait.is_set() and info.is_from_server and re.match(self.command_action["sync"]["save_world"]["saved_world_regex"], info.content):
             self.save_world_wait.set() # stop waiting in sync function
-    
+
 
     def on_user_info(self, server: PluginServerInterface, info: Info):
         operator = info.player
