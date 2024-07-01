@@ -11,6 +11,7 @@ mirror_mcsmcdr:
     reload:
       success: §a配置文件重载成功§7({prefix})
       fail: §c无效的配置文件§7({prefix})
+      fail.unavailable_system: "§cterminal未启用: 不支持{system}系统§7({prefix})"
     permission_denied: §b{server_name}§c操作权限不足
     mcsm_disabled: §cMCSM-API未启用
   
@@ -39,6 +40,9 @@ mirror_mcsmcdr:
       others: §c你不能确认其他人的任务
 
     status:
+      fail:
+        unavailable: 当前配置文件不支持status命令, 需要配置MCSM, terminal或RCON
+        rcon_status_mismatch: 状态异常, RCON状态与端口状态不匹配
       success:
         unknown: 状态未知
         stopped: 已停止
@@ -52,6 +56,7 @@ mirror_mcsmcdr:
         stopping: 正在停止, 请等待{server_name}停止后重新启动
         starting: 正在启动, 请稍等
         running: 正在运行
+        unavailable: 当前配置文件不支持start命令, 需要配置MCSM或terminal
       success:
         stopped: 启动指令已发送
 
@@ -61,6 +66,8 @@ mirror_mcsmcdr:
         stopped: 已停止
         stopping: 正在停止, 请稍等
         starting: 正在启动, 请等待§b{server_name}§c启动后重新停止
+        unavailable: 当前配置文件不支持stop命令, 需要配置MCSM或RCON
+        unavailable_windows: Windows系统不支持通过终端执行stop命令, 需要配置MCSM或RCON
       success:
         running: 关闭指令已发送
 
@@ -68,6 +75,7 @@ mirror_mcsmcdr:
       fail:
         unknown: 状态未知, 请回报管理员
         stopped: 已停止
+        unavailable: 当前配置文件不支持kill命令, 需要配置MCSM
       success:
         stopping: 强制终止...
         starting: 强制终止...
