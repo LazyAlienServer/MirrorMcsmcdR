@@ -54,7 +54,7 @@
             "permission": {/* 指令权限配置 */},
             "action": {/* 指令行为配置 */}
         },
-        "display": {/* 显示相关配置 */}
+        "display": {/* 显示配置 */}
     }
 }
 ```
@@ -176,21 +176,23 @@
 **password** `str`
 - RCON的连接密码
 
+<br>
+
 ### sync: 文件同步相关的配置文件
 ```
 "sync": {
     "world": [
-		    "world"
-		],
-		"source": "./server",
-		"target": [
-				"./Mirror/server"
-		],
-		"ignore_inexistent_target_path": false,
-		"concurrency": 4,
-		"ignore_files": [
-				"session.lock"
-		]
+	"world"
+    ],
+    "source": "./server",
+    "target": [
+        "./Mirror/server"
+    ],
+    "ignore_inexistent_target_path": false,
+    "concurrency": 4,
+    "ignore_files": [
+        "session.lock"
+    ]
 }
 ```
 **world** `list`
@@ -209,68 +211,74 @@
 - 同步时进行哈希计算的线程数
 
 **ignore_files** `list`
-- 不进行同步的文件
+- 不进行同步的文件，若使用`carpet`模组和`plus-carpet-addition(PCA)`模组，建议添加`"carpet.conf"` `"pca.conf"`
 
 <br>
 
-### command: 指令相关的配置文件
-|参数|类型|解释|
-|---|---|---|
-| permission | dict | 各指令所需的最低的MCDR权限等级 |
-| action || 控制指令执行时的部分行为 |
+### command: 指令配置
+
+```
+"command": {
+    "permission": {/* 指令权限配置 */},
+    "action": {/* 指令行为配置 */}
+}
+```
+
+### permission: 指令权限配置
+
+`int`
+- 执行各指令所需的最低MCDR权限等级
 
 <br>
 
-#### action: 控制指令执行时的部分行为
+### action: 指令行为配置
 
-**通用设置**
-|参数|类型|解释|
-|---|---|---|
-| require_confirm | bool | 当此选项为`true`时, 执行该指令后需要输入`!!mirror confirm`以确认操作 |
+### 通用配置
 
-<br>
-
-**sync设置**
-|参数|类型|解释|
-|---|---|---|
-| ensure_server_closed | bool | 当此选项为`true`时, 同步时将会检查镜像服是否已停止。当此选项为`false`时, 无论镜像服是否停止, 都将直接进行同步。 |
-| auto_server_restart | bool | 此选项仅在`ensure_server_closed`为`true`时生效。当此选项为`true`时, 如果同步时镜像服未停止, 那么将在尝试自动停止镜像服后进行同步, 并在同步完成后自动重启镜像服 |
-| check_status_interval | int | 此选项仅在`auto_server_restart`生效时生效。同步时停止镜像服后, 插件需确认镜像服是否已停止。此选项为检查镜像服状态的时间间隔 |
-| max_attempt_times | int | 此选项仅在`auto_server_restart`生效时生效。检查镜像服状态的尝试次数, 超过此尝试次数后将不再尝试检查镜像服状态, 并输出`自动关闭失败`及镜像服当前状态信息。等效于超时时间 `timeout = check_status_interval * max_attempt_times`|
+**require_confirm** `bool`
+- 当此选项为`true`时, 执行该指令后需要输入`!!mirror confirm`以确认操作 |
 
 <br>
 
-**start设置**
+### sync配置
+**ensure_server_closed** `bool`
+- 当此选项为`true`时, 同步时将会检查镜像服是否已停止。当此选项为`false`时, 无论镜像服是否停止, 都将直接进行同步。
 
+**auto_server_restart** `bool`
+- 此选项仅在`ensure_server_closed`为`true`时生效。当此选项为`true`时, 如果同步时镜像服未停止, 那么将在尝试自动停止镜像服后进行同步, 并在同步完成后自动重启镜像服
+
+**check_status_interval** `int`
+- 此选项仅在`auto_server_restart`生效时生效。同步时停止镜像服后, 插件需确认镜像服是否已停止。此选项为检查镜像服状态的时间间隔
+
+**max_attempt_times** `int`
+- 此选项仅在`auto_server_restart`生效时生效。检查镜像服状态的尝试次数, 超过此尝试次数后将不再尝试检查镜像服状态, 并输出`自动关闭失败`及镜像服当前状态信息。等效于超时时间 `timeout = check_status_interval * max_attempt_times`
+
+<br>
+
+### confirm配置
+玩家只能确认自己执行的指令
+
+**timeout** `int`
+- 需确认的指令经过多少秒后超时取消。若执行某指令后超过`timeout`秒后, 该玩家未进行任何操作, 则此指令超时，自动取消
+
+**cancel_anymsg** `bool`
+- 若玩家执行某指令后发送了除`confirm`指令外的消息, 则此指令操作自动取消。除此之外, 若玩家执行了某指令后又执行了对应镜像服的其他指令, 则先前执行的指令自动取消
+
+<br>
+
+### abort设置
 ~此功能仍在开发~
 
 <br>
 
-**confirm设置**
-|参数|类型|解释|
-|---|---|---|
-| timeout | int | 执行某指令后超过`timeout`秒后, 该玩家未进行任何操作, 则此指令操作自动超时取消 |
-| cancel_anymsg | bool | 若玩家执行某指令后发送了其他无关消息, 则此指令操作自动取消 |
-
-除此之外, 若玩家执行了某指令后又执行了对应镜像服的其他指令, 则先前执行的指令自动取消
-
-注意：每个玩家只能确认自己执行的指令
-
-<br>
-
-**abort设置**
-
-~此功能仍在开发~
-|参数|类型|解释|
-|---|---|---|
-| operator | str | 正在开发 |
-
-<br>
-
-### display: 显示相关的配置文件
-|参数|类型|解释|
-|---|---|---|
-| server_name | str | "镜像服"的名称，用以在显示时区分不同的镜像服 |
+### display: 显示配置
+```
+"display": {
+    "server_name": "Mirror"
+}
+```
+**server_name** `str`
+- "镜像服"的名称，用以在显示时区分不同的镜像服
 
 <br>
 
