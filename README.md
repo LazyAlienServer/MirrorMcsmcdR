@@ -1,7 +1,7 @@
 # MirrorMcsmcdR
 一个**超级完善的**[MCDR](https://github.com/Fallen-Breath/MCDReforged)插件，基于[MCSM](https://github.com/MCSManager/MCSManager)对镜像服进行控制与进行文件同步
 
-当前`dev`版本`v1.3.1-alpha`，已支持RCON和通过命令行启动
+当前`dev`版本`v1.3.1`，已支持RCON和通过命令行启动。已合并至`main`分支
 
 ## 特性
 
