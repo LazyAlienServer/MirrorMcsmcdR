@@ -136,6 +136,10 @@
 ```
 在Windows系统下，插件将创建一个新的命令行终端来运行镜像服；在Linux系统下，插件将创建一个新的screen来运行镜像服。镜像服停止后，终端/screen都会自动关闭。
 
+如果你无法通过此命令启动镜像服，尝试在你的终端执行对应系统的命令，并检查命令回显。其中`new_terminal` `launch_command`都为配置文件中对应key的值
+- Linux的完整启动命令 `cd "{launch_path}"&&screen -dmS {new_terminal}&&screen -x -S {new_terminal} -p 0 -X stuff "{launch_command}&&exit\n"`
+- Windos的完整启动命令 `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {new_terminal}');os.system('{launch_command}')"`
+
 注意：在Linux系统下，插件可以通过screen关闭镜像服。在Windows系统下，你必须设置MCSM或RCON才能通过插件关闭镜像服。
 
 **enable** `bool`
@@ -501,4 +505,5 @@
 - [ ] 指令禁用
 - [x] RCON支持
 - [x] 无MCSM下通过命令行启动服务端
+- [ ] Linux/Windows通过终端执行`kill`指令
 - [ ] 历史同步记录显示
