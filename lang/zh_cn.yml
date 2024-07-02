@@ -52,7 +52,7 @@ mirror_mcsmcdr:
 
     start:
       fail:
-        unknown: 状态未知, 请回报管理员
+        unknown: 状态未知, 请报告管理员
         stopping: 正在停止, 请等待{server_name}停止后重新启动
         starting: 正在启动, 请稍等
         running: 正在运行
@@ -63,7 +63,7 @@ mirror_mcsmcdr:
 
     stop:
       fail:
-        unknown: 状态未知, 请回报管理员
+        unknown: 状态未知, 请报告管理员
         stopped: 已停止
         stopping: 正在停止, 请稍等
         starting: 正在启动, 请等待§b{server_name}§c启动后重新停止
@@ -74,7 +74,7 @@ mirror_mcsmcdr:
 
     kill:
       fail:
-        unknown: 状态未知, 请回报管理员
+        unknown: 状态未知, 请报告管理员
         stopped: 已停止
         unavailable: 当前配置文件不支持kill命令, 需要配置MCSM
       success:
@@ -85,7 +85,7 @@ mirror_mcsmcdr:
     sync:
       fail:
         task_exist: §b{server_name}§c已有正在进行中的同步任务
-        unknown: §c操作失败 / §b{server_name}§c状态未知, 请回报管理员
+        unknown: §c操作失败 / §b{server_name}§c状态未知, 请报告管理员
         stopping: §c操作失败 / §b{server_name}§c正在停止, 请等待{server_name}停止后进行同步
         starting: §c操作失败 / §b{server_name}§c正在启动, 请等待{server_name}启动后重新停止并进行同步
         running: §c操作失败 / §b{server_name}§c正在运行, 请先停止{server_name}再进行同步
@@ -96,14 +96,14 @@ mirror_mcsmcdr:
       skip_dictionary: "§b{server_name}§c的以下文件目录不存在, 已跳过: §f`§7{paths}§f`"
       completed: §a同步完成! §f用时 §b{time}s §7/ §f更新了§b{changed_files_count}§f个文件
       identical: §a文件完全相同, 无需同步
-      error: "§c同步时发生错误, 请回报管理员: {e}"
+      error: "§c同步时发生错误, 请报告管理员: {e}"
   
   mcsm:
     disabled: §cMCSM-API未启用
     error:
-      request: "§cMCSM请求错误, 请回报管理员: §4{e}"
-      unknown: "§c未知错误, 请回报管理员: §4{e}"
+      request: "§cMCSM请求错误, 请报告管理员: §4{e}"
+      unknown: "§c未知错误, 请报告管理员: §4{e}"
       "400": "[400] 请求参数错误, 请尝试前往GitHub提交issue以解决({error})"
-      "403": "[403] 请求权限不足, 请回报服务器管理员({error})"
+      "403": "[403] 请求权限不足, 请报告服务器管理员({error})"
       "500": "[500] 未知的服务器内部错误({error})"
       "503": "[503] 请求过于频繁"

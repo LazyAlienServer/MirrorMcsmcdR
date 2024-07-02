@@ -1,13 +1,14 @@
 # MirrorMcsmcdR
-一个**超级完善的**[MCDR](https://github.com/Fallen-Breath/MCDReforged)插件，基于[MCSM](https://github.com/MCSManager/MCSManager)对镜像服进行控制与进行文件同步
+一个**超级完善的**[MCDR](https://github.com/Fallen-Breath/MCDReforged)插件，可通过多种方式对镜像服进行控制与进行文件同步
 
-当前`dev`版本`v1.3.1`，已支持RCON和通过命令行启动。已合并至`main`分支
+当前版本`v1.3.1`，已支持RCON和通过命令行启动。
 
 ## 特性
 
 - 插件的功能基于[MCSManager](https://github.com/MCSManager/MCSManager)
   + 支持`v9.9.0` `v10.2.1+`
-- 完善的**多镜像服**控制操作，通过mcsm获取运行状态/启动/停止/强制终止/同步
+- 也可以不依赖MCSM，直接通过终端或RCON对镜像服进行控制（`v1.3.0+`）
+- 完善的**多镜像服**控制操作，获取运行状态/启动/停止/强制终止/同步
 - 基于哈希的文件同步，只同步镜像服与源服务端不同的文件
 - 高可自定义的、配置友好配置文件，多个镜像服配置时只需要书写变化的值
 
