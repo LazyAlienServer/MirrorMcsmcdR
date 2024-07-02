@@ -22,13 +22,13 @@ class ServerProxy:
             return True
         
     
-    def set_system(self, enable, new_terminal: str, launch_path: str, launch_command: str, port: int, regex_strict: bool, system: str):
-        if enable and new_terminal and launch_path and launch_command and port and type(regex_strict) == bool:
+    def set_system(self, enable, terminal_name: str, launch_path: str, launch_command: str, port: int, regex_strict: bool, system: str):
+        if enable and terminal_name and launch_path and launch_command and port and type(regex_strict) == bool:
             if not system:
                 system = platform.system()
                 if system not in ["Linux", "Windows"]:
                     return system
-            self.system = SystemAPI(new_terminal, launch_path, launch_command, port, regex_strict, system)
+            self.system = SystemAPI(terminal_name, launch_path, launch_command, port, regex_strict, system)
             return True
     
     def status(self):

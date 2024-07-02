@@ -129,16 +129,16 @@
     "launch_path": "./Mirror",
     "launch_command": "python -m mcdreforged",
     "port": null,
-    "new_terminal": "Mirror",
+    "terminal_name": "Mirror",
     "regex_strict": false,
     "system": null
 }
 ```
 在Windows系统下，插件将创建一个新的命令行终端来运行镜像服；在Linux系统下，插件将创建一个新的screen来运行镜像服。镜像服停止后，终端/screen都会自动关闭。
 
-如果你无法通过此命令启动镜像服，尝试在你的终端执行对应系统的命令，并检查命令回显。其中`new_terminal` `launch_command`都为配置文件中对应key的值
-- Linux的完整启动命令 `cd "{launch_path}"&&screen -dmS {new_terminal}&&screen -x -S {new_terminal} -p 0 -X stuff "{launch_command}&&exit\n"`
-- Windos的完整启动命令 `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {new_terminal}');os.system('{launch_command}')"`
+如果你无法通过此命令启动镜像服，尝试在你的终端执行对应系统的命令，并检查命令回显。其中`terminal_name` `launch_command`都为配置文件中对应key的值
+- Linux的完整启动命令 `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
+- Windos的完整启动命令 `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{launch_command}')"`
 
 注意：在Linux系统下，插件可以通过screen关闭镜像服。在Windows系统下，你必须设置MCSM或RCON才能通过插件关闭镜像服。
 
@@ -154,7 +154,7 @@
 **port** `int`
 - 镜像服运行的端口，插件将通过检查端口状态的方法检查镜像服的运行状态。
 
-**new_terminal** `str`
+**terminal_name** `str`
 - 新终端的标题或新screen的名称，便于镜像服运维。
 
 **regex_strict** `bool`
@@ -375,7 +375,7 @@
             "launch_path": "./Mirror",
             "launch_command": "python -m mcdreforged",
             "port": null,
-            "new_terminal": "Mirror",
+            "terminal_name": "Mirror",
             "regex_strict": false,
             "system": null
         },
@@ -478,7 +478,7 @@
             "enable": true,
             "launch_path": "./Mirror3",
             "port": 30002,
-            "new_terminal": "Mirror3"
+            "terminal_name": "Mirror3"
         },
         "rcon": {
             "enable": true,

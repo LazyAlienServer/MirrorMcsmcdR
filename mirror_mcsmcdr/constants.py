@@ -12,7 +12,7 @@ DEFAULT_CONFIG = {
             "launch_path": "./Mirror",
             "launch_command": "python -m mcdreforged",
             "port": None,
-            "new_terminal": "Mirror",
+            "terminal_name": "Mirror",
             "regex_strict": False,
             "system": None
         },
