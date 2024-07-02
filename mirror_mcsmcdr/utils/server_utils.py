@@ -1,4 +1,4 @@
-from mirror_mcsmcdr.utils.api.mcsm_api import MCSManagerApi, MCSManagerApiError
+from mirror_mcsmcdr.utils.api.mcsm_api import MCSManagerApi
 from mirror_mcsmcdr.utils.api.rcon_api import RConAPI
 from mirror_mcsmcdr.utils.api.system_api import SystemAPI
 import platform
@@ -41,7 +41,7 @@ class ServerProxy:
                 if status == status_sys:
                     return "stopped"
                 return "rcon_status_mismatch"
-        return self.system.status()
+        return self.system.status() if self.system else "unavailable"
     
     def start(self):
         if self.mcsm:

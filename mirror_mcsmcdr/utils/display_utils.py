@@ -1,5 +1,5 @@
 from mcdreforged.api.all import RTextList, ServerInterface, RAction
-from mirror_mcsmcdr.utils.constants import PLUGIN_ID, REPLY_TITLE, TITLE, VERSION
+from mirror_mcsmcdr.constants import PLUGIN_ID, REPLY_TITLE, TITLE, VERSION
 
 
 def rtr(key, title=True, *args, **kwargs):
