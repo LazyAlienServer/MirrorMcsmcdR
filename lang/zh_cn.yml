@@ -57,6 +57,7 @@ mirror_mcsmcdr:
         starting: 正在启动, 请稍等
         running: 正在运行
         unavailable: 当前配置文件不支持start命令, 需要配置MCSM或terminal
+        path_not_found: 未找到有效的启动目录, 请检查是否已创建正常的{server_name}服务端和插件配置文件是否配置正确
       success:
         stopped: 启动指令已发送
 

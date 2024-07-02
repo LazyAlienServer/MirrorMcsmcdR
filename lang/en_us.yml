@@ -57,6 +57,7 @@ mirror_mcsmcdr:
         starting: starting, please wait for a moment
         running: running
         unavailable: Current config does not support start command. You need to configure MCSM or terminal
+        path_not_found: Cannot find available launch path, please check if {server_name} server is created and plugins's config is configured correctly
       success:
         stopped: starting command sent
 
