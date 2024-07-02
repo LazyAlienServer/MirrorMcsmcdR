@@ -10,7 +10,11 @@ DEFAULT_CONFIG = {
         "terminal": {
             "enable": False,
             "launch_path": "./Mirror",
-            "launch_command": "python -m mcdreforged"
+            "launch_command": "python -m mcdreforged",
+            "port": None,
+            "new_terminal": "Mirror",
+            "regex_strict": False,
+            "system": None
         },
         "rcon": {
             "enable": False,
@@ -90,6 +94,4 @@ DEFAULT_CONFIG = {
 PLUGIN_ID = "mirror_mcsmcdr"
 TITLE = "MirrorMcsmcdR"
 REPLY_TITLE = "§e[MirrorMcsmcdR]§f"
-VERSION = "1.3.0-beta"
-
-
+VERSION = "1.3.1-alpha"
