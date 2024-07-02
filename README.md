@@ -15,7 +15,13 @@
 
 ## 依赖
 
+**Python**
+
 `xxhash>=3`
+
+**系统**
+
+当使用[terminal](#terminal:&nbsp;通过命令行启动镜像服终端的配置)启动镜像服且系统为`Linux`时：需要`screen`
 
 ## 指令
 
