@@ -45,7 +45,7 @@ class LinuxAPI(AbstractSystemAPI):
         if not os.path.exists(self.path):
             return "path_not_found"
         new_terminal = self.new_terminal
-        command = f'cd "{self.path}"&&screen -dmS {new_terminal}&&screen -x -S {new_terminal} -p 0 -X stuff "{self.command} && exit\n"'
+        command = f'cd "{self.path}"&&screen -dmS {new_terminal}&&screen -x -S {new_terminal} -p 0 -X stuff "{self.command}&&exit\n"'
         os.popen(command)
         return "success"
     
