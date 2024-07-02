@@ -55,6 +55,8 @@ class ServerProxy:
             return self.mcsm.stop()
         if self.rcon:
             return self.rcon.stop()
+        if self.system:
+            return self.system.stop()
         return "unavailable"
     
     def kill(self):
