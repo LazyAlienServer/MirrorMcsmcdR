@@ -472,7 +472,7 @@
         },
         "terminal": {
             "enable": true,
-            "launch_path": "./Mirror3"
+            "launch_path": "./Mirror3",
             "port": 30002,
             "new_terminal": "Mirror3"
         },
