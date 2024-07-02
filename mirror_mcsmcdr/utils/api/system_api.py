@@ -1,7 +1,7 @@
-import os, re, importlib
+import os, re
 from abc import ABC, abstractmethod
 
-from mirror_mcsmcdr.utils.constants import PLUGIN_ID
+from mirror_mcsmcdr.constants import PLUGIN_ID
 
 class SystemAPI:
     
@@ -42,6 +42,8 @@ class AbstractSystemAPI(ABC):
 class LinuxAPI(AbstractSystemAPI):
 
     def start(self):
+        if not os.path.exists(self.path):
+            return "path_not_found"
         new_terminal = self.new_terminal
         command = f'screen -dmS {new_terminal} && screen -x -S {new_terminal} -p 0 -X stuff "{self.command} && exit\n"'
         os.popen(f'cd "{self.path}" && {command}')
@@ -62,6 +64,8 @@ class LinuxAPI(AbstractSystemAPI):
 class WindowsAPI(AbstractSystemAPI):
 
     def start(self):
+        if not os.path.exists(self.path):
+            return "path_not_found"
         new_terminal = self.new_terminal
         command = f'''cd "{self.path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {new_terminal}');os.system('{self.command}')"'''
         os.popen(command)
