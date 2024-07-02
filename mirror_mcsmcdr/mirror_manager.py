@@ -1,4 +1,4 @@
-from mcdreforged.api.all import PluginServerInterface, CommandSource, CommandContext, Info, SimpleCommandBuilder, event_listener, new_thread, RText, RTextList, RColor, RAction
+from mcdreforged.api.all import PluginServerInterface, CommandSource, CommandContext, Info, SimpleCommandBuilder, new_thread, RTextList, RAction
 from mirror_mcsmcdr.constants import DEFAULT_CONFIG, TITLE
 from mirror_mcsmcdr.utils.api.mcsm_api import MCSManagerApiError
 from mirror_mcsmcdr.utils.server_utils import ServerProxy
@@ -134,7 +134,6 @@ class MirrorManager: # The single mirror server manager which manages a specific
                 self.server.broadcast(self.rtr("manager.reload.fail.unavailable_system"))
             return True
         except Exception as e:
-            raise e
             self.config_error()
             return False
 
