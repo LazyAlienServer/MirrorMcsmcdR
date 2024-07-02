@@ -1,2 +1,109 @@
 mirror_mcsmcdr: 
-  command: text
+
+  multi_manager:
+    init:
+      error: "设置{prefix}时出错: {e}"
+      success: "{prefix} 构建成功"
+      fail: "{prefix} 构建失败"
+
+  manager: 
+    load: "{prefix}已加载"
+    reload:
+      success: §a配置文件重载成功§7({prefix})
+      fail: §c无效的配置文件§7({prefix})
+      fail.unavailable_system: "§cterminal未启用: 不支持{system}系统§7({prefix})"
+    permission_denied: §b{server_name}§c操作权限不足
+    mcsm_disabled: §cMCSM-API未启用
+  
+  command:
+
+    _execute:
+      success: §b{server_name}§a{prompt}
+      fail: §c操作失败 / §b{server_name}§f{prompt}
+    
+    help:
+      info: §7----- §e{TITLE} §bv{VERSION} §7-----§f
+      help: §7{prefix} help §f显示此帮助信息
+      status: §7{prefix} status §f查看{server_name}状态
+      start: §7{prefix} start §f启动{server_name}
+      stop: §7{prefix} stop §f停止{server_name}
+      kill: §7{prefix} kill §f强制终止{server_name}
+      sync: §7{prefix} sync §f同步{server_name}
+      reload: §7{prefix} reload §f重载{server_name}配置文件
+
+    confirm:
+      prompt: §7{prefix} confirm §f以确认操作
+      cancel: 操作§b{server_name}-{action}§c已取消
+      previous: 先前操作§b{server_name}-{action}§c已取消
+      timeout: 操作§b{server_name}-{action}§c超时已取消
+      none: §c没有需要确认的任务
+      others: §c你不能确认其他人的任务
+
+    status:
+      fail:
+        unavailable: 当前配置文件不支持status命令, 需要配置MCSM, terminal或RCON
+        rcon_status_mismatch: 状态异常, RCON状态与端口状态不匹配
+      success:
+        unknown: 状态未知
+        stopped: 已停止
+        stopping: 正在停止
+        starting: 正在启动
+        running: 正在运行
+
+    start:
+      fail:
+        unknown: 状态未知, 请回报管理员
+        stopping: 正在停止, 请等待{server_name}停止后重新启动
+        starting: 正在启动, 请稍等
+        running: 正在运行
+        unavailable: 当前配置文件不支持start命令, 需要配置MCSM或terminal
+        path_not_found: 未找到有效的启动目录, 请检查是否已创建正常的{server_name}服务端和插件配置文件是否配置正确
+      success:
+        stopped: 启动指令已发送
+
+    stop:
+      fail:
+        unknown: 状态未知, 请回报管理员
+        stopped: 已停止
+        stopping: 正在停止, 请稍等
+        starting: 正在启动, 请等待§b{server_name}§c启动后重新停止
+        unavailable: 当前配置文件不支持stop命令, 需要配置MCSM或RCON
+        unavailable_windows: Windows系统不支持通过终端执行stop命令, 需要配置MCSM或RCON
+      success:
+        running: 关闭指令已发送
+
+    kill:
+      fail:
+        unknown: 状态未知, 请回报管理员
+        stopped: 已停止
+        unavailable: 当前配置文件不支持kill命令, 需要配置MCSM
+      success:
+        stopping: 强制终止...
+        starting: 强制终止...
+        running: 强制终止...
+
+    sync:
+      fail:
+        task_exist: §b{server_name}§c已有正在进行中的同步任务
+        unknown: §c操作失败 / §b{server_name}§c状态未知, 请回报管理员
+        stopping: §c操作失败 / §b{server_name}§c正在停止, 请等待{server_name}停止后进行同步
+        starting: §c操作失败 / §b{server_name}§c正在启动, 请等待{server_name}启动后重新停止并进行同步
+        running: §c操作失败 / §b{server_name}§c正在运行, 请先停止{server_name}再进行同步
+      auto_restart:
+        restarting: §b{server_name}§f未停止, 自动关闭{server_name}并进行同步...
+        fail: §c自动关闭失败, §b{server_name}§c§f{status}
+      success: §b{server_name}§a正在进行同步...
+      skip_dictionary: "§b{server_name}§c的以下文件目录不存在, 已跳过: §f`§7{paths}§f`"
+      completed: §a同步完成! §f用时 §b{time}s §7/ §f更新了§b{changed_files_count}§f个文件
+      identical: §a文件完全相同, 无需同步
+      error: "§c同步时发生错误, 请回报管理员: {e}"
+  
+  mcsm:
+    disabled: §cMCSM-API未启用
+    error:
+      request: "§cMCSM请求错误, 请回报管理员: §4{e}"
+      unknown: "§c未知错误, 请回报管理员: §4{e}"
+      "400": "[400] 请求参数错误, 请尝试前往GitHub提交issue以解决({error})"
+      "403": "[403] 请求权限不足, 请回报服务器管理员({error})"
+      "500": "[500] 未知的服务器内部错误({error})"
+      "503": "[503] 请求过于频繁"

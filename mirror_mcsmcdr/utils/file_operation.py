@@ -1,6 +1,6 @@
 import shutil, os, xxhash
 from concurrent.futures import ThreadPoolExecutor, wait
-from mirror_mcsmcdr.utils.constants import TITLE
+from mirror_mcsmcdr.constants import TITLE
 
 
 class WorldSync:

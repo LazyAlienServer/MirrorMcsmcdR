@@ -1,0 +1,109 @@
+mirror_mcsmcdr: 
+
+  multi_manager:
+    init:
+      error: "An error occured when configuring {prefix}: {e}"
+      success: "{prefix} loaded successfully"
+      fail: "{prefix} loaded unsuccessfully"
+
+  manager: 
+    load: "{prefix} loaded"
+    reload:
+      success: §aConfig file reloaded successfully§7 ({prefix})
+      fail: §cInvalid config file§7 ({prefix})
+      fail.unavailable_system: "§cterminal disabled: system {system} unsupported§7 ({prefix})"
+    permission_denied: §b{server_name}§c Permission denied
+    mcsm_disabled: §cMCSM-API is disbaled
+  
+  command:
+
+    _execute:
+      success: §b{server_name} §a{prompt}
+      fail: §cOperation failed / §b{server_name} §f{prompt}
+    
+    help:
+      info: "§7----- §e{TITLE} §bv{VERSION} §7-----§f"
+      help: §7{prefix} help §fShow this help message
+      status: §7{prefix} status §fCheck the status of {server_name}
+      start: §7{prefix} start §fStart {server_name}
+      stop: §7{prefix} stop §fStop {server_name}
+      kill: §7{prefix} kill §fKill {server_name}
+      sync: §7{prefix} sync §fSynchronize {server_name}
+      reload: §7{prefix} reload §fReload config of {server_name}
+
+    confirm:
+      prompt: §7{prefix} confirm §fto confirm operation
+      cancel: Operation §b{server_name}-{action}§c cancelled
+      previous: Pervious operation §b{server_name}-{action}§c cancelled
+      timeout: Operation §b{server_name}-{action}§c timed out
+      none: §cNo tasks to confirm
+      others: §cYou cannot confirm other people's task
+
+    status:
+      fail:
+        unavailable: Current config does not support status command. You need to configure MCSM, terminal or RCON
+        rcon_status_mismatch: Status error. The RCON status does not match the port(terminal) status
+      success:
+        unknown: status unknown
+        stopped: stopped
+        stopping: stopping
+        starting: starting
+        running: runing
+
+    start:
+      fail:
+        unknown: status unknown, please report this problem to operators
+        stopping: stopping, please restart after {server_name} stopped
+        starting: starting, please wait for a moment
+        running: running
+        unavailable: Current config does not support start command. You need to configure MCSM or terminal
+        path_not_found: Cannot find available launch path, please check if {server_name} server is created and plugins's config is configured correctly
+      success:
+        stopped: starting command sent
+
+    stop:
+      fail:
+        unknown: status unknown, please report this problem to operators
+        stopped: stopped
+        stopping: stopping, please wait for a moment
+        starting: starting, please stop after §b{server_name}§c started
+        unavailable: Current config does not support stop command. You need to configure MCSM or RCON
+        unavailable_windows: Windows system does not support execute stop command from terminal. You need to configure MCSM or RCON
+      success:
+        running: stopping command sent
+
+    kill:
+      fail:
+        unknown: status unknown, please report this problem to operators
+        stopped: stopped
+        unavailable: Current config does not support kill command. You need to configure MCSM
+      success:
+        stopping: forced termination in progress...
+        starting: forced termination in progress...
+        running: forced termination in progress...
+
+    sync:
+      fail:
+        task_exist: §b{server_name}§cOther tasks in progress
+        unknown: §cOperation failed / §b{server_name}§c status unknown, please report this problem to operators
+        stopping: §cOperation failed / §b{server_name}§c stopping, please sync after {server_name} stopped
+        starting: §cOperation failed / §b{server_name}§c starting, please stop {server_name} first then sync
+        running: §cOperation failed / §b{server_name}§c running, please stop {server_name} first then sync
+      auto_restart:
+        restarting: §b{server_name}§f running, auto-stopping {server_name} and syncing...
+        fail: §cAuto-stopping failed, §b{server_name}§c§f{status}
+      success: §b{server_name}§a is syncing...
+      skip_dictionary: "Cannot find the following directories below §b{server_name}§c, so MirrorMcsmcdr skipped it: §f`§7{paths}§f`"
+      completed: §aSynchronization completed!! §fTime taken | §b{time}s §7/ §f§b{changed_files_count}§f files updated
+      identical: §aNo changes detected
+      error: "§cAn error occured while syncing, please report this problem to operators: {e}"
+  
+  mcsm:
+    disabled: §cMCSM-API is disabled
+    error:
+      request: "§cMCSM request error, please report this problem to operators: §4{e}"
+      unknown: "§cUnknown error, please report this problem to operators: §4{e}"
+      "400": "[400] Bad Request, please visit GitHub to submit the issue ({error})"
+      "403": "[403] Forbidden, please report this problem to operators ({error})"
+      "500": "[500] Internal Server Error ({error})"
+      "503": "[503] Server Unavailable"

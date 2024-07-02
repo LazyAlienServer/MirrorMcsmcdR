@@ -1,12 +1,12 @@
 # MirrorMcsmcdR
-一个**~超级完善的~**[MCDR](https://github.com/Fallen-Breath/MCDReforged)插件，基于[MCSM](https://github.com/MCSManager/MCSManager)对镜像服进行控制与进行文件同步
+一个**超级完善的**[MCDR](https://github.com/Fallen-Breath/MCDReforged)插件，基于[MCSM](https://github.com/MCSManager/MCSManager)对镜像服进行控制与进行文件同步
 
-~CMD支持在写了, 所以都给我去用MCSM谢谢喵~
+当前`dev`版本`v1.3.1`，已支持RCON和通过命令行启动。已合并至`main`分支
 
 ## 特性
 
 - 插件的功能基于[MCSManager](https://github.com/MCSManager/MCSManager)
-  + 测试基于mcsm9.9, 不保证完全支持mcsm10
+  + 支持`v9.9.0` `v10.2.1+`
 - 完善的**多镜像服**控制操作，通过mcsm获取运行状态/启动/停止/强制终止/同步
 - 基于哈希的文件同步，只同步镜像服与源服务端不同的文件
 - 高可自定义的、配置友好配置文件，多个镜像服配置时只需要书写变化的值
@@ -15,7 +15,13 @@
 
 ## 依赖
 
+**Python**
+
 `xxhash>=3`
+
+**系统**
+
+当使用[terminal](#terminal:&nbsp;通过命令行启动镜像服终端的配置)启动镜像服且系统为`Linux`时：需要`screen`
 
 ## 指令
 
@@ -43,81 +49,18 @@
 
 配置文件在`v1.1.0`支持了热重载, 同时添加了更完善的属性补全功能。当新版本的配置文件中新增了某一选项, 插件将会自动将默认值填写到你的旧配置文件中, 而不需要手动添加。
 
-### 默认配置文件
-```
+```json
 {
     "!!mirror": {
-        "mcsm": {
-            "enable": true,
-            "url": "http://127.0.0.1:23333/",
-            "uuid": null,
-            "remote_uuid": null,
-            "apikey": null
-        },
-        "sync": {
-            "world": [
-                "world"
-            ],
-            "source": "./server",
-            "target": [
-                "./Mirror/server"
-            ],
-            "ignore_inexistent_target_path": false,
-            "concurrency": 4,
-            "ignore_files": [
-                "session.lock"
-            ]
-        },
+        "mcsm": {/* MCSManager配置 */},
+        "terminal": {/* 通过命令行启动镜像服终端的配置 */},
+        "rcon": {/* RCON配置 */},
+        "sync": {/* 存档同步配置 */},
         "command": {
-            "permission": {
-                "status": 0,
-                "start": 0,
-                "stop": 2,
-                "kill": 3,
-                "sync": 2
-            },
-            "action": {
-                "start": {
-                    "enable_cmd": false,
-                    "path": "./Mirror",
-                    "command": "python -m mcdreforged",
-                    "require_confirm": false
-                },
-                "stop": {
-                    "require_confirm": true
-                },
-                "kill": {
-                    "require_confirm": true
-                },
-                "sync": {
-                    "ensure_server_closed": true,
-                    "auto_server_restart": false,
-                    "check_status_interval": 5,
-                    "max_attempt_times": 3,
-                    "require_confirm": true
-                },
-                "confirm": {
-                    "timeout": 30,
-                    "cancel_anymsg": true
-                },
-                "abort": {
-                    "operator": "everyone"
-                }
-            }
+            "permission": {/* 指令权限配置 */},
+            "action": {/* 指令行为配置 */}
         },
-        "display": {
-            "server_name": "Mirror"
-        },
-        "server": {
-            "turn_off_auto_save": true,
-            "commands": {
-                "save_all_worlds": "save-all flush",
-                "auto_save_off": "save-off",
-                "auto_save_on": "save-on"
-            },
-            "saved_world_regex": "^Saved the game$",
-            "save_world_max_wait_sec": 60
-        }
+        "display": {/* 显示配置 */}
     }
 }
 ```
@@ -134,7 +77,7 @@
 镜像服1为`!!mirror`，同时也是其他镜像服的默认配置文件，那么将`!!mirror`放在配置文件中的第一个
 
 通过`!!mirror2`控制镜像服2，并设置`!!mirror2`的实例id为`abc123`，将`!!mirror2`的服务端名称改为`Mirror2`
-```
+```json
 {
     "!!mirror": {
         ...
@@ -155,115 +98,301 @@
 
 <br>
 
-### mcsm: MCSManager面板相关的配置文件
+### mcsm: MCSManager配置
 此配置部分若有疑问，请参见[MCSManager官方文档](https://docs.mcsmanager.com/#/zh-cn/apis/readme)
-|参数|类型|解释|
-|---|---|---|
-| enable | bool | 启用MCSM-API，你需要在配置完成此部分后将此选项设置为`true` |
-| url | str | MCSManager面板的访问地址，即请求api的地址 |
-| uuid | str | 服务端实例的id，即实例显示的UID |
-| remote_uuid | str | 远程节点的id，即实例显示的GID |
-| apikey | str | 调用API接口必需的密钥，通常在用户界面可以查看 |
+```json
+"mcsm": {
+    "enable": false,
+    "url": "http://127.0.0.1:23333/",
+    "uuid": null,
+    "remote_uuid": null,
+    "apikey": null
+}
+```
+启用MCSM后，终端与RCON都会弃用。
+
+**enable** `bool`
+- 是否启用MCSM，你需要在配置完成此部分后将此选项设置为`true`。
+
+**url** `str`
+- MCSManager面板的访问地址，即请求api的地址。
+
+**uuid** `str`
+- 服务端实例的id，即实例显示的UID。
+
+**remote_uuid** `str`
+- 远程节点的id，即实例显示的GID。
+
+**apikey** `str`
+- 调用API接口必需的密钥，通常在用户界面可以查看。
+
+<br>
+
+### terminal: 通过命令行启动镜像服终端的配置
+```json
+"terminal": {
+    "enable": false,
+    "launch_path": "./Mirror",
+    "launch_command": "python -m mcdreforged",
+    "port": null,
+    "terminal_name": "Mirror",
+    "regex_strict": false,
+    "system": null
+}
+```
+在Windows系统下，插件将创建一个新的命令行终端来运行镜像服；在Linux系统下，插件将创建一个新的screen来运行镜像服。镜像服停止后，终端/screen都会自动关闭。
+
+如果你无法通过此命令启动镜像服，尝试按以下步骤检查。其中`terminal_name` `launch_command`都为配置文件中对应key的值
+1. 你应当先在`launch_path`下执行`launch_command`，并确认能够使镜像服正常启动
+2. Linux用户检查是否安装了`screen`，Windows用户检查终端中输入`python`是否能正常启动Python
+3. 若以上两项都不能解决，则请在`/plugins`下执行对应系统的完整命令，并检查命令回显
+   - Linux `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
+   - Windos `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{launch_command}')"`
+
+注意：在Linux系统下，插件可以通过screen关闭镜像服。在Windows系统下，你必须设置MCSM或RCON才能通过插件关闭镜像服。
+
+**enable** `bool`
+- 是否启用终端，当MCSM未启用且此选项为`true`时将通过终端启动镜像服。
+
+**launch_path** `str`
+- 执行启动命令的路径，通常为镜像服所在的目录。
+
+**launch_command** `str`
+- 需要执行的启动命令，若简单的启动命令无法满足需求，你可以创建一个`.bat`（或`.sh`）文件，并将启动命令写在该文件中，然后执行该文件。
+
+**port** `int`
+- 镜像服运行的端口，插件将通过检查端口状态的方法检查镜像服的运行状态。
+
+**terminal_name** `str`
+- 新终端的标题或新screen的名称，便于镜像服运维。
+
+**regex_strict** `bool`
+- 在通过端口检查镜像服运行状态时，是否在找到端口后继续验证进程名必须为`java.exe`。若不同的进程在不同时间可能同时占用了设置的端口，此选项可以一定程度上避免将其他进程误判为java进程。
+
+**system** `str`
+- 系统类型，若为`null`则将自动获取系统类型。可选：`Linux` `Windows`（需首字母大写）
+
+<br>
+
+### rcon: RCON配置
+```json
+"rcon": {
+    "enable": false,
+    "address": null,
+    "port": null,
+    "password": null
+}
+```
+**enable** `bool`
+- 是否启用RCON，当MCSM未启用时，插件将通过RCON执行`stop`指令和获取镜像服状态。若同时启用了RCON和终端，插件将优先通过检查RCON状态来获取镜像服状态，若RCON未连接，则将通过检查端口来获取状态。若RCON状态与端口状态不匹配将会提示。
+
+**adress** `bool`
+- RCON的连接地址，不包含端口。
+
+**port** `int`
+- RCON的连接端口
+
+**password** `str`
+- RCON的连接密码
 
 <br>
 
 ### sync: 文件同步相关的配置文件
-|参数|类型|解释|
-|---|---|---|
-| world | list | 需要同步的目录，当存档有多个世界文件时需要添加 |
-| source | str | 源服务端目录，source/world -> target/world |
-| target | str/list | 目标服务端目录, 只有一个目录时可只写字符串, 多个目录需为列表。将会为每个目标目录都同步一份源目录的文件 |
-| ignore_inexistent_target_path | bool | 若某个目标服务端目录不存在，当设置为`false`时，将会跳过对该目录的同步。当设置为`true`时，将会新建该目录并继续同步 |
-| concurrency | int | 同步时进行哈希计算的线程数 |
-| ignore_files | list | 不进行同步的文件 |
+```json
+"sync": {
+    "world": [
+	"world"
+    ],
+    "source": "./server",
+    "target": [
+        "./Mirror/server"
+    ],
+    "ignore_inexistent_target_path": false,
+    "concurrency": 4,
+    "ignore_files": [
+        "session.lock"
+    ]
+}
+```
+**world** `list`
+- 需要同步的目录，当存档有多个世界文件时需要添加
+
+**source** `str`
+- 源服务端目录，source/world -> target/world
+
+**target** `str, list`
+- 目标服务端目录, 只有一个目录时可只写字符串, 多个目录需为列表。将会为每个目标目录都同步一份源目录的文件
+
+**ignore_inexistent_target_path** `bool`
+- 若某个目标服务端目录不存在，当设置为`false`时，将会跳过对该目录的同步。当设置为`true`时，将会新建该目录并继续同步
+
+**concurrency** `int`
+- 同步时进行哈希计算的线程数
+
+**ignore_files** `list`
+- 不进行同步的文件，若使用`carpet`模组和`plus-carpet-addition(PCA)`模组，建议添加`"carpet.conf"` `"pca.conf"`
 
 <br>
 
-### command: 指令相关的配置文件
-|参数|类型|解释|
-|---|---|---|
-| permission | dict | 各指令所需的最低的MCDR权限等级 |
-| action || 控制指令执行时的部分行为 |
+### command: 指令配置
+
+```json
+"command": {
+    "permission": {/* 指令权限配置 */},
+    "action": {/* 指令行为配置 */}
+}
+```
+
+### permission: 指令权限配置
+```json
+"permission": {
+    "status": 0,
+    "start": 0,
+    "stop": 2,
+    "kill": 3,
+    "sync": 2,
+    "confirm": 0,
+    "abort": 0
+}
+```
+`int`
+- 执行各指令所需的最低MCDR权限等级
 
 <br>
 
-#### action: 控制指令执行时的部分行为
+### action: 指令行为配置
+```json
+"action": {
+    "status": {
+        "require_confirm": false
+    },
+    "start": {
+        "require_confirm": false
+    },
+    "stop": {
+        "require_confirm": true
+    },
+    "kill": {
+        "require_confirm": true
+    },
+    "sync": {
+        "ensure_server_closed": true,
+        "auto_server_restart": false,
+        "check_status_interval": 5,
+        "max_attempt_times": 3,
+        "save_world": {/* 保存世界配置 */},
+        "require_confirm": true
+    },
+    "confirm": {
+        "timeout": 30,
+        "cancel_anymsg": true
+    },
+    "abort": {
+        "operator": "everyone"
+    }
+}
+```
 
-**通用设置**
-|参数|类型|解释|
-|---|---|---|
-| require_confirm | bool | 当此选项为`true`时, 执行该指令后需要输入`!!mirror confirm`以确认操作 |
 
-<br>
+### 通用配置
 
-**sync设置**
-|参数|类型|解释|
-|---|---|---|
-| ensure_server_closed | bool | 当此选项为`true`时, 同步时将会检查镜像服是否已停止。当此选项为`false`时, 无论镜像服是否停止, 都将直接进行同步。 |
-| auto_server_restart | bool | 此选项仅在`ensure_server_closed`为`true`时生效。当此选项为`true`时, 如果同步时镜像服未停止, 那么将在尝试自动停止镜像服后进行同步, 并在同步完成后自动重启镜像服 |
-| check_status_interval | int | 此选项仅在`auto_server_restart`生效时生效。同步时停止镜像服后, 插件需确认镜像服是否已停止。此选项为检查镜像服状态的时间间隔 |
-| max_attempt_times | int | 此选项仅在`auto_server_restart`生效时生效。检查镜像服状态的尝试次数, 超过此尝试次数后将不再尝试检查镜像服状态, 并输出`自动关闭失败`及镜像服当前状态信息。等效于超时时间 `timeout = check_status_interval * max_attempt_times`|
+**require_confirm** `bool`
+- 当此选项为`true`时, 执行该指令后需要输入`!!mirror confirm`以确认操作 |
 
-<br>
+### sync配置
+**ensure_server_closed** `bool`
+- 当此选项为`true`时, 同步时将会检查镜像服是否已停止。当此选项为`false`时, 无论镜像服是否停止, 都将直接进行同步。
 
-**start设置**
+**auto_server_restart** `bool`
+- 此选项仅在`ensure_server_closed`为`true`时生效。当此选项为`true`时, 如果同步时镜像服未停止, 那么将在尝试自动停止镜像服后进行同步, 并在同步完成后自动重启镜像服
 
+**check_status_interval** `int`
+- 此选项仅在`auto_server_restart`生效时生效。同步时停止镜像服后, 插件需确认镜像服是否已停止。此选项为检查镜像服状态的时间间隔
+
+**max_attempt_times** `int`
+- 此选项仅在`auto_server_restart`生效时生效。检查镜像服状态的尝试次数, 超过此尝试次数后将不再尝试检查镜像服状态, 并输出`自动关闭失败`及镜像服当前状态信息。等效于超时时间 `timeout = check_status_interval * max_attempt_times`
+
+**save_world** 保存世界配置 *一般无需更改*
+```json
+"save_world": {
+    "turn_off_auto_save": true,
+    "commands": {
+        "save_all_worlds": "save-all flush",
+        "auto_save_off": "save-off",
+        "auto_save_on": "save-on"
+    },
+    "saved_world_regex": "^Saved the game$",
+    "save_world_max_wait_sec": 60
+}
+```
+**turn_off_auto_save** `bool`
+- 保存世界时关闭自动保存
+
+**commands** 相关指令
+- **save_all_worlds** `str`
+  + 保存世界的指令
+- **auto_save_off** `str`
+  + 关闭自动保存的指令
+- **auto_save_on** `str`
+  + 开启自动保存的指令
+
+**saved_world_regex** `str`
+- 匹配服务端"世界保存完成"日志的正则表达式
+
+**save_world_max_wait_sec** `int`
+- 保存世界的最大等待时间(秒)，超时将会跳过世界保存并进行同步
+
+### confirm配置
+玩家只能确认自己执行的指令
+
+**timeout** `int`
+- 需确认的指令经过多少秒后超时取消。若执行某指令后超过`timeout`秒后, 该玩家未进行任何操作, 则此指令超时，自动取消
+
+**cancel_anymsg** `bool`
+- 若玩家执行某指令后发送了除`confirm`指令外的消息, 则此指令操作自动取消。除此之外, 若玩家执行了某指令后又执行了对应镜像服的其他指令, 则先前执行的指令自动取消
+
+### abort配置
 ~此功能仍在开发~
 
 <br>
 
-**confirm设置**
-|参数|类型|解释|
-|---|---|---|
-| timeout | int | 执行某指令后超过`timeout`秒后, 该玩家未进行任何操作, 则此指令操作自动超时取消 |
-| cancel_anymsg | bool | 若玩家执行某指令后发送了其他无关消息, 则此指令操作自动取消 |
+### display: 显示配置
+```json
+"display": {
+    "server_name": "Mirror"
+}
+```
+**server_name** `str`
+- "镜像服"的名称，用以在显示时区分不同的镜像服
 
-除此之外, 若玩家执行了某指令后又执行了对应镜像服的其他指令, 则先前执行的指令自动取消
-
-注意：每个玩家只能确认自己执行的指令
-
-<br>
-
-**abort设置**
-
-~此功能仍在开发~
-|参数|类型|解释|
-|---|---|---|
-| operator | str | 正在开发 |
-
-<br>
-
-### display: 显示相关的配置文件
-|参数|类型|解释|
-|---|---|---|
-| server_name | str | "镜像服"的名称，用以在显示时区分不同的镜像服 |
-
-<br>
-
-### server: 与Minecraft服务端交互相关的配置文件
-一般无需更改
-|参数|类型|解释|
-|---|---|---|
-| turn_off_auto_save | bool | 保存世界时关闭自动保存 |
-| commands |||
-| save_all_worlds | str | 保存世界的指令 |
-| auto_save_off | str | 关闭自动保存的指令 |
-| auto_save_on | str | 开启自动保存的指令 |
-| saved_world_regex | str | 匹配服务端"世界保存完成"日志的正则表达式 |
-| save_world_max_wait_sec | int | 保存世界的最大等待时间(秒)，超时将会跳过世界保存并进行同步 |
 <br>
 
 ### 多镜像服配置文件示例
 
-```
+```json
 {
     "!!mirror": {
         "mcsm": {
             "enable": true,
             "url": "http://127.0.0.1:23333/",
-            "uuid": "71154?????8e4770a1a2f4dd90695609",
-            "remote_uuid": "6e927?????5b4a6999f0e66bc404071b",
-            "apikey": "b8f3e?????4449849743727539478ade"
+            "uuid": "71154??????????0a1a2f4dd90695609",
+            "remote_uuid": "6e927??????????999f0e66bc404071b",
+            "apikey": "b8f???????????????????????????ade"
+        },
+        "terminal": {
+            "enable": false,
+            "launch_path": "./Mirror",
+            "launch_command": "python -m mcdreforged",
+            "port": null,
+            "terminal_name": "Mirror",
+            "regex_strict": false,
+            "system": null
+        },
+        "rcon": {
+            "enable": false,
+            "address": null,
+            "port": null,
+            "password": null
         },
         "sync": {
             "world": [
@@ -285,13 +414,15 @@
                 "start": 0,
                 "stop": 2,
                 "kill": 3,
-                "sync": 2
+                "sync": 2,
+                "confirm": 0,
+                "abort": 0
             },
             "action": {
+                "status": {
+                    "require_confirm": false
+                },
                 "start": {
-                    "enable_cmd": false,
-                    "path": "./Mirror",
-                    "command": "python -m mcdreforged",
                     "require_confirm": false
                 },
                 "stop": {
@@ -302,9 +433,19 @@
                 },
                 "sync": {
                     "ensure_server_closed": true,
-                    "auto_server_restart": false,
+                    "auto_server_restart": true,
                     "check_status_interval": 5,
                     "max_attempt_times": 3,
+                    "save_world": {
+                        "turn_off_auto_save": true,
+                        "commands": {
+                            "save_all_worlds": "save-all flush",
+                            "auto_save_off": "save-off",
+                            "auto_save_on": "save-on"
+                        },
+                        "saved_world_regex": "^Saved the game$",
+                        "save_world_max_wait_sec": 60
+                    },
                     "require_confirm": true
                 },
                 "confirm": {
@@ -318,21 +459,11 @@
         },
         "display": {
             "server_name": "Mirror"
-        },
-        "server": {
-            "turn_off_auto_save": true,
-            "commands": {
-                "save_all_worlds": "save-all flush",
-                "auto_save_off": "save-off",
-                "auto_save_on": "save-on"
-            },
-            "saved_world_regex": "^Saved the game$",
-            "save_world_max_wait_sec": 60
         }
     },
     "!!mirror2": {
         "mcsm": {
-            "uuid": "83011?????c443249c1133fc08a41b80"
+            "uuid": "83011??????????49c1133fc08a41b80"
         },
         "sync": {
             "target": [
@@ -345,15 +476,24 @@
     },
     "!!mirror3": {
         "mcsm": {
-            "uuid": "dfb12?????82466cb864f840b8424226"
+            "enable": false
         },
         "sync": {
             "target": [
                 "./Mirror3/server"
             ]
         },
-        "display": {
-            "server_name": "Mirror3"
+        "terminal": {
+            "enable": true,
+            "launch_path": "./Mirror3",
+            "port": 30002,
+            "terminal_name": "Mirror3"
+        },
+        "rcon": {
+            "enable": true,
+            "address": "127.0.0.1",
+            "port": 31002,
+            "password": "p@ssw0rd"
         }
     }
 }
@@ -372,6 +512,7 @@
 - [ ] 禁止同步`!!mirror sync enable/disable reason`
 - [x] lang语言文件
 - [ ] 指令禁用
-- [ ] RCON支持
-- [ ] 无MCSM下通过命令行启动服务端
+- [x] RCON支持
+- [x] 无MCSM下通过命令行启动服务端
+- [ ] Linux/Windows通过终端执行`kill`指令
 - [ ] 历史同步记录显示

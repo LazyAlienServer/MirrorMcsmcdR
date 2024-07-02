@@ -7,6 +7,21 @@ DEFAULT_CONFIG = {
             "remote_uuid": None,
             "apikey": None
         },
+        "terminal": {
+            "enable": False,
+            "launch_path": "./Mirror",
+            "launch_command": "python -m mcdreforged",
+            "port": None,
+            "terminal_name": "Mirror",
+            "regex_strict": False,
+            "system": None
+        },
+        "rcon": {
+            "enable": False,
+            "address": None,
+            "port": None,
+            "password": None
+        },
         "sync": {
             "world": [
                 "world"
@@ -36,9 +51,6 @@ DEFAULT_CONFIG = {
                     "require_confirm": False
                 },
                 "start": {
-                    "enable_cmd": False,
-                    "path": "./Mirror",
-                    "command": "python -m mcdreforged",
                     "require_confirm": False
                 },
                 "stop": {
@@ -52,6 +64,16 @@ DEFAULT_CONFIG = {
                     "auto_server_restart": False,
                     "check_status_interval": 5,
                     "max_attempt_times": 3,
+                    "save_world": {
+                        "turn_off_auto_save": True,
+                        "commands": {
+                            "save_all_worlds": "save-all flush",
+                            "auto_save_off": "save-off",
+                            "auto_save_on": "save-on"
+                        },
+                        "saved_world_regex": "^Saved the game$",
+                        "save_world_max_wait_sec": 60
+                    },
                     "require_confirm": True
                 },
                 "confirm": {
@@ -65,16 +87,6 @@ DEFAULT_CONFIG = {
         },
         "display": {
             "server_name": "Mirror"
-        },
-        "server": {
-            "turn_off_auto_save": True,
-            "commands": {
-                "save_all_worlds": "save-all flush",
-                "auto_save_off": "save-off",
-                "auto_save_on": "save-on"
-            },
-            "saved_world_regex": "^Saved the game$",
-            "save_world_max_wait_sec": 60
         }
     }
 }
@@ -82,6 +94,4 @@ DEFAULT_CONFIG = {
 PLUGIN_ID = "mirror_mcsmcdr"
 TITLE = "MirrorMcsmcdR"
 REPLY_TITLE = "§e[MirrorMcsmcdR]§f"
-VERSION = "v1.2.1"
-
-
+VERSION = "1.3.1"
