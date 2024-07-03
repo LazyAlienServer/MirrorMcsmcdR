@@ -38,9 +38,7 @@ class ServerProxy:
             status = self.rcon.status()
             if status == "stopped" and self.system:
                 status_sys = self.system.status()
-                if status == status_sys:
-                    return "stopped"
-                return "rcon_status_mismatch"
+                return "stopped" if status == status_sys else "rcon_status_mismatch"
         return self.system.status() if self.system else "unavailable"
     
     def start(self):
