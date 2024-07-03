@@ -1,6 +1,5 @@
 import shutil, os, xxhash
 from concurrent.futures import ThreadPoolExecutor, wait
-from mirror_mcsmcdr.constants import TITLE
 
 
 class WorldSync:
@@ -35,8 +34,7 @@ class WorldSync:
         if os.path.split(filename)[1] not in self.ignore_files and not self._file_compare(src_file, dst_file):
             shutil.copyfile(src_file, dst_file)
             return True
-        else:
-            return False
+        return False
 
 
     def sync(self):

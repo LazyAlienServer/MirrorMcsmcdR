@@ -3,9 +3,8 @@ from mirror_mcsmcdr.constants import PLUGIN_ID, REPLY_TITLE, TITLE, VERSION
 
 
 def rtr(key, title=True, *args, **kwargs):
-    if title:
-        return RTextList(REPLY_TITLE+" ", ServerInterface.si().rtr(PLUGIN_ID+"."+key, *args, **kwargs))
-    return ServerInterface.si().rtr(PLUGIN_ID+"."+key, *args, **kwargs)
+    return RTextList(REPLY_TITLE+" ", ServerInterface.si().rtr(PLUGIN_ID+"."+key, *args, **kwargs)) if title else ServerInterface.si().rtr(PLUGIN_ID+"."+key, *args, **kwargs)
+
 
 def help_msg(server_name, prefix):
     server = ServerInterface.si()
