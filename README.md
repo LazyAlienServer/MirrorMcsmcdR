@@ -5,7 +5,7 @@
 
 ## 特性
 
-- 插件的支持通过[MCSManager](https://github.com/MCSManager/MCSManager)控制镜像服
+- 插件支持通过[MCSManager](https://github.com/MCSManager/MCSManager)控制镜像服
   + 支持`v9.9.0` `v10.2.1+`
 - 也可以不依赖MCSM，直接通过终端或RCON对镜像服进行控制（`v1.3.0+`）
 - 完善的**多镜像服**控制操作，获取运行状态/启动/停止/强制终止/同步
