@@ -1,6 +1,5 @@
 import shutil, os, xxhash
 from concurrent.futures import ThreadPoolExecutor, wait
-from mirror_mcsmcdr.constants import TITLE
 
 
 class WorldSync:
@@ -23,20 +22,23 @@ class WorldSync:
                 m.update(data)
             file.close()
         return m.digest()
-    
 
-    def _file_compare(self, src, dst):
-        return self._get_md5(src) == self._get_md5(dst)
-    
 
-    def _copyfile_task(self, filename, src_path, dst_path):
+    def _copyfile_task(self, filename, src_path, dst_path) -> bool:
         src_file = os.path.join(src_path, filename)
         dst_file = os.path.join(dst_path, filename)
-        if os.path.split(filename)[1] not in self.ignore_files and not self._file_compare(src_file, dst_file):
+        if os.path.basename(filename) not in self.ignore_files and (not os.path.exists(dst_file) or not self._get_md5(src_file) == self._get_md5(dst_file)):
             shutil.copyfile(src_file, dst_file)
             return True
-        else:
-            return False
+        return False
+    
+
+    def copy_tree(self, src, dst):
+        for src_path, dst_path in ((os.path.join(src, path), os.path.join(dst, path)) for path in os.listdir(src)):
+            if os.path.isdir(src_path):
+                if not os.path.exists(dst_path):
+                    os.makedirs(dst_path)
+                self.copy_tree(src_path, dst_path)
 
 
     def sync(self):
@@ -65,9 +67,11 @@ class WorldSync:
                 
                 for filename in set(dst_files) - set(src_files):
                     os.remove(os.path.join(dst_path, filename))
+                
+                self.copy_tree(src_path, dst_path)
 
                 with ThreadPoolExecutor(max_workers=self.concurrency) as t:
-                    tasklist = [t.submit(lambda filename: self._copyfile_task(filename, src_path, dst_path), filename) for filename in set(src_files) & set(dst_files)]
+                    tasklist = [t.submit(lambda filename: self._copyfile_task(filename, src_path, dst_path), filename) for filename in src_files]
                     wait(tasklist)
                     changed_files_count += sum([task.result() for task in tasklist])
         
