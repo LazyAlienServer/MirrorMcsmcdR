@@ -1,11 +1,11 @@
 # MirrorMcsmcdR
 一个**超级完善的**[MCDR](https://github.com/Fallen-Breath/MCDReforged)插件，可通过多种方式对镜像服进行控制与进行文件同步
 
-当前版本`v1.3.1`，已支持RCON和通过命令行启动。
+版本`v1.3.1`已支持RCON和通过命令行启动。
 
 ## 特性
 
-- 插件的功能基于[MCSManager](https://github.com/MCSManager/MCSManager)
+- 插件的支持通过[MCSManager](https://github.com/MCSManager/MCSManager)控制镜像服
   + 支持`v9.9.0` `v10.2.1+`
 - 也可以不依赖MCSM，直接通过终端或RCON对镜像服进行控制（`v1.3.0+`）
 - 完善的**多镜像服**控制操作，获取运行状态/启动/停止/强制终止/同步
@@ -215,6 +215,9 @@
     ]
 }
 ```
+
+在`sync`中，所有文件目录的目录起点都在`plugins`文件夹。`./`即指服务端所在的`MCDReforged`目录。
+
 **world** `list`
 - 需要同步的目录，当存档有多个世界文件时需要添加
 
