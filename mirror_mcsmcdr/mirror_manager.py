@@ -210,6 +210,7 @@ class MirrorManager: # The single mirror server manager which manages a specific
         return status in ["unknown", "stopped", "stopping", "starting", "running"]
 
 
+    @catch_api_error
     @pre_check(command="status")
     def status(self, source: CommandSource, context: CommandContext):
         status_code = self.server_api.status()
