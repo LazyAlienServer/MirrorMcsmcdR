@@ -76,7 +76,7 @@ class WindowsAPI(AbstractSystemAPI):
         text = os.popen(f"netstat -ano | findstr {port}").read()
         if not self.regex_strict or not text:
             return "running" if text else "stopped"
-        for pid in set(re.findall(":30001.*?([0-9]+)\n"), text):
+        for pid in set(re.findall(f":{port}.*?([0-9]+)\n", text)):
             if re.match("java.exe", os.popen(f"tasklist | findstr {pid}")):
                 return "running"
         return "stopped"
