@@ -152,8 +152,7 @@ class MirrorManager: # The single mirror server manager which manages a specific
 
 
     def broadcast(self, text):
-        self.server.say(text)
-        self.server.logger.info(text)
+        self.server.broadcast(text)
 
 
     def help(self, source: CommandSource, context: CommandContext):
@@ -253,7 +252,7 @@ class MirrorManager: # The single mirror server manager which manages a specific
                 source.reply(self.rtr(f"command.sync.fail.{status_code}"))
                 return
             else: # restart server
-                source.reply(self.rtr("command.sync.auto_restart.restarting"))
+                self.broadcast(self.rtr("command.sync.auto_restart.restarting"))
                 if not self.stop(source, context, confirm=True):
                     return
                 interval, times = sync_action_config["check_status_interval"], sync_action_config["max_attempt_times"]
@@ -263,10 +262,10 @@ class MirrorManager: # The single mirror server manager which manages a specific
                     if status_code == "stopped":
                         break
                     if not self.status_available(status_code): # if status command is not available, skip and end
-                        source.reply(self.rtr("command.sync.auto_restart.fail", status=self.rtr(f"command.status.failed.{status_code}", title=False)))
+                        self.broadcast(self.rtr("command.sync.auto_restart.fail", status=self.rtr(f"command.status.failed.{status_code}", title=False)))
                         return
                 else:
-                    source.reply(self.rtr("command.sync.auto_restart.fail", status=self.rtr(f"command.status.success.{status_code}", title=False)))
+                    self.broadcast(self.rtr("command.sync.auto_restart.fail", status=self.rtr(f"command.status.success.{status_code}", title=False)))
                     return
                 auto_restart_flag = True
 
