@@ -89,6 +89,8 @@ mirror_mcsmcdr:
         stopping: §cOperation failed / §b{server_name}§c stopping, please sync after {server_name} stopped
         starting: §cOperation failed / §b{server_name}§c starting, please stop {server_name} first then sync
         running: §cOperation failed / §b{server_name}§c running, please stop {server_name} first then sync
+        rcon_status_mismatch: §cOperation failed / §b{server_name}§c status error. The RCON status does not match the port(terminal) status
+        unavailable: §cOperation failed / §b{server_name}§c current config does not support detecting status. You need to configure MCSM, terminal or RCON
       auto_restart:
         restarting: §b{server_name}§f running, auto-stopping {server_name} and syncing...
         fail: §cAuto-stopping failed, §b{server_name}§c§f{status}
