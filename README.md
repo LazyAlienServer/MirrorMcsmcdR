@@ -1,13 +1,11 @@
 # MirrorMcsmcdR
 一个**超级完善的**[MCDR](https://github.com/Fallen-Breath/MCDReforged)插件，可通过多种方式对镜像服进行控制与进行文件同步
 
-版本`v1.3.1`已支持RCON和通过命令行启动。
-
 ## 特性
 
-- 插件支持通过[MCSManager](https://github.com/MCSManager/MCSManager)控制镜像服
-  + 支持`v9.9.0` `v10.2.1+`
-- 也可以不依赖MCSM，直接通过终端或RCON对镜像服进行控制（`v1.3.0+`）
+- 插件支持通过[MCSManager](https://github.com/MCSManager/MCSManager)控制镜像服，也可以不依赖MCSM，直接通过终端或RCON对镜像服进行控制（`v1.3.0+`）
+  + MCSM控制：支持`MCSM-v9.9.0` `MCSM-v10.2.1+`
+  + 终端或RCON控制：支持`Windows` `Linux`系统
 - 完善的**多镜像服**控制操作，获取运行状态/启动/停止/强制终止/同步
 - 基于哈希的文件同步，只同步镜像服与源服务端不同的文件
 - 高可自定义的、配置友好配置文件，多个镜像服配置时只需要书写变化的值
@@ -26,7 +24,7 @@
 
 ## 指令
 
-指令前缀默认为`!!mirror`, 控制多个镜像服时将通过指令前缀区分, 详见[配置文件](#"!!mirror")
+指令前缀默认为`!!mirror`, 控制多个镜像服时将通过指令前缀区分, 详见[配置文件](#mirror)
 
 `!!mirror` 显示指令帮助
 
@@ -47,6 +45,8 @@
 `!!mirror reload` 热重载对应镜像服的配置文件
 
 ## 配置文件
+
+**此配置文件较长**。我们建议你阅读[快速开始](/docs/quickstart.md)来完成初步的配置。若你需要查找某一具体配置项的解释，你可以阅读下文。
 
 配置文件在`v1.1.0`支持了热重载, 同时添加了更完善的属性补全功能。当新版本的配置文件中新增了某一选项, 插件将会自动将默认值填写到你的旧配置文件中, 而不需要手动添加。
 
@@ -81,7 +81,7 @@
 ```json
 {
     "!!mirror": {
-        ...
+        // ...
     },
     "!!mirror2": {
         "mcsm": {
@@ -168,7 +168,7 @@
 - 新终端的标题或新screen的名称，便于镜像服运维。
 
 **regex_strict** `bool`
-- 在通过端口检查镜像服运行状态时，是否在找到端口后继续验证进程名必须为`java.exe`。若不同的进程在不同时间可能同时占用了设置的端口，此选项可以一定程度上避免将其他进程误判为java进程。
+- 在通过端口检查镜像服运行状态时，是否在找到端口后继续验证进程名必须为`java.exe`。一般情况下无需开启。若不同的进程在不同时间可能同时占用了设置的端口，例如在某一时间段Minecraft运行在端口`port`上，另一时间段有其他程序运行在端口`port`上而Minecraft没有运行，那么此选项可以一定程度上避免将其他进程误判为java进程。
 
 **system** `str`
 - 系统类型，若为`null`则将自动获取系统类型。可选：`Linux` `Windows`（需首字母大写）
@@ -216,14 +216,18 @@
 }
 ```
 
-在`sync`中，所有文件目录的目录起点都在`plugins`文件夹。`./`即指服务端所在的`MCDReforged`目录。
+在`sync`中，`./`即指服务端所在的`MCDReforged`根目录。
 
 ```
 mcdr_root (./)
-└──plugins
-└──server (./server)
-└──Mirror
-    └──server (./Mirror/server)
+ ├─ config
+ ├─ logs
+ ├─ plugins
+ ├─ server (./server)
+ |   └─ world
+ └─ Mirror
+     └─ server (./Mirror/server)
+         └─ world
 ```
 
 **world** `list`
