@@ -144,9 +144,9 @@
 在Windows系统下，插件将创建一个新的命令行终端来运行镜像服；在Linux系统下，插件将创建一个新的screen来运行镜像服。镜像服停止后，终端/screen都会自动关闭。
 
 如果你无法通过此命令启动镜像服，尝试按以下步骤检查。其中`terminal_name` `launch_command`都为配置文件中对应key的值
-1. 你应当先在`launch_path`下执行`launch_command`，并确认能够使镜像服正常启动
+1. 在`launch_path`下执行`launch_command`，并确认能够使镜像服正常启动
 2. Linux用户检查是否安装了`screen`，Windows用户检查终端中输入`python`是否能正常启动Python
-3. 若以上两项都不能解决，则请在`/plugins`下执行对应系统的完整命令，并检查命令回显
+3. 若以上两项都不能解决，则在当前服务端的MCDR根目录下执行对应系统的完整命令，并检查命令回显
    - Linux `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
    - Windos `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{launch_command}')"`
 
