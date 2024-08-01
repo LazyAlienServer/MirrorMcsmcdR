@@ -89,6 +89,8 @@ mirror_mcsmcdr:
         stopping: §c操作失败 / §b{server_name}§c正在停止, 请等待{server_name}停止后进行同步
         starting: §c操作失败 / §b{server_name}§c正在启动, 请等待{server_name}启动后重新停止并进行同步
         running: §c操作失败 / §b{server_name}§c正在运行, 请先停止{server_name}再进行同步
+        rcon_status_mismatch: §c操作失败 / §b{server_name}§c状态异常, RCON状态与端口状态不匹配
+        unavailable: §c操作失败 / §b{server_name}当前配置文件不支持获取运行状态, 需要配置MCSM, terminal或RCON
       auto_restart:
         restarting: §b{server_name}§f未停止, 自动关闭{server_name}并进行同步...
         fail: §c自动关闭失败, §b{server_name}§c§f{status}
