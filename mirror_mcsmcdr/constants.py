@@ -94,4 +94,4 @@ DEFAULT_CONFIG = {
 PLUGIN_ID = "mirror_mcsmcdr"
 TITLE = "MirrorMcsmcdR"
 REPLY_TITLE = "§e[MirrorMcsmcdR]§f"
-VERSION = "1.3.4"
+VERSION = "1.3.5"
