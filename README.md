@@ -218,14 +218,22 @@
 
 在`sync`中，所有文件目录的目录起点都在`plugins`文件夹。`./`即指服务端所在的`MCDReforged`目录。
 
+```
+mcdr_root (./)
+└──plugins
+└──server (./server)
+└──Mirror
+    └──server (./Mirror/server)
+```
+
 **world** `list`
 - 需要同步的目录，当存档有多个世界文件时需要添加
 
 **source** `str`
-- 源服务端目录，source/world -> target/world
+- 源服务端目录，通常应为MCDR的[工作目录](https://mcdreforged.readthedocs.io/zh-cn/latest/configuration.html#working-directory)，即默认情况下的`server`目录。文件由`source/world` 同步至==> `target/world`
 
 **target** `str, list`
-- 目标服务端目录, 只有一个目录时可只写字符串, 多个目录需为列表。将会为每个目标目录都同步一份源目录的文件
+- 目标服务端目录, 只有一个目录时可只写字符串, 多个目录需为列表。将会为每个目标目录都同步一份源目录的文件。默认情况下镜像服的MCDR工作目录位于当前MCDR的根目录下的`Mirror`目录。
 
 **ignore_inexistent_target_path** `bool`
 - 若某个目标服务端目录不存在，当设置为`false`时，将会跳过对该目录的同步。当设置为`true`时，将会新建该目录并继续同步
@@ -246,6 +254,8 @@
     "action": {/* 指令行为配置 */}
 }
 ```
+
+<br>
 
 ### permission: 指令权限配置
 ```json
