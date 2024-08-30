@@ -160,7 +160,7 @@ class MirrorManager: # The single mirror server manager which manages a specific
 
 
     def check_permission(self, source: CommandSource, command: str):
-        if not source.has_permission_higher_than(self.permission[command]):
+        if not source.has_permission(self.permission[command]):
             source.reply(self.rtr("manager.permission_denied"))
             return False
         return True
