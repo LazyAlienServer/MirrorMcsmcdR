@@ -1,4 +1,7 @@
 # MirrorMcsmcdR
+
+中文 | [English](./README_en.md)
+
 一个**超级完善的**[MCDR](https://github.com/Fallen-Breath/MCDReforged)插件，可通过多种方式对镜像服进行控制与进行文件同步
 
 ## 特性
@@ -315,7 +318,7 @@ mcdr_root (./)
 ### 通用配置
 
 **require_confirm** `bool`
-- 当此选项为`true`时, 执行该指令后需要输入`!!mirror confirm`以确认操作 |
+- 当此选项为`true`时, 执行该指令后需要输入`!!mirror confirm`以确认操作
 
 ### sync配置
 **ensure_server_closed** `bool`
