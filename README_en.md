@@ -190,7 +190,7 @@ Note: Under Linux system, the plugin can close the mirror server through the scr
 **enable** `bool`
 - Whether to enable RCON. When MCSM is not enabled, the plugin will execute the `stop` command and obtain the status of the mirror server through RCON. If both RCON and the terminal are enabled at the same time, the plugin will first check the status of RCON to obtain the status of the mirror server. If RCON is not connected, it will check the status through the port. If the status of RCON does not match the status of the port, a prompt will be given.
 
-**address** `bool`
+**address** `str`
 - The connection address of RCON, does not include the port.
 
 **port** `int`
