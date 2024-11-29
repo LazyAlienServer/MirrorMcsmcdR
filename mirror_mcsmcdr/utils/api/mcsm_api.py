@@ -45,7 +45,7 @@ class AbstractHTTPApi(ABC):
     def kill(self) -> str:
         return "success"
 
-class MCSManagerApiError(Exception):
+class MCSManagerApiError(HTTPApiError):
 
     def __init__(self, req: Response) -> None:
         error = json.loads(req.text)
