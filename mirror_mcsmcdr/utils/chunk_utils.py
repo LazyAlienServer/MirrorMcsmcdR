@@ -6,35 +6,6 @@ DIMENSION = {
     "the_end": "DIM-1"
 }
 
-class World:
-
-    def __init__(self, world_path: str) -> None:
-        self.loaded_region = {}
-        self.world_path = world_path
-    
-    def get_region_by_pos(self, x: int, y: int, dimension: str):
-        region_x, region_y = (x//16//32, y//16//32)
-        if (key := (region_x, region_y, dimension)) not in self.loaded_region.keys():
-            region = Region(x//16//32, y//16//32, DIMENSION[dimension], self.world_path)
-            self.loaded_region[key] = region
-        else:
-            region = self.loaded_region[key]
-        return region
-    
-    def get_chunk_by_pos(self, x: int, y: int, dimension: str):
-        return self.get_region_by_pos(x, y, dimension).get_chunk(x//16%32, y//16%32)
-    
-    def replace_chunk_by_pos(self, x: int, y: int, dimension: str, content: bytes):
-        self.get_region_by_pos(x, y, dimension).replace_chunk(x//16%32, y//16%32, content)
-    
-    def clear_all(self):
-        self.loaded_region.clear()
-    
-    def save_all(self):
-        for region in self.loaded_region.values():
-            region.save()
-        self.clear_all()
-
 class Region:
     
     def __init__(self, region_x: int, region_y: int, dimension_path: str, world_path: str):
@@ -49,22 +20,22 @@ class Region:
     def init_chunks(self):
         self.chunks = [None]*1024
     
-    def get_chunk(self, chunk_x, chunk_y):
-        chunk = self.chunks[index := chunk_y*32 + chunk_x]
+    def get_chunk(self, chunk_x, chunk_z) -> bytes:
+        chunk = self.chunks[index := chunk_z*32 + chunk_x]
         if chunk:
             return chunk
-        starter, size = self.pre4ksector[chunk_y*32 + chunk_x]
+        starter, size = self.pre4ksector[chunk_z*32 + chunk_x]
         with open(self.file, "rb") as file:
             file.seek(int.from_bytes(starter)*4096)
             chunk = file.read(size*4096)
         self.chunks[index] = chunk
         return chunk
     
-    def replace_chunk(self, chunk_x: int, chunk_y: int, content: bytes):
+    def replace_chunk(self, chunk_x: int, chunk_z: int, content: bytes):
         if not len(content)%4096 == 0:
             raise AttributeError(f"Wrong chunk content format with length `{len(content)}`.")
         new_size = len(content)//4096
-        starter, size = self.pre4ksector[index := chunk_y*32 + chunk_x]
+        starter, size = self.pre4ksector[index := chunk_z*32 + chunk_x]
         self.chunks[index] = content
         self.region_changed = True
         if new_size == size:
@@ -103,3 +74,37 @@ class Region:
                 
         os.remove(self.file)
         os.rename(self.file+".temp", self.file)
+
+class World:
+
+    def __init__(self, world_path: str) -> None:
+        self.loaded_region = {}
+        self.world_path = world_path
+    
+    def get_region(self, region_x: int, region_z: int, dimension: str) -> Region:
+        if (key := (region_x, region_z, dimension)) not in self.loaded_region.keys():
+            region = Region(region_x, region_z, DIMENSION[dimension], self.world_path)
+            self.loaded_region[key] = region
+        else:
+            region = self.loaded_region[key]
+        return region
+
+    def get_region_by_pos(self, x: int, z: int, dimension: str) -> Region:
+        return self.get_region(self, x//16//32, z//16//32, dimension)
+    
+    def get_chunk_by_index(self, chunk_x: int, chunk_z: int, dimension: str) -> bytes:
+        return self.get_region(chunk_x // 32, chunk_z // 32, dimension).get_chunk(chunk_x % 32, chunk_z % 32)
+    
+    def get_chunk_by_pos(self, x: int, y: int, dimension: str) -> bytes:
+        return self.get_region_by_pos(x, y, dimension).get_chunk(x//16%32, y//16%32)
+    
+    def replace_chunk_by_pos(self, x: int, y: int, dimension: str, content: bytes):
+        self.get_region_by_pos(x, y, dimension).replace_chunk(x//16%32, y//16%32, content)
+    
+    def clear_all(self):
+        self.loaded_region.clear()
+    
+    def save_all(self):
+        for region in self.loaded_region.values():
+            region.save()
+        self.clear_all()
