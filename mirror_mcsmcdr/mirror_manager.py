@@ -1,6 +1,6 @@
 from mcdreforged.api.all import PluginServerInterface, CommandSource, CommandContext, Info, SimpleCommandBuilder, new_thread, RTextList, RAction
 from mirror_mcsmcdr.constants import DEFAULT_CONFIG, TITLE
-from mirror_mcsmcdr.utils.api.mcsm_api import MCSManagerApiError
+from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxyError
 from mirror_mcsmcdr.utils.server_utils import ServerProxy
 from mirror_mcsmcdr.utils.file_operation import WorldSync
 from mirror_mcsmcdr.utils.display_utils import rtr, help_msg
@@ -15,7 +15,7 @@ def catch_api_error(func):
     def wrapper(self, source: CommandSource, command: str, *args, **kwargs):
         try:
             return func(self, source, command, *args, **kwargs)
-        except MCSManagerApiError as e:
+        except MCSManagerProxyError as e:
             source.reply(rtr("mcsm.error.request", e=e))
         except Exception as e:
             source.reply(rtr("mcsm.error.unknown", e=e))

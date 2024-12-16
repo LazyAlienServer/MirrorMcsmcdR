@@ -3,12 +3,12 @@ from requests import Response
 from mirror_mcsmcdr.utils.display_utils import rtr
 from abc import ABC, abstractmethod
 
-class HTTPApiError(Exception):
+class HTTPProxyError(Exception):
 
     def __init__(self, req: Response) -> None:
         super().__init__("HTTPApiError")
 
-class AbstractHTTPApi(ABC):
+class AbstractHTTPProxy(ABC):
 
     def __init__(self, enable: bool, url: str, *args, **kwargs) -> None:
         self.enable = enable
@@ -22,7 +22,7 @@ class AbstractHTTPApi(ABC):
             3: "running"
         }
     
-    def _request(self, path: str, exception: HTTPApiError = HTTPApiError):
+    def _request(self, path: str, exception: HTTPProxyError = HTTPProxyError):
         req : Response = requests.get(url=self.url+path, params=self.params)
         if req.status_code == 200:
             return json.loads(req.text)
@@ -45,7 +45,7 @@ class AbstractHTTPApi(ABC):
     def kill(self) -> str:
         return "success"
 
-class MCSManagerApiError(HTTPApiError):
+class MCSManagerProxyError(HTTPProxyError):
 
     def __init__(self, req: Response) -> None:
         error = json.loads(req.text)
@@ -56,13 +56,13 @@ class MCSManagerApiError(HTTPApiError):
         super().__init__(rtr(f"mcsm.error.{req.status_code}", title=False, error=error).to_plain_text())
 
 
-class MCSManagerApi(AbstractHTTPApi):
+class MCSManagerProxy(AbstractHTTPProxy):
 
     def __init__(self, enable: bool, url: str, uuid: str, remote_uuid: str, apikey: str) -> None:
         super().__init__(enable, url, uuid = uuid, remote_uuid = remote_uuid, apikey = apikey)
     
     def _request(self, path: str):
-        return super()._request(path, MCSManagerApiError)
+        return super()._request(path, MCSManagerProxyError)
     
     def status(self):
         return self.status_to_text[self._request("/api/instance")["data"]["status"]]

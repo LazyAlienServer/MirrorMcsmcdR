@@ -3,14 +3,14 @@ from abc import ABC, abstractmethod
 
 from mirror_mcsmcdr.constants import PLUGIN_ID
 
-class SystemAPI:
+class SystemProxy:
     
     def __init__(self, terminal_name: str, launch_path: str, launch_command: str, port: int, regex_strict: bool, system: str) -> None:
-        self.system_api: AbstractSystemAPI
+        self.system_api: AbstractSystemProxy
         if system == "Linux":
-            self.system_api = LinuxAPI(terminal_name+"_"+PLUGIN_ID, launch_path, launch_command, port, regex_strict)
+            self.system_api = LinuxProxy(terminal_name+"_"+PLUGIN_ID, launch_path, launch_command, port, regex_strict)
         elif system == "Windows":
-            self.system_api = WindowsAPI(terminal_name+"_"+PLUGIN_ID, launch_path, launch_command, port, regex_strict)
+            self.system_api = WindowsProxy(terminal_name+"_"+PLUGIN_ID, launch_path, launch_command, port, regex_strict)
 
     def start(self):
         return self.system_api.start()
@@ -21,7 +21,7 @@ class SystemAPI:
     def stop(self):
         return self.system_api.stop()
 
-class AbstractSystemAPI(ABC):
+class AbstractSystemProxy(ABC):
 
     def __init__(self, terminal_name: str, path: str, command: str, port: int, regex_strict: bool) -> None:
         self.terminal_name, self.path, self.command = terminal_name, path, command
@@ -39,7 +39,7 @@ class AbstractSystemAPI(ABC):
     def stop(self):
         ...
 
-class LinuxAPI(AbstractSystemAPI):
+class LinuxProxy(AbstractSystemProxy):
 
     def start(self):
         if not os.path.exists(self.path):
@@ -61,7 +61,7 @@ class LinuxAPI(AbstractSystemAPI):
         os.popen(command)
         return "success"
 
-class WindowsAPI(AbstractSystemAPI):
+class WindowsProxy(AbstractSystemProxy):
 
     def start(self):
         if not os.path.exists(self.path):

@@ -1,6 +1,6 @@
 from mcdreforged.api.all import RconConnection
 
-class RConAPI:
+class RConProxy:
 
     def __init__(self, address: str, port: int, password: str) -> None:
         self.rcon = RconConnection(address, port, password)

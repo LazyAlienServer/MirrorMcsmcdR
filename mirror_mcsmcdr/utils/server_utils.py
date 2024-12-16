@@ -1,24 +1,24 @@
-from mirror_mcsmcdr.utils.api.mcsm_api import MCSManagerApi
-from mirror_mcsmcdr.utils.api.rcon_api import RConAPI
-from mirror_mcsmcdr.utils.api.system_api import SystemAPI
+from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxy
+from mirror_mcsmcdr.utils.proxy.rcon_proxy import RConProxy
+from mirror_mcsmcdr.utils.proxy.system_proxy import SystemProxy
 import platform
 
 class ServerProxy:
 
     def __init__(self) -> None:
-        self.mcsm : MCSManagerApi = None
-        self.rcon : RConAPI = None
-        self.system : SystemAPI = None
+        self.mcsm : MCSManagerProxy = None
+        self.rcon : RConProxy = None
+        self.system : SystemProxy = None
     
     def set_mcsm(self, enable, url, uuid, remote_uuid, apikey):
         if enable and url and uuid and remote_uuid and apikey:
-            self.mcsm = MCSManagerApi(enable, url, uuid, remote_uuid, apikey)
+            self.mcsm = MCSManagerProxy(enable, url, uuid, remote_uuid, apikey)
             return True
 
     
     def set_rcon(self, enable, address, port, password):
         if enable and address and port and password:
-            self.rcon = RConAPI(address, port, password)
+            self.rcon = RConProxy(address, port, password)
             return True
         
     
@@ -28,7 +28,7 @@ class ServerProxy:
                 system = platform.system()
                 if system not in ["Linux", "Windows"]:
                     return system
-            self.system = SystemAPI(terminal_name, launch_path, launch_command, port, regex_strict, system)
+            self.system = SystemProxy(terminal_name, launch_path, launch_command, port, regex_strict, system)
             return True
     
     def status(self):
