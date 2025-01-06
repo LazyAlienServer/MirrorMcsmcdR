@@ -1,4 +1,4 @@
-from mcdreforged.api.all import PluginServerInterface, CommandSource, CommandContext, Info, SimpleCommandBuilder, new_thread, RTextList, RAction
+from mcdreforged.api.all import PluginServerInterface, CommandSource, CommandContext, Info, SimpleCommandBuilder, new_thread, RTextList, RAction, ServerInterface
 from mirror_mcsmcdr.constants import DEFAULT_CONFIG, TITLE
 from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxyError
 from mirror_mcsmcdr.utils.server_utils import ServerProxy
@@ -8,7 +8,7 @@ from typing import Callable
 from threading import Event, Timer
 from copy import deepcopy
 from functools import wraps
-import time, re
+import time, re, json, os
  
  
 def catch_api_error(func):
@@ -63,9 +63,14 @@ class MultiMirrorManager: # The manager at large which manage multi single mirro
 
     def load_config_all(self):
         try:
-            config = self.server.load_config_simple()
-        except:
+            with open (os.path.join(self.server.get_data_folder(),"config.json"), "r") as file:
+                config = json.loads(file.read())
+        except FileNotFoundError as e:
+            pass
+        except Exception as e:
             config = self.server.load_config_simple(default_config=DEFAULT_CONFIG)
+            ServerInterface.si().logger.warn(e)
+        ServerInterface.si().logger.info(config.keys())
         default_prefix = list(config.keys())[0]
         default_conf = self._conf_update(DEFAULT_CONFIG["!!mirror"], config[default_prefix])
         if config[default_prefix] != default_conf:
