@@ -195,6 +195,9 @@ class MirrorManager: # The single mirror server manager which manages a specific
     @catch_api_error
     def _execute(self, source: CommandSource, command: str, available_status: list): # <failed_prompt> & <succeeded_prompt> : {status_code: "prompt"}
         status_code = self.server_api.status()
+        if not self.status_available(status_code):
+            source.reply(self.rtr(f"command.status.fail.{status_code}"))
+            return False
         if status_code in available_status:
             rep = getattr(self.server_api, command)()
             if rep == "success":
