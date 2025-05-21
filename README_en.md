@@ -53,7 +53,7 @@ The default command prefix is `!!mirror`. When controlling multiple mirror serve
 
 The configuration file supported hot reloading in `v1.1.0`, and at the same time added a more comprehensive attribute completion function. When a new version of the configuration file adds an option, the plugin will automatically fill in the default value in your old configuration file, without the need for manual addition.
 
-```json
+```jsonc
 {
     "!!mirror": {
         "mcsm": {/* MCSManager configuration */},
@@ -81,7 +81,7 @@ The parameters set for the first mirror server in the configuration file will al
 Mirror server 1 is `!!mirror`, which is also the default configuration file for other mirror servers, then put `!!mirror` in the first place in the configuration file.
 
 Control mirror server 2 through `!!mirror2`, and set the instance id of `!!mirror2` to `abc123`, change the server name of `!!mirror2` to `Mirror2`
-```json
+```jsonc
 {
     "!!mirror": {
         // ...
@@ -104,7 +104,7 @@ For a complete example, see [Multi-mirror Server Configuration File Example](#ex
 
 ### mcsm: MCSManager Configuration
 If you have any questions about this configuration section, please refer to the [MCSManager Documentation](https://docs.mcsmanager.com/#/zh-cn/apis/readme) 
-```json
+```jsonc
 "mcsm": {
     "enable": false,
     "url": "http://127.0.0.1:23333/", 
@@ -133,7 +133,7 @@ After enabling MCSM, the terminal and RCON will be disabled.
 <br>
 
 ### terminal: Configuration for starting the mirror server terminal through the command line
-```json
+```jsonc
 "terminal": {
     "enable": false,
     "launch_path": "./Mirror",
@@ -179,7 +179,7 @@ Note: Under Linux system, the plugin can close the mirror server through the scr
 <br>
 
 ### rcon: RCON Configuration
-```json
+```jsonc
 "rcon": {
     "enable": false,
     "address": null,
@@ -202,7 +202,7 @@ Note: Under Linux system, the plugin can close the mirror server through the scr
 <br>
 
 ### sync: Configuration file related to file synchronization
-```json
+```jsonc
 "sync": {
     "world": [
 	"world"
@@ -255,7 +255,7 @@ mcdr_root (./)
 
 ### command: Command Configuration
 
-```json
+```jsonc
 "command": {
     "permission": {/* Command permission configuration */},
     "action": {/* Command behavior configuration */}
@@ -265,7 +265,7 @@ mcdr_root (./)
 <br>
 
 ### permission: Command Permission Configuration
-```json
+```jsonc
 "permission": {
     "status": 0,
     "start": 0,
@@ -282,7 +282,7 @@ mcdr_root (./)
 <br>
 
 ### action: Command Behavior Configuration
-```json
+```jsonc
 "action": {
     "status": {
         "require_confirm": false
@@ -333,7 +333,7 @@ mcdr_root (./)
 - This option only takes effect when `auto_server_restart` is in effect. The number of attempts to check the status of the mirror server, after exceeding this number of attempts, it will no longer attempt to check the status of the mirror server, and output `automatic shutdown failed` and the current status information of the mirror server. Equivalent to the timeout time `timeout = check_status_interval * max_attempt_times`
 
 **save_world** Save world configuration *Generally no need to change*
-```json
+```jsonc
 "save_world": {
     "turn_off_auto_save": true,
     "commands": {
@@ -377,7 +377,7 @@ Players can only confirm the commands they have executed
 <br>
 
 ### display: Display Configuration
-```json
+```jsonc
 "display": {
     "server_name": "Mirror"
 }
@@ -389,7 +389,7 @@ Players can only confirm the commands they have executed
 
 ### Example of Multi-mirror Server Configuration File
 
-```json
+```jsonc
 {
     "!!mirror": {
         "mcsm": {
