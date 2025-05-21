@@ -3,7 +3,25 @@ from abc import ABC, abstractmethod
 
 from mirror_mcsmcdr.constants import PLUGIN_ID
 
-class SystemProxy:
+class AbstractSystemProxy(ABC):
+
+    def __init__(self, terminal_name: str, path: str, command: str, port: int, regex_strict: bool) -> None:
+        self.terminal_name, self.path, self.command = terminal_name, path, command
+        self.port, self.regex_strict =  port, regex_strict
+    
+    @abstractmethod
+    def start(self) -> str:
+        ...
+    
+    @abstractmethod
+    def status(selfl) -> str:
+        ...
+    
+    @abstractmethod
+    def stop(self) -> str:
+        ...
+
+class SystemProxy(AbstractSystemProxy):
     
     def __init__(self, terminal_name: str, launch_path: str, launch_command: str, port: int, regex_strict: bool, system: str) -> None:
         self.system_api: AbstractSystemProxy
@@ -21,24 +39,6 @@ class SystemProxy:
     def stop(self):
         return self.system_api.stop()
 
-class AbstractSystemProxy(ABC):
-
-    def __init__(self, terminal_name: str, path: str, command: str, port: int, regex_strict: bool) -> None:
-        self.terminal_name, self.path, self.command = terminal_name, path, command
-        self.port, self.regex_strict =  port, regex_strict
-    
-    @abstractmethod
-    def start(self):
-        ...
-    
-    @abstractmethod
-    def status(selfl) -> str:
-        ...
-    
-    @abstractmethod
-    def stop(self):
-        ...
-
 class LinuxProxy(AbstractSystemProxy):
 
     def start(self):
@@ -49,7 +49,7 @@ class LinuxProxy(AbstractSystemProxy):
         os.popen(command)
         return "success"
     
-    def status(self) -> bool:
+    def status(self):
         port = self.port
         text = os.popen(f"lsof -i:{port}").read()
         if not self.regex_strict or not text:
