@@ -77,7 +77,7 @@ class WindowsProxy(AbstractSystemProxy):
         if not self.regex_strict or not text:
             return "running" if text else "stopped"
         for pid in set(re.findall(f":{port}.*?([0-9]+)\n", text)):
-            if re.match("java.exe", os.popen(f"tasklist | findstr {pid}")):
+            if re.match("java.exe", os.popen(f"tasklist | findstr {pid}").read()):
                 return "running"
         return "stopped"
     
