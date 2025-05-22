@@ -204,35 +204,35 @@ class MirrorManager: # The single mirror server manager which manages a specific
     
 
     @catch_api_error
-    def status(self, source: CommandSource, context: CommandContext):
-        if self.pre_check("status", self.status, source, context, ) == False:
+    def status(self, source: CommandSource, context: CommandContext, confirm=False):
+        if self.pre_check("status", self.status, source, context, confirm) == False:
             return
         status_code = self.server_api.status()
         flag = "success" if self.status_available(status_code) else "fail"
         self.broadcast(self.rtr(f"command._execute.{flag}", prompt=self.rtr(f"command.status.{flag}.{status_code}", title=False).to_legacy_text()))
 
 
-    def start(self, source: CommandSource, context: CommandContext):
-        if self.pre_check("start", self.status, source, context, ) == False:
+    def start(self, source: CommandSource, context: CommandContext, confirm=False):
+        if self.pre_check("start", self.status, source, context, confirm) == False:
             return
         return self._execute(source, "start", ["stopped"])
 
 
-    def stop(self, source: CommandSource, context: CommandContext):
-        if self.pre_check("stop", self.status, source, context, ) == False:
+    def stop(self, source: CommandSource, context: CommandContext, confirm=False):
+        if self.pre_check("stop", self.status, source, context, confirm) == False:
             return
         return self._execute(source, "stop", ["running"])
 
-    def kill(self, source: CommandSource, context: CommandContext):
-        if self.pre_check("kill", self.status, source, context, ) == False:
+    def kill(self, source: CommandSource, context: CommandContext, confirm=False):
+        if self.pre_check("kill", self.status, source, context, confirm) == False:
             return
         return self._execute(source, "kill", ["stopping", "starting", "running"])
 
 
     @new_thread(f"{TITLE}-sync")
     @catch_api_error
-    def sync(self, source: CommandSource, context: CommandContext):
-        if self.pre_check("sync", self.status, source, context, ) == False:
+    def sync(self, source: CommandSource, context: CommandContext, confirm=False):
+        if self.pre_check("sync", self.status, source, context, confirm) == False:
             return
 
         if self.sync_flag:
