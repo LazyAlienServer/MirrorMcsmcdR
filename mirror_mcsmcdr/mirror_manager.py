@@ -72,7 +72,8 @@ class MultiMirrorManager:  # The manager at large which manage multi single mirr
                     rtr("multi_manager.init.error", prefix=command_prefix, e=e)
                 )
                 failed.append(command_prefix)
-        success_info = rtr("multi_manager.init.success", prefix=", ".join(succeed))
+        success_info = rtr("multi_manager.init.success",
+                           prefix=", ".join(succeed))
         fail_info = (
             rtr(
                 "multi_manager.init.fail",
@@ -91,7 +92,8 @@ class MultiMirrorManager:  # The manager at large which manage multi single mirr
             if key not in default_conf.keys():
                 continue
             if type(value) == dict:
-                default_conf[key] = self._conf_update(default_conf[key], new_conf[key])
+                default_conf[key] = self._conf_update(
+                    default_conf[key], new_conf[key])
             elif default_conf[key] != value:
                 default_conf[key] = value
         return default_conf
@@ -100,7 +102,8 @@ class MultiMirrorManager:  # The manager at large which manage multi single mirr
         try:
             config = self.server.load_config_simple()
         except:
-            config = self.server.load_config_simple(default_config=DEFAULT_CONFIG)
+            config = self.server.load_config_simple(
+                default_config=DEFAULT_CONFIG)
         default_prefix = list(config.keys())[0]
         default_conf = self._conf_update(
             DEFAULT_CONFIG["!!mirror"], config[default_prefix]
@@ -194,7 +197,8 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             self.server_api = ServerProxy()
             for proxy in self.server_api.proxies:
                 try:
-                    getattr(self.server_api, "set_%s" % proxy)(**self.config[proxy])
+                    getattr(self.server_api, "set_%s" %
+                            proxy)(**self.config[proxy])
                 except ProxySettingException as e:
                     self.server.broadcast(
                         self.rtr(
@@ -228,11 +232,14 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         info = RTextList(rtr("command.proxy.title", False))
         for proxy in self.server_api.proxies:
             if _proxy := getattr(self.server_api, proxy):
-                text = RText(proxy, RColor.green).h(rtr("command.proxy.enabled", False))
+                text = RText(proxy, RColor.green).h(
+                    rtr("command.proxy.enabled", False))
             elif _proxy is None:
-                text = RText(proxy, RColor.gray).h(rtr("command.proxy.disabled", False))
+                text = RText(proxy, RColor.gray).h(
+                    rtr("command.proxy.disabled", False))
             else:
-                text = RText(proxy, RColor.red).h(rtr("command.proxy.error", False))
+                text = RText(proxy, RColor.red).h(
+                    rtr("command.proxy.error", False))
             info.append(" | ", text)
         return info
 
@@ -373,7 +380,8 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                 source.reply(self.rtr(f"command.sync.fail.{status_code}"))
                 return
             else:  # restart server
-                self.server.broadcast(self.rtr("command.sync.auto_restart.restarting"))
+                self.server.broadcast(
+                    self.rtr("command.sync.auto_restart.restarting"))
                 if not self.stop(source, context, confirm=True):
                     return
                 interval, times = (
@@ -418,14 +426,17 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             save_world_config = sync_action_config["save_world"]
             turn_off_auto_save = save_world_config["turn_off_auto_save"]
             if turn_off_auto_save:
-                self.server.execute(save_world_config["commands"]["auto_save_off"])
+                self.server.execute(
+                    save_world_config["commands"]["auto_save_off"])
             self.save_world_wait.clear()
-            self.server.execute(save_world_config["commands"]["save_all_worlds"])
+            self.server.execute(
+                save_world_config["commands"]["save_all_worlds"])
             self.save_world_wait.wait(
                 timeout=save_world_config["save_world_max_wait_sec"]
             )  # wait for finishing saving world
             if turn_off_auto_save:
-                self.server.execute(save_world_config["commands"]["auto_save_on"])
+                self.server.execute(
+                    save_world_config["commands"]["auto_save_on"])
 
             # sync
             changed_files_count, paths_notfound = self.world_sync.sync()
@@ -487,7 +498,8 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
     ):
         self.confirmation[operator]["timer"].cancel()
         if source != None and context != None:
-            getattr(self, self.confirmation[operator]["action"])(source, context, True)
+            getattr(self, self.confirmation[operator]["action"])(
+                source, context, True)
         self.confirmation.pop(operator)
 
     def on_info(self, _: PluginServerInterface, info: Info):
