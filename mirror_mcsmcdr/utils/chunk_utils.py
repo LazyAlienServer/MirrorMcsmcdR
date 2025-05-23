@@ -1,4 +1,5 @@
 import os
+from typing import List, Union
 
 DIMENSION = {
     "overworld": "region",
@@ -18,7 +19,7 @@ class Region:
         self.init_chunks()
     
     def init_chunks(self):
-        self.chunks = [None]*1024
+        self.chunks: List[Union[bytes, None]] = [None]*1024
     
     def get_chunk(self, chunk_x, chunk_z) -> bytes:
         chunk = self.chunks[index := chunk_z*32 + chunk_x]
@@ -90,7 +91,7 @@ class World:
         return region
 
     def get_region_by_pos(self, x: int, z: int, dimension: str) -> Region:
-        return self.get_region(self, x//16//32, z//16//32, dimension)
+        return self.get_region(x//16//32, z//16//32, dimension)
     
     def get_chunk_by_index(self, chunk_x: int, chunk_z: int, dimension: str) -> bytes:
         return self.get_region(chunk_x // 32, chunk_z // 32, dimension).get_chunk(chunk_x % 32, chunk_z % 32)
