@@ -4,10 +4,9 @@ from mirror_mcsmcdr.utils.api.mcsm_api import MCSManagerApiError
 from mirror_mcsmcdr.utils.server_utils import ServerProxy
 from mirror_mcsmcdr.utils.file_operation import WorldSync
 from mirror_mcsmcdr.utils.display_utils import rtr, help_msg
-from typing import Callable
+from typing import Callable, Optional
 from threading import Event, Timer
 from copy import deepcopy
-from functools import wraps
 import time, re
  
  
@@ -181,11 +180,11 @@ class MirrorManager: # The single mirror server manager which manages a specific
     def status_available(self, status):
         return status in ["unknown", "stopped", "stopping", "starting", "running"]
 
-    def pre_check(self, command: str, source: CommandSource, context: CommandContext, confirm=False, *args, **kwargs):
+    def pre_check(self, command: str, source: CommandSource, context: CommandContext, confirm=False):
         operator = source.player if source.is_player else "[console]"
             
         # automatically cancel old operation
-        if operator in self.confirmation.keys():
+        if operator in self.confirmation.keys() and not confirm:
             source.reply(self.rtr("command.confirm.previous", action=self.confirmation[operator]['action']))
             self.confirm_end(operator)
 
@@ -193,7 +192,7 @@ class MirrorManager: # The single mirror server manager which manages a specific
             return False
         if not confirm and self.command_action[command]["require_confirm"]:
             timer = Timer(self.command_action["confirm"]["timeout"], self.confirm_timer, args=[source, context, operator])
-            self.confirmation[operator] = {"func":COMMAND_METHOD_MAP[command], "timer":timer, "action":command}
+            self.confirmation[operator] = {"func": getattr(self, command), "timer": timer, "action": command}
             timer.start()
 
             run_command = f"{self.command_prefix} confirm"
@@ -205,34 +204,30 @@ class MirrorManager: # The single mirror server manager which manages a specific
 
     @catch_api_error
     def status(self, source: CommandSource, context: CommandContext, confirm=False):
-        if self.pre_check("status", self.status, source, context, confirm) == False:
-            return
+        if not self.pre_check("status", source, context, confirm): return
         status_code = self.server_api.status()
         flag = "success" if self.status_available(status_code) else "fail"
         self.broadcast(self.rtr(f"command._execute.{flag}", prompt=self.rtr(f"command.status.{flag}.{status_code}", title=False).to_legacy_text()))
 
 
     def start(self, source: CommandSource, context: CommandContext, confirm=False):
-        if self.pre_check("start", self.status, source, context, confirm) == False:
-            return
+        if not self.pre_check("start", source, context, confirm): return
         return self._execute(source, "start", ["stopped"])
 
 
     def stop(self, source: CommandSource, context: CommandContext, confirm=False):
-        if self.pre_check("stop", self.status, source, context, confirm) == False:
-            return
+        if not self.pre_check("stop", source, context, confirm): return
         return self._execute(source, "stop", ["running"])
 
     def kill(self, source: CommandSource, context: CommandContext, confirm=False):
-        if self.pre_check("kill", self.status, source, context, confirm) == False:
-            return
+        if not self.pre_check("kill", source, context, confirm): return
         return self._execute(source, "kill", ["stopping", "starting", "running"])
 
 
     @new_thread(f"{TITLE}-sync")
     @catch_api_error
     def sync(self, source: CommandSource, context: CommandContext, confirm=False):
-        if self.pre_check("sync", self.status, source, context, confirm) == False:
+        if self.pre_check("sync", source, context, confirm) == False:
             return
 
         if self.sync_flag:
@@ -317,10 +312,10 @@ class MirrorManager: # The single mirror server manager which manages a specific
         self.confirmation.pop(operator)
 
 
-    def confirm_end(self, operator, source: CommandSource=None, context: CommandContext=None):
+    def confirm_end(self, operator, source: Optional[CommandSource] = None, context: Optional[CommandContext] = None):
         self.confirmation[operator]["timer"].cancel()
         if source != None and context != None:
-            self.confirmation[operator]["func"](self, source, context)
+            self.confirmation[operator]["func"](source, context, True)
         self.confirmation.pop(operator)
 
 
@@ -336,11 +331,3 @@ class MirrorManager: # The single mirror server manager which manages a specific
         if operator in self.confirmation.keys():
             server.reply(info, self.rtr("command.confirm.cancel", action=self.confirmation[operator]['action']))
             self.confirm_end(operator)
-
-COMMAND_METHOD_MAP = {
-    "status": MirrorManager.status,
-    "start": MirrorManager.start,
-    "stop": MirrorManager.stop,
-    "kill": MirrorManager.kill,
-    "sync": MirrorManager.sync,
-}
