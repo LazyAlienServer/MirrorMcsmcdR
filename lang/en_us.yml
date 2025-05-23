@@ -76,8 +76,8 @@ mirror_mcsmcdr:
         stopped: stopped
         stopping: stopping, please wait for a moment
         starting: starting, please stop after §b{server_name}§c started
-        unavailable: Current config does not support stop command. You need to configure MCSM or RCON
-        unavailable_windows: Windows system does not support execute stop command from terminal. You need to configure MCSM or RCON
+        unavailable:  Current config does not support stop command. You need to configure MCSM or RCON
+        unavailable_windows:  Windows system does not support execute stop command from terminal. You need to configure MCSM or RCON
       success:
         running: stopping command sent
 

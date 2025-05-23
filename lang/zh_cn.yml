@@ -76,8 +76,8 @@ mirror_mcsmcdr:
         stopped: 已停止
         stopping: 正在停止, 请稍等
         starting: 正在启动, 请等待§b{server_name}§c启动后重新停止
-        unavailable: 当前配置文件不支持stop命令, 需要配置MCSM或RCON
-        unavailable_windows: Windows系统不支持通过终端执行stop命令, 需要配置MCSM或RCON
+        unavailable: " 当前配置文件不支持stop命令, 需要配置MCSM或RCON"
+        unavailable_windows: " Windows系统不支持通过终端执行stop命令, 需要配置MCSM或RCON"
       success:
         running: 关闭指令已发送
 
