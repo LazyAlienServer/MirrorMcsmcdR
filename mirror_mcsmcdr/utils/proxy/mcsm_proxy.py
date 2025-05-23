@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 class HTTPProxyError(Exception):
 
     def __init__(self, req: Response) -> None:
-        super().__init__("HTTPApiError")
+        super().__init__("HTTPProxyError")
 
 class AbstractHTTPProxy(ABC):
 
@@ -22,7 +22,7 @@ class AbstractHTTPProxy(ABC):
             3: "running"
         }
     
-    def _request(self, path: str, exception: HTTPProxyError = HTTPProxyError):
+    def _request(self, path: str, exception: type = HTTPProxyError):
         req : Response = requests.get(url=self.url+path, params=self.params)
         if req.status_code == 200:
             return json.loads(req.text)
@@ -45,7 +45,7 @@ class AbstractHTTPProxy(ABC):
     def kill(self) -> str:
         return "success"
 
-class MCSManagerProxyError(HTTPProxyError):
+class MCSManagerProxyError(Exception):
 
     def __init__(self, req: Response) -> None:
         error = json.loads(req.text)
@@ -61,8 +61,8 @@ class MCSManagerProxy(AbstractHTTPProxy):
     def __init__(self, enable: bool, url: str, uuid: str, remote_uuid: str, apikey: str) -> None:
         super().__init__(enable, url, uuid = uuid, remote_uuid = remote_uuid, apikey = apikey)
     
-    def _request(self, path: str):
-        return super()._request(path, MCSManagerProxyError)
+    def _request(self, path: str, exception: type = MCSManagerProxyError):
+        return super()._request(path, exception)
     
     def status(self):
         return self.status_to_text[self._request("/api/instance")["data"]["status"]]

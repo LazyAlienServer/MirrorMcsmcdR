@@ -2,51 +2,76 @@ from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxy
 from mirror_mcsmcdr.utils.proxy.rcon_proxy import RConProxy
 from mirror_mcsmcdr.utils.proxy.system_proxy import SystemProxy
 import platform
+from typing import List, Union, Optional, Literal
+
+class ProxySettingException(Exception):
+
+    def __init__(self, proxy: str, missing_keys: List[str]):
+        super().__init__("Proxy '{}' has the incorrect key(s) '{}'".format(proxy, "', '".join(missing_keys)))
+        self.proxy = proxy
+        self.missing_keys = missing_keys
+
+class TerminalSettingException(Exception):
+
+    def __init__(self, system: str) -> None:
+        super().__init__("Unavailable system '%s'"%system)
+        self.system = system
 
 class ServerProxy:
 
     def __init__(self) -> None:
-        self.mcsm : MCSManagerProxy = None
-        self.rcon : RConProxy = None
-        self.system : SystemProxy = None
+        self.proxies = ["mcsm", "rcon", "terminal"]
+        self.mcsm : Union[MCSManagerProxy, Literal[False, None]] = None
+        self.rcon : Union[RConProxy, Literal[False, None]] = None
+        self.terminal : Union[SystemProxy, Literal[False, None]] = None
     
-    def set_mcsm(self, enable, url, uuid, remote_uuid, apikey):
-        if enable and url and uuid and remote_uuid and apikey:
-            self.mcsm = MCSManagerProxy(enable, url, uuid, remote_uuid, apikey)
+    def set_mcsm(self, enable, **kwargs):
+        if enable and not sum(map(lambda x : not bool(x), kwargs.values())):
+            self.mcsm = MCSManagerProxy(enable, **kwargs)
             return True
+        if enable:
+            self.mcsm = False
+            raise ProxySettingException("mcsm", [key for key, value in kwargs.items() if not bool(value)])
 
     
-    def set_rcon(self, enable, address, port, password):
-        if enable and address and port and password:
-            self.rcon = RConProxy(address, port, password)
+    def set_rcon(self, enable, **kwargs):
+        if enable and not sum(map(lambda x : not bool(x), kwargs.values())):
+            self.rcon = RConProxy(**kwargs)
             return True
+        if enable:
+            self.rcon = False
+            raise ProxySettingException("rcon", [key for key, value in kwargs.items() if not bool(value)])
         
     
-    def set_system(self, enable, terminal_name: str, launch_path: str, launch_command: str, port: int, regex_strict: bool, system: str):
-        if enable and terminal_name and launch_path and launch_command and port and type(regex_strict) == bool:
+    def set_terminal(self, enable, regex_strict: bool, system: Optional[str] = None, **kwargs):
+        if enable and not sum(map(lambda x : not bool(x), kwargs.values())) and type(regex_strict) == bool:
             if not system:
                 system = platform.system()
                 if system not in ["Linux", "Windows"]:
-                    return system
-            self.system = SystemProxy(terminal_name, launch_path, launch_command, port, regex_strict, system)
+                    self.terminal = False
+                    raise TerminalSettingException(system)
+            self.terminal = SystemProxy(**kwargs, regex_strict = regex_strict, system = system)
             return True
+        if enable:
+            self.terminal = False
+            raise ProxySettingException("terminal", [key for key, value in kwargs.items() if not bool(value)] + ["regex_strict"] if type(regex_strict) != bool else [])
     
     def status(self):
         if self.mcsm:
             return self.mcsm.status()
         if self.rcon:
             status = self.rcon.status()
-            if status == "stopped" and self.system:
-                status_sys = self.system.status()
+            if status == "stopped" and self.terminal:
+                status_sys = self.terminal.status()
                 return "stopped" if status == status_sys else "rcon_status_mismatch"
             return status
-        return self.system.status() if self.system else "unavailable"
+        return self.terminal.status() if self.terminal else "unavailable"
     
     def start(self):
         if self.mcsm:
             return self.mcsm.start()
-        if self.system:
-            return self.system.start()
+        if self.terminal:
+            return self.terminal.start()
         return "unavailable"
     
     def stop(self):
@@ -54,8 +79,8 @@ class ServerProxy:
             return self.mcsm.stop()
         if self.rcon:
             return self.rcon.stop()
-        if self.system:
-            return self.system.stop()
+        if self.terminal:
+            return self.terminal.stop()
         return "unavailable"
     
     def kill(self):
