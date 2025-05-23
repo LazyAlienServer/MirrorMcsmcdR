@@ -32,7 +32,7 @@ It includes the following commands:
 
 The configuration file is mainly composed as follows:
 
-```json
+```jsonc
 {
     "!!mirror": {
         "mcsm": {/* MCSManager configuration */},
@@ -211,7 +211,7 @@ To configure multiple mirror servers, for example, if you want to control the se
 Mirror server 1 is `!!mirror`, which is also the default configuration file for other mirror servers, then put `!!mirror` first in the configuration file.
 
 Control mirror server 2 through `!!mirror2`, and set the instance id of `!!mirror2` to `abc123`, change the server name of `!!mirror2` to `Mirror2`
-```json
+```jsonc
 {
     "!!mirror": {
         // Configuration file for the first mirror server

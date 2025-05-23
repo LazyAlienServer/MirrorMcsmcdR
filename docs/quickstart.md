@@ -30,7 +30,7 @@
 
 配置文件主要是这样构成的：
 
-```json
+```jsonc
 {
     "!!mirror": {
         "mcsm": {/* MCSManager配置 */},
@@ -204,7 +204,7 @@ mcdr_root
 镜像服1为`!!mirror`，同时也是其他镜像服的默认配置文件，那么将`!!mirror`放在配置文件中的第一个
 
 通过`!!mirror2`控制镜像服2，并设置`!!mirror2`的实例id为`abc123`，将`!!mirror2`的服务端名称改为`Mirror2`
-```json
+```jsonc
 {
     "!!mirror": {
         // 第一个镜像服的配置文件
