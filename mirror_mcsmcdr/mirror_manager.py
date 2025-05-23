@@ -4,10 +4,9 @@ from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxyError
 from mirror_mcsmcdr.utils.server_utils import ServerProxy
 from mirror_mcsmcdr.utils.file_operation import WorldSync
 from mirror_mcsmcdr.utils.display_utils import rtr, help_msg
-from typing import Callable
+from typing import Callable, Optional
 from threading import Event, Timer
 from copy import deepcopy
-from functools import wraps
 import time, re
  
  
@@ -165,33 +164,6 @@ class MirrorManager: # The single mirror server manager which manages a specific
             return False
         return True
 
-
-    def pre_check(command):
-        def wrapper(func):
-            @wraps(func)
-            def sub_wrapper(self, source: CommandSource, context: CommandContext, confirm=False, *args, **kwargs):
-                operator = source.player if source.is_player else "[console]"
-                
-                # automatically cancel old operation
-                if operator in self.confirmation.keys():
-                    source.reply(self.rtr("command.confirm.previous", action=self.confirmation[operator]['action']))
-                    self.confirm_end(operator)
-
-                if not self.check_permission(source, command):
-                    return
-                if not confirm and self.command_action[command]["require_confirm"]:
-                    timer = Timer(self.command_action["confirm"]["timeout"], self.confirm_timer, args=[source, context, operator])
-                    self.confirmation[operator] = {"func":func, "timer":timer, "action":command}
-                    timer.start()
-
-                    run_command = f"{self.command_prefix} confirm"
-                    source.reply(self.rtr("command.confirm.prompt").set_click_event(RAction.run_command, run_command))
-                    return
-                return func(self, source, context, *args, **kwargs)
-            return sub_wrapper
-        return wrapper
-
-
     @catch_api_error
     def _execute(self, source: CommandSource, command: str, available_status: list): # <failed_prompt> & <succeeded_prompt> : {status_code: "prompt"}
         status_code = self.server_api.status()
@@ -211,34 +183,55 @@ class MirrorManager: # The single mirror server manager which manages a specific
     def status_available(self, status):
         return status in ["unknown", "stopped", "stopping", "starting", "running"]
 
+    def pre_check(self, command: str, source: CommandSource, context: CommandContext, confirm=False):
+        operator = source.player if source.is_player else "[console]"
+            
+        # automatically cancel old operation
+        if operator in self.confirmation.keys() and not confirm:
+            source.reply(self.rtr("command.confirm.previous", action=self.confirmation[operator]['action']))
+            self.confirm_end(operator)
+
+        if not self.check_permission(source, command):
+            return False
+        if not confirm and self.command_action[command]["require_confirm"]:
+            timer = Timer(self.command_action["confirm"]["timeout"], self.confirm_timer, args=[source, context, operator])
+            self.confirmation[operator] = {"func": getattr(self, command), "timer": timer, "action": command}
+            timer.start()
+
+            run_command = f"{self.command_prefix} confirm"
+            source.reply(self.rtr("command.confirm.prompt").set_click_event(RAction.run_command, run_command))
+            return False
+        return True
+    
+    
 
     @catch_api_error
-    @pre_check(command="status")
-    def status(self, source: CommandSource, context: CommandContext):
+    def status(self, source: CommandSource, context: CommandContext, confirm=False):
+        if not self.pre_check("status", source, context, confirm): return
         status_code = self.server_api.status()
         flag = "success" if self.status_available(status_code) else "fail"
         self.broadcast(self.rtr(f"command._execute.{flag}", prompt=self.rtr(f"command.status.{flag}.{status_code}", title=False).to_legacy_text()))
 
 
-    @pre_check(command="start")
-    def start(self, source: CommandSource, context: CommandContext):
+    def start(self, source: CommandSource, context: CommandContext, confirm=False):
+        if not self.pre_check("start", source, context, confirm): return
         return self._execute(source, "start", ["stopped"])
 
 
-    @pre_check(command="stop")
-    def stop(self, source: CommandSource, context: CommandContext):
+    def stop(self, source: CommandSource, context: CommandContext, confirm=False):
+        if not self.pre_check("stop", source, context, confirm): return
         return self._execute(source, "stop", ["running"])
 
-
-    @pre_check(command="kill")
-    def kill(self, source: CommandSource, context: CommandContext):
+    def kill(self, source: CommandSource, context: CommandContext, confirm=False):
+        if not self.pre_check("kill", source, context, confirm): return
         return self._execute(source, "kill", ["stopping", "starting", "running"])
 
 
-    @pre_check(command="sync")
     @new_thread(f"{TITLE}-sync")
     @catch_api_error
-    def sync(self, source: CommandSource, context: CommandContext):
+    def sync(self, source: CommandSource, context: CommandContext, confirm=False):
+        if self.pre_check("sync", source, context, confirm) == False:
+            return
 
         if self.sync_flag:
             source.reply(self.rtr("command.sync.fail.task_exist"))
@@ -322,10 +315,10 @@ class MirrorManager: # The single mirror server manager which manages a specific
         self.confirmation.pop(operator)
 
 
-    def confirm_end(self, operator, source: CommandSource=None, context: CommandContext=None):
+    def confirm_end(self, operator, source: Optional[CommandSource] = None, context: Optional[CommandContext] = None):
         self.confirmation[operator]["timer"].cancel()
         if source != None and context != None:
-            self.confirmation[operator]["func"](self, source, context)
+            self.confirmation[operator]["func"](source, context, True)
         self.confirmation.pop(operator)
 
 

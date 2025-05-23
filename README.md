@@ -190,7 +190,7 @@
 **enable** `bool`
 - 是否启用RCON，当MCSM未启用时，插件将通过RCON执行`stop`指令和获取镜像服状态。若同时启用了RCON和终端，插件将优先通过检查RCON状态来获取镜像服状态，若RCON未连接，则将通过检查端口来获取状态。若RCON状态与端口状态不匹配将会提示。
 
-**adress** `bool`
+**address** `str`
 - RCON的连接地址，不包含端口。
 
 **port** `int`
