@@ -3,14 +3,32 @@ from abc import ABC, abstractmethod
 
 from mirror_mcsmcdr.constants import PLUGIN_ID
 
-class SystemAPI:
+class AbstractSystemProxy(ABC):
+
+    def __init__(self, terminal_name: str, path: str, command: str, port: int, regex_strict: bool) -> None:
+        self.terminal_name, self.path, self.command = terminal_name, path, command
+        self.port, self.regex_strict =  port, regex_strict
+    
+    @abstractmethod
+    def start(self) -> str:
+        ...
+    
+    @abstractmethod
+    def status(selfl) -> str:
+        ...
+    
+    @abstractmethod
+    def stop(self) -> str:
+        ...
+
+class SystemProxy(AbstractSystemProxy):
     
     def __init__(self, terminal_name: str, launch_path: str, launch_command: str, port: int, regex_strict: bool, system: str) -> None:
-        self.system_api: AbstractSystemAPI
+        self.system_api: AbstractSystemProxy
         if system == "Linux":
-            self.system_api = LinuxAPI(terminal_name+"_"+PLUGIN_ID, launch_path, launch_command, port, regex_strict)
+            self.system_api = LinuxProxy(terminal_name+"_"+PLUGIN_ID, launch_path, launch_command, port, regex_strict)
         elif system == "Windows":
-            self.system_api = WindowsAPI(terminal_name+"_"+PLUGIN_ID, launch_path, launch_command, port, regex_strict)
+            self.system_api = WindowsProxy(terminal_name+"_"+PLUGIN_ID, launch_path, launch_command, port, regex_strict)
 
     def start(self):
         return self.system_api.start()
@@ -21,25 +39,7 @@ class SystemAPI:
     def stop(self):
         return self.system_api.stop()
 
-class AbstractSystemAPI(ABC):
-
-    def __init__(self, terminal_name: str, path: str, command: str, port: int, regex_strict: bool) -> None:
-        self.terminal_name, self.path, self.command = terminal_name, path, command
-        self.port, self.regex_strict =  port, regex_strict
-    
-    @abstractmethod
-    def start(self):
-        ...
-    
-    @abstractmethod
-    def status(selfl) -> str:
-        ...
-    
-    @abstractmethod
-    def stop(self):
-        ...
-
-class LinuxAPI(AbstractSystemAPI):
+class LinuxProxy(AbstractSystemProxy):
 
     def start(self):
         if not os.path.exists(self.path):
@@ -49,7 +49,7 @@ class LinuxAPI(AbstractSystemAPI):
         os.popen(command)
         return "success"
     
-    def status(self) -> bool:
+    def status(self):
         port = self.port
         text = os.popen(f"lsof -i:{port}").read()
         if not self.regex_strict or not text:
@@ -61,7 +61,7 @@ class LinuxAPI(AbstractSystemAPI):
         os.popen(command)
         return "success"
 
-class WindowsAPI(AbstractSystemAPI):
+class WindowsProxy(AbstractSystemProxy):
 
     def start(self):
         if not os.path.exists(self.path):
@@ -77,7 +77,7 @@ class WindowsAPI(AbstractSystemAPI):
         if not self.regex_strict or not text:
             return "running" if text else "stopped"
         for pid in set(re.findall(f":{port}.*?([0-9]+)\n", text)):
-            if re.match("java.exe", os.popen(f"tasklist | findstr {pid}")):
+            if re.match("java.exe", os.popen(f"tasklist | findstr {pid}").read()):
                 return "running"
         return "stopped"
     

@@ -3,17 +3,20 @@ mirror_mcsmcdr:
   multi_manager:
     init:
       error: "设置{prefix}时出错: {e}"
-      success: "{prefix} 构建成功"
-      fail: "{prefix} 构建失败"
+      success: "{prefix} §b构建成功"
+      fail: "{prefix} §c构建失败"
+      prefix_notfound: "§c{prefix} 配置文件缺失, 实例已禁用"
 
   manager: 
     load: "{prefix}已加载"
     reload:
       success: §a配置文件重载成功§7({prefix})
-      fail: §c无效的配置文件§7({prefix})
+      fail: §c无效的配置文件§7({prefix})§c, 请查看控制台并处理报错
+      fail.proxy: §c配置文件§7({prefix})§c的接口 §4{proxy} §c缺少有效值 §4'{keys}'
       fail.unavailable_system: "§cterminal未启用: 不支持{system}系统§7({prefix})"
     permission_denied: §b{server_name}§c操作权限不足
     mcsm_disabled: §cMCSM-API未启用
+    unavailable: §c配置文件错误, §4{prefix}§c实例已禁用
   
   command:
 
@@ -30,6 +33,12 @@ mirror_mcsmcdr:
       kill: §7{prefix} kill §f强制终止{server_name}
       sync: §7{prefix} sync §f同步{server_name}
       reload: §7{prefix} reload §f重载{server_name}配置文件
+
+    proxy:
+      title: "§e接口状态"
+      enabled: "§a已启用"
+      disabled: "§7未启用"
+      error: "§c配置文件错误"
 
     confirm:
       prompt: §7{prefix} confirm §f以确认操作
@@ -67,8 +76,8 @@ mirror_mcsmcdr:
         stopped: 已停止
         stopping: 正在停止, 请稍等
         starting: 正在启动, 请等待§b{server_name}§c启动后重新停止
-        unavailable: 当前配置文件不支持stop命令, 需要配置MCSM或RCON
-        unavailable_windows: Windows系统不支持通过终端执行stop命令, 需要配置MCSM或RCON
+        unavailable: " 当前配置文件不支持stop命令, 需要配置MCSM或RCON"
+        unavailable_windows: " Windows系统不支持通过终端执行stop命令, 需要配置MCSM或RCON"
       success:
         running: 关闭指令已发送
 

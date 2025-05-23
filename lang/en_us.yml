@@ -3,17 +3,20 @@ mirror_mcsmcdr:
   multi_manager:
     init:
       error: "An error occured when configuring {prefix}: {e}"
-      success: "{prefix} loaded successfully"
-      fail: "{prefix} loaded unsuccessfully"
+      success: "{prefix} §bloaded successfully"
+      fail: "{prefix} §cloaded unsuccessfully"
+      prefix_notfound: "§cConfig file for {prefix} is missing, instance has been disabled"
 
   manager: 
     load: "{prefix} loaded"
     reload:
       success: §aConfig file reloaded successfully§7 ({prefix})
-      fail: §cInvalid config file§7 ({prefix})
+      fail: §cInvalid config file §7({prefix})§c, please check the console and address the error
+      fail.proxy: §cInterface §7({prefix})§c config §4{proxy} §cmisses valid value(s) §4'{keys}'
       fail.unavailable_system: "§cterminal disabled: system {system} unsupported§7 ({prefix})"
     permission_denied: §b{server_name}§c Permission denied
     mcsm_disabled: §cMCSM-API is disbaled
+    unavailable: §cConfig error, §4{prefix}§c instance disabled
   
   command:
 
@@ -30,6 +33,12 @@ mirror_mcsmcdr:
       kill: §7{prefix} kill §fKill {server_name}
       sync: §7{prefix} sync §fSynchronize {server_name}
       reload: §7{prefix} reload §fReload config of {server_name}
+
+    proxy:
+      title: "§eInterface Status"
+      enabled: "§aEnabled"
+      disabled: "§7Disabled"
+      error: "§cConfig error"
 
     confirm:
       prompt: §7{prefix} confirm §fto confirm operation
@@ -67,8 +76,8 @@ mirror_mcsmcdr:
         stopped: stopped
         stopping: stopping, please wait for a moment
         starting: starting, please stop after §b{server_name}§c started
-        unavailable: Current config does not support stop command. You need to configure MCSM or RCON
-        unavailable_windows: Windows system does not support execute stop command from terminal. You need to configure MCSM or RCON
+        unavailable:  Current config does not support stop command. You need to configure MCSM or RCON
+        unavailable_windows:  Windows system does not support execute stop command from terminal. You need to configure MCSM or RCON
       success:
         running: stopping command sent
 

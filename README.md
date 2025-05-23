@@ -53,7 +53,7 @@
 
 配置文件在`v1.1.0`支持了热重载, 同时添加了更完善的属性补全功能。当新版本的配置文件中新增了某一选项, 插件将会自动将默认值填写到你的旧配置文件中, 而不需要手动添加。
 
-```json
+```jsonc
 {
     "!!mirror": {
         "mcsm": {/* MCSManager配置 */},
@@ -81,7 +81,7 @@
 镜像服1为`!!mirror`，同时也是其他镜像服的默认配置文件，那么将`!!mirror`放在配置文件中的第一个
 
 通过`!!mirror2`控制镜像服2，并设置`!!mirror2`的实例id为`abc123`，将`!!mirror2`的服务端名称改为`Mirror2`
-```json
+```jsonc
 {
     "!!mirror": {
         // ...
@@ -104,7 +104,7 @@
 
 ### mcsm: MCSManager配置
 此配置部分若有疑问，请参见[MCSManager官方文档](https://docs.mcsmanager.com/#/zh-cn/apis/readme)
-```json
+```jsonc
 "mcsm": {
     "enable": false,
     "url": "http://127.0.0.1:23333/",
@@ -133,7 +133,7 @@
 <br>
 
 ### terminal: 通过命令行启动镜像服终端的配置
-```json
+```jsonc
 "terminal": {
     "enable": false,
     "launch_path": "./Mirror",
@@ -179,7 +179,7 @@
 <br>
 
 ### rcon: RCON配置
-```json
+```jsonc
 "rcon": {
     "enable": false,
     "address": null,
@@ -202,7 +202,7 @@
 <br>
 
 ### sync: 文件同步相关的配置文件
-```json
+```jsonc
 "sync": {
     "world": [
 	"world"
@@ -255,7 +255,7 @@ mcdr_root (./)
 
 ### command: 指令配置
 
-```json
+```jsonc
 "command": {
     "permission": {/* 指令权限配置 */},
     "action": {/* 指令行为配置 */}
@@ -265,7 +265,7 @@ mcdr_root (./)
 <br>
 
 ### permission: 指令权限配置
-```json
+```jsonc
 "permission": {
     "status": 0,
     "start": 0,
@@ -282,7 +282,7 @@ mcdr_root (./)
 <br>
 
 ### action: 指令行为配置
-```json
+```jsonc
 "action": {
     "status": {
         "require_confirm": false
@@ -334,7 +334,7 @@ mcdr_root (./)
 - 此选项仅在`auto_server_restart`生效时生效。检查镜像服状态的尝试次数, 超过此尝试次数后将不再尝试检查镜像服状态, 并输出`自动关闭失败`及镜像服当前状态信息。等效于超时时间 `timeout = check_status_interval * max_attempt_times`
 
 **save_world** 保存世界配置 *一般无需更改*
-```json
+```jsonc
 "save_world": {
     "turn_off_auto_save": true,
     "commands": {
@@ -378,7 +378,7 @@ mcdr_root (./)
 <br>
 
 ### display: 显示配置
-```json
+```jsonc
 "display": {
     "server_name": "Mirror"
 }
@@ -390,7 +390,7 @@ mcdr_root (./)
 
 ### 多镜像服配置文件示例
 
-```json
+```jsonc
 {
     "!!mirror": {
         "mcsm": {
