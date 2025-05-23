@@ -9,6 +9,6 @@ def rtr(key, title=True, *args, **kwargs):
 def help_msg(server_name, prefix):
     server = ServerInterface.si()
     msg = RTextList(server.rtr(PLUGIN_ID+".command.help.info", TITLE=TITLE, VERSION=VERSION))
-    for command in ["help", "status", "start", "stop", "kill", "sync", "reload"]:
+    for command in ["help", "reload", "status", "start", "stop", "kill", "sync"]:
         msg.append("\n",server.rtr(PLUGIN_ID+".command.help."+command, prefix=prefix, server_name=server_name).set_click_event(RAction.run_command, f"{prefix} {command}"))
     return msg
