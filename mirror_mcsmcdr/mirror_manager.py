@@ -4,28 +4,14 @@ from copy import deepcopy
 from threading import Event, Timer
 from typing import Callable, Dict, Optional, TypedDict
 
-from mcdreforged.api.all import (
-    CommandContext,
-    CommandSource,
-    Info,
-    PluginServerInterface,
-    RAction,
-    RColor,
-    RText,
-    RTextList,
-    SimpleCommandBuilder,
-    new_thread,
-)
+from mcdreforged.api.all import CommandContext, CommandSource, Info, PluginServerInterface, RAction, RColor, RText, RTextList, SimpleCommandBuilder, new_thread
+
 
 from mirror_mcsmcdr.constants import DEFAULT_CONFIG, TITLE
 from mirror_mcsmcdr.utils.display_utils import help_msg, rtr
 from mirror_mcsmcdr.utils.file_operation import WorldSync
 from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxyError
-from mirror_mcsmcdr.utils.server_utils import (
-    ProxySettingException,
-    ServerProxy,
-    TerminalSettingException,
-)
+from mirror_mcsmcdr.utils.server_utils import ProxySettingException, ServerProxy, TerminalSettingException
 
 
 def catch_api_error(func):
