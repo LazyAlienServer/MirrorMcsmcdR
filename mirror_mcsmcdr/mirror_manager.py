@@ -200,7 +200,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                             keys="', '".join(e.missing_keys),
                         )
                     )
-                except TerminalSettingException as e:
+                except TerminalSettingException as _:
                     self.server.broadcast(
                         self.rtr("manager.reload.fail.unavailable_system")
                     )
@@ -217,7 +217,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         self.server.broadcast(self.rtr("manager.reload.success"))
         self.manager_available = True
 
-    def help(self, source: CommandSource, context: CommandContext):
+    def help(self, source: CommandSource, _: CommandContext):
         source.reply(help_msg(self.server_name, self.command_prefix))
         source.reply(self.proxy_info())
 
@@ -377,7 +377,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                     sync_action_config["check_status_interval"],
                     sync_action_config["max_attempt_times"],
                 )
-                for i in range(times):  # wait for server to stop
+                for _ in range(times):  # wait for server to stop
                     time.sleep(interval)
                     status_code = self.server_api.status()
                     if status_code == "stopped":
@@ -468,7 +468,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             return
         self.confirm_end(operator, source, context)
 
-    def confirm_timer(self, source: CommandSource, context: CommandContext, operator):
+    def confirm_timer(self, source: CommandSource, _: CommandContext, operator):
         source.reply(
             self.rtr(
                 "command.confirm.timeout", action=self.confirmation[operator]["action"]
@@ -487,7 +487,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             getattr(self, self.confirmation[operator]["action"])(source, context, True)
         self.confirmation.pop(operator)
 
-    def on_info(self, server: PluginServerInterface, info: Info):
+    def on_info(self, _: PluginServerInterface, info: Info):
         if (
             self.config
             and not self.save_world_wait.is_set()
