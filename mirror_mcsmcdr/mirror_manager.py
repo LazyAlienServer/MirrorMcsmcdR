@@ -9,7 +9,7 @@ from mcdreforged.api.all import CommandContext, CommandSource, Info, PluginServe
 
 from mirror_mcsmcdr.constants import DEFAULT_CONFIG, TITLE
 from mirror_mcsmcdr.utils.display_utils import help_msg, rtr
-from mirror_mcsmcdr.utils.file_operation import WorldSync
+from mirror_mcsmcdr.utils.sync.classic_synchronizer import ClassicWorldSynchronizer
 from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxyError
 from mirror_mcsmcdr.utils.server_utils import ProxySettingException, ServerProxy, TerminalSettingException
 
@@ -175,7 +175,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                 self.server_name,
             ) = (
                 config,
-                WorldSync(**config["sync"]),
+                ClassicWorldSynchronizer(**config["sync"]),
                 config["command"]["permission"],
                 config["command"]["action"],
                 config["display"]["server_name"],
