@@ -87,3 +87,6 @@ class ServerProxy:
         if self.mcsm:
             return self.mcsm.kill()
         return "unavailable"
+    
+    def forcekill(self):
+        ...

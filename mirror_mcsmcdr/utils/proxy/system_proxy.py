@@ -60,6 +60,9 @@ class LinuxProxy(AbstractSystemProxy):
         command = f'screen -x -S {self.terminal_name} -p 0 -X stuff "\nstop\n"'
         os.popen(command)
         return "success"
+    
+    def kill(self):
+        ...
 
 class WindowsProxy(AbstractSystemProxy):
 
@@ -67,7 +70,7 @@ class WindowsProxy(AbstractSystemProxy):
         if not os.path.exists(self.path):
             return "path_not_found"
         terminal_name = self.terminal_name
-        command = f'''cd "{self.path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{self.command}')"'''
+        command = f'''cd "{self.path}"&&start cmd.exe cmd /C "title {terminal_name}&&{self.command}"'''
         os.popen(command)
         return "success"
     
@@ -83,3 +86,6 @@ class WindowsProxy(AbstractSystemProxy):
     
     def stop(self):
         return "unavailable_windows"
+    
+    def kill(self):
+        ...
