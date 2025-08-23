@@ -116,14 +116,15 @@ mirror_mcsmcdr:
       skip_dictionary: "§b{server_name}§c的以下文件目录不存在, 已跳过: §f`§7{paths}§f`"
       completed: §a同步完成! §f用时 §b{time}s §7/ §f更新了§b{changed_files_count}§f个文件
       identical: §a文件完全相同, 无需同步
-      error: "§c同步时发生错误, 请报告管理员: {e}"
+      error: "§c同步时发生错误, 请前往终端查看错误信息"
   
   mcsm:
     disabled: §cMCSM-API未启用
     error:
       request: "§cMCSM请求错误, 请报告管理员: §4{e}"
-      unknown: "§c未知错误, 请报告管理员: §4{e}"
       "400": "[400] 请求参数错误, 请尝试前往GitHub提交issue以解决({error})"
       "403": "[403] 请求权限不足, 请报告服务器管理员({error})"
       "500": "[500] 未知的服务器内部错误({error})"
       "503": "[503] 请求过于频繁"
+  
+  error.unknown: §c未知错误, 请前往终端查看错误信息

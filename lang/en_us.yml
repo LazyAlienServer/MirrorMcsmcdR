@@ -116,14 +116,15 @@ mirror_mcsmcdr:
       skip_dictionary: "Cannot find the following directories below §b{server_name}§c, so MirrorMcsmcdr skipped it: §f`§7{paths}§f`"
       completed: §aSynchronization completed!! §fTime taken | §b{time}s §7/ §f§b{changed_files_count}§f files updated
       identical: §aNo changes detected
-      error: "§cAn error occurred while syncing, please report this problem to operators: {e}"
+      error: "§cAn error occurred while syncing, please check the console for details"
   
   mcsm:
     disabled: §cMCSM-API is disabled
     error:
       request: "§cMCSM request error, please report this problem to operators: §4{e}"
-      unknown: "§cUnknown error, please report this problem to operators: §4{e}"
       "400": "[400] Bad Request, please visit GitHub to submit the issue ({error})"
       "403": "[403] Forbidden, please report this problem to operators ({error})"
       "500": "[500] Internal Server Error ({error})"
       "503": "[503] Server Unavailable"
+  
+  error.unknown: §cUnknown error, please check the console for details

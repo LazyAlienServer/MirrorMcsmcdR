@@ -21,7 +21,7 @@ def catch_api_error(func):
         except MCSManagerProxyError as e:
             source.reply(rtr("mcsm.error.request", e=e))
         except Exception as e:
-            source.reply(rtr("mcsm.error.unknown", e=e))
+            source.reply(rtr("error.unknown"))
             raise e
 
     return wrapper
@@ -457,11 +457,13 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                 else self.rtr("command.sync.identical")
             )
         except Exception as e:
-            self.server.broadcast(self.rtr("command.sync.error", e=e))
-        self.sync_flag = False
+            self.server.broadcast(self.rtr("command.sync.error"))
+            self.server.logger.error(e, exc_info=e)
+        finally:
+            self.sync_flag = False
 
-        if auto_restart_flag:
-            self.start(source, context)
+            if auto_restart_flag:
+                self.start(source, context)
 
     def confirm(self, source: CommandSource, context: CommandContext):
         operator = source.player if source.is_player else "[console]"
