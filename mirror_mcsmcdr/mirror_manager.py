@@ -2,10 +2,10 @@ import re
 import time
 from copy import deepcopy
 from threading import Event, Timer
-from typing import Callable, Dict, Optional, TypedDict
+from typing import Callable, Dict, Optional, TypedDict, Union
 
-from mcdreforged.api.all import CommandContext, CommandSource, Info, PluginServerInterface, RAction, RColor, RText, RTextList, SimpleCommandBuilder, new_thread
-
+from mcdreforged.api.all import CommandContext, CommandSource, Info, PluginServerInterface, RAction, RColor, RText, \
+    RTextList, SimpleCommandBuilder, new_thread
 
 from mirror_mcsmcdr.constants import DEFAULT_CONFIG, TITLE
 from mirror_mcsmcdr.utils.display_utils import help_msg, rtr
@@ -183,8 +183,9 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             self.server_api = ServerProxy()
             for proxy in self.server_api.proxies:
                 try:
-                    getattr(self.server_api, "set_%s" %
-                            proxy)(**self.config[proxy])
+                    _: Union[ServerProxy.set_terminal,
+                    ServerProxy.set_mcsm,
+                    ServerProxy.set_rcon, None] = getattr(self.server_api, "set_%s" % proxy)(**self.config[proxy])
                 except ProxySettingException as e:
                     self.server.broadcast(
                         self.rtr(
@@ -235,6 +236,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             return False
         return True
 
+    @new_thread("{TITLE}-execute")
     @catch_api_error
     def _execute(
         self, source: CommandSource, command: str, available_status: list
@@ -244,7 +246,11 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             source.reply(self.rtr(f"command.status.fail.{status_code}"))
             return False
         if status_code in available_status:
-            rep = getattr(self.server_api, command)()
+            rep: Union[ServerProxy.start,
+            ServerProxy.stop,
+            ServerProxy.status,
+            ServerProxy.kill,
+            ServerProxy.forcekill, None] = getattr(self.server_api, command)()
             if rep == "success":
                 self.server.broadcast(
                     self.rtr(
@@ -267,7 +273,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         return False
 
     def status_available(self, status):
-        return status in ["unknown", "stopped", "stopping", "starting", "running"]
+        return status in ["unknown", "stopped", "stopping", "starting", "running", "detached_java", "detached_screen"]
 
     def pre_check(
         self,
@@ -318,12 +324,11 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             return
         status_code = self.server_api.status()
         flag = "success" if self.status_available(status_code) else "fail"
+        prompt = self.rtr(f"command.status.{flag}.{status_code}", title=False).to_legacy_text()
         self.server.broadcast(
             self.rtr(
                 f"command._execute.{flag}",
-                prompt=self.rtr(
-                    f"command.status.{flag}.{status_code}", title=False
-                ).to_legacy_text(),
+                prompt=prompt,
             )
         )
 
@@ -340,7 +345,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
     def kill(self, source: CommandSource, context: CommandContext, confirm=False):
         if not self.pre_check("kill", source, context, confirm):
             return
-        return self._execute(source, "kill", ["stopping", "starting", "running"])
+        return self._execute(source, "kill", ["stopping", "starting", "running", "detached_java", "detached_screen"])
 
     @new_thread(f"{TITLE}-sync")
     @catch_api_error

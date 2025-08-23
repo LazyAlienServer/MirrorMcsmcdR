@@ -1,6 +1,6 @@
 from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxy
 from mirror_mcsmcdr.utils.proxy.rcon_proxy import RConProxy
-from mirror_mcsmcdr.utils.proxy.system_proxy import SystemProxy
+from mirror_mcsmcdr.utils.proxy.system_proxy import SystemProxy, LinuxProxy
 import platform
 from typing import List, Union, Optional, Literal
 
@@ -63,7 +63,9 @@ class ServerProxy:
             status = self.rcon.status()
             if status == "stopped" and self.terminal:
                 status_sys = self.terminal.status()
-                return "stopped" if status == status_sys else "rcon_status_mismatch"
+                if status_sys in ["detached_java", "detached_screen"]:
+                    return status_sys
+                return "stopped" if status_sys == "stopped" else "rcon_status_mismatch"
             return status
         return self.terminal.status() if self.terminal else "unavailable"
     
@@ -82,10 +84,12 @@ class ServerProxy:
         if self.terminal:
             return self.terminal.stop()
         return "unavailable"
-    
+
     def kill(self):
         if self.mcsm:
             return self.mcsm.kill()
+        if self.terminal and isinstance(self.terminal.system_api, LinuxProxy):
+            return self.terminal.kill()
         return "unavailable"
     
     def forcekill(self):
