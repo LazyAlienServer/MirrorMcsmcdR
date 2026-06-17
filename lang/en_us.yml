@@ -16,6 +16,7 @@ mirror_mcsmcdr:
       fail.unavailable_system: "§cterminal disabled: system {system} unsupported§7 ({prefix})"
     permission_denied: §b{server_name}§c Permission denied
     mcsm_disabled: §cMCSM-API is disabled
+    mcsm_disabled: §cMCSM-API is disabled
     unavailable: §cConfig error, §4{prefix}§c instance disabled
   
   command:
@@ -58,8 +59,6 @@ mirror_mcsmcdr:
         stopping: stopping
         starting: starting
         running: running
-        detached_java: "§cProcesses detached: Java not running, Screen running"
-        detached_screen: "§cProcesses detached: Java running, Screen not running"
 
     start:
       fail:
