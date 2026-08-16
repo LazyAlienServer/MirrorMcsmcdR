@@ -113,6 +113,7 @@ class MultiMirrorManager:  # The manager at large which manage multi single mirr
 class ConfirmationInfoDict(TypedDict):
     action: str
     timer: Timer
+    callback_kwargs: dict
 
 
 class MirrorManager:  # The single mirror server manager which manages a specific mirror server
@@ -148,6 +149,14 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         builder.command(f"{command_prefix} start", self.start)
         builder.command(f"{command_prefix} stop", self.stop)
         builder.command(f"{command_prefix} kill", self.kill)
+        builder.command(
+            f"{command_prefix} kill -f",
+            lambda source, context: self.kill(source, context, force=True),
+        )
+        builder.command(
+            f"{command_prefix} kill --force",
+            lambda source, context: self.kill(source, context, force=True),
+        )
         builder.command(f"{command_prefix} sync", self.sync)
         builder.command(f"{command_prefix} confirm", self.confirm)
         builder.register(server)
@@ -239,7 +248,8 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
     @new_thread("{TITLE}-execute")
     @catch_api_error
     def _execute(
-        self, source: CommandSource, command: str, available_status: list
+        self, source: CommandSource, command: str, available_status: list,
+        backend_command: Optional[str] = None,
     ):  # <failed_prompt> & <succeeded_prompt> : {status_code: "prompt"}
         status_code = self.server_api.status()
         if not self.status_available(status_code):
@@ -250,7 +260,9 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             ServerProxy.stop,
             ServerProxy.status,
             ServerProxy.kill,
-            ServerProxy.forcekill, None] = getattr(self.server_api, command)()
+            ServerProxy.forcekill, None] = getattr(
+                self.server_api, backend_command or command
+            )()
             if rep == "success":
                 self.server.broadcast(
                     self.rtr(
@@ -281,6 +293,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         source: CommandSource,
         context: CommandContext,
         confirm=False,
+        confirmation_kwargs: Optional[dict] = None,
     ):
         if not self.manager_available:
             source.reply(self.rtr("manager.unavailable"))
@@ -306,7 +319,11 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                 self.confirm_timer,
                 args=[source, context, operator],
             )
-            self.confirmation[operator] = {"action": command, "timer": timer}
+            self.confirmation[operator] = {
+                "action": command,
+                "timer": timer,
+                "callback_kwargs": confirmation_kwargs or {},
+            }
             timer.start()
 
             run_command = f"{self.command_prefix} confirm"
@@ -342,10 +359,21 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             return
         return self._execute(source, "stop", ["running"])
 
-    def kill(self, source: CommandSource, context: CommandContext, confirm=False):
-        if not self.pre_check("kill", source, context, confirm):
+    def kill(
+        self, source: CommandSource, context: CommandContext, confirm=False,
+        force=False,
+    ):
+        if not self.pre_check(
+            "kill", source, context, confirm,
+            confirmation_kwargs={"force": force},
+        ):
             return
-        return self._execute(source, "kill", ["stopping", "starting", "running", "detached_java", "detached_screen"])
+        return self._execute(
+            source,
+            "kill",
+            ["stopping", "starting", "running", "detached_java", "detached_screen"],
+            "forcekill" if force else None,
+        )
 
     @new_thread(f"{TITLE}-sync")
     @catch_api_error
@@ -492,7 +520,11 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         self.confirmation[operator]["timer"].cancel()
         if source != None and context != None:
             getattr(self, self.confirmation[operator]["action"])(
-                source, context, True)
+                source,
+                context,
+                True,
+                **self.confirmation[operator]["callback_kwargs"],
+            )
         self.confirmation.pop(operator)
 
     def on_info(self, _: PluginServerInterface, info: Info):

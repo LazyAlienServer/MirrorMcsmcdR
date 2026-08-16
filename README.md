@@ -39,7 +39,9 @@
 
 `!!mirror stop` 停止镜像服实例
 
-`!!mirror kill` 强制终止镜像服实例
+`!!mirror kill` 终止镜像服实例
+
+`!!mirror kill -f` 或 `!!mirror kill --force` 强制终止镜像服实例（仅Linux terminal）
 
 `!!mirror sync` 进行文件同步
 
@@ -141,6 +143,7 @@
     "port": null,
     "terminal_name": "Mirror",
     "regex_strict": false,
+    "is_mcdr": true,
     "system": null
 }
 ```
@@ -172,6 +175,11 @@
 
 **regex_strict** `bool`
 - 在通过端口检查镜像服运行状态时，是否在找到端口后继续验证进程名必须为`java.exe`。一般情况下无需开启。若不同的进程在不同时间可能同时占用了设置的端口，例如在某一时间段Minecraft运行在端口`port`上，另一时间段有其他程序运行在端口`port`上而Minecraft没有运行，那么此选项可以一定程度上避免将其他进程误判为java进程。
+
+**is_mcdr** `bool`
+- 是否通过MCDReforged启动镜像服，默认为`true`。为`true`时，`stop`和`kill`会向screen输入`!!MCDR server stop_exit`和`!!MCDR server kill`；为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。
+
+`!!mirror kill -f`和`!!mirror kill --force`仅适用于Linux terminal。它们会杀死配置端口的所有监听进程，再关闭screen；请确认`port`配置正确，避免终止其他服务。
 
 **system** `str`
 - 系统类型，若为`null`则将自动获取系统类型。可选：`Linux` `Windows`（需首字母大写）
@@ -407,6 +415,7 @@ mcdr_root (./)
             "port": null,
             "terminal_name": "Mirror",
             "regex_strict": false,
+            "is_mcdr": true,
             "system": null
         },
         "rcon": {

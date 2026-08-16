@@ -43,18 +43,24 @@ class ServerProxy:
             raise ProxySettingException("rcon", [key for key, value in kwargs.items() if not bool(value)])
         
     
-    def set_terminal(self, enable, regex_strict: bool, system: Optional[str] = None, **kwargs):
-        if enable and not sum(map(lambda x : not bool(x), kwargs.values())) and type(regex_strict) == bool:
+    def set_terminal(self, enable, regex_strict: bool, is_mcdr: bool = True, system: Optional[str] = None, **kwargs):
+        missing_keys = [key for key, value in kwargs.items() if not bool(value)]
+        if enable and not missing_keys and type(regex_strict) == bool and type(is_mcdr) == bool:
             if not system:
                 system = platform.system()
                 if system not in ["Linux", "Windows"]:
                     self.terminal = False
                     raise TerminalSettingException(system)
-            self.terminal = SystemProxy(**kwargs, regex_strict = regex_strict, system = system)
+            self.terminal = SystemProxy(**kwargs, regex_strict = regex_strict, is_mcdr = is_mcdr, system = system)
             return True
         if enable:
             self.terminal = False
-            raise ProxySettingException("terminal", [key for key, value in kwargs.items() if not bool(value)] + ["regex_strict"] if type(regex_strict) != bool else [])
+            invalid_keys = missing_keys
+            if type(regex_strict) != bool:
+                invalid_keys.append("regex_strict")
+            if type(is_mcdr) != bool:
+                invalid_keys.append("is_mcdr")
+            raise ProxySettingException("terminal", invalid_keys)
     
     def status(self):
         if self.mcsm:
@@ -93,4 +99,6 @@ class ServerProxy:
         return "unavailable"
     
     def forcekill(self):
-        ...
+        if self.terminal and isinstance(self.terminal.system_api, LinuxProxy):
+            return self.terminal.forcekill()
+        return "unavailable"

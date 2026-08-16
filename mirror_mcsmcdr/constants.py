@@ -14,6 +14,7 @@ DEFAULT_CONFIG = {
             "port": None,
             "terminal_name": "Mirror",
             "regex_strict": False,
+            "is_mcdr": True,
             "system": None
         },
         "rcon": {

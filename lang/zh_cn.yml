@@ -30,7 +30,7 @@ mirror_mcsmcdr:
       status: §7{prefix} status §f查看{server_name}状态
       start: §7{prefix} start §f启动{server_name}
       stop: §7{prefix} stop §f停止{server_name}
-      kill: §7{prefix} kill §f强制终止{server_name}
+      kill: §7{prefix} kill [-f|--force] §f终止{server_name}
       sync: §7{prefix} sync §f同步{server_name}
       reload: §7{prefix} reload §f重载{server_name}配置文件
 
@@ -91,12 +91,13 @@ mirror_mcsmcdr:
       fail:
         unknown: 状态未知, 请报告管理员
         stopped: 已停止
-        unavailable: 当前配置文件不支持kill命令, 需要配置MCSM
+        unavailable: 当前配置文件不支持kill命令, 需要配置MCSM或Linux terminal
       success:
         stopping: 强制终止...
         starting: 强制终止...
         running: 强制终止...
         detached_java: 强制终止Screen...
+        detached_screen: 强制终止残留进程...
 
     sync:
       fail:

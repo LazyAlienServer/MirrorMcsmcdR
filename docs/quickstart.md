@@ -16,7 +16,9 @@
 
 `!!mirror stop` 停止镜像服实例
 
-`!!mirror kill` 强制终止镜像服实例
+`!!mirror kill` 终止镜像服实例
+
+`!!mirror kill -f` 或 `!!mirror kill --force` 强制终止镜像服实例（仅Linux terminal）
 
 `!!mirror sync` 进行文件同步
 
@@ -104,6 +106,7 @@
     "port": null,
     "terminal_name": "Mirror",
     "regex_strict": false,
+    "is_mcdr": true,
     "system": null
 }
 ```
@@ -126,7 +129,7 @@ mcdr_root
 
 与其他镜像服插件不同的是，此插件在启动镜像服时，会创建一个新的终端（Windows）或screen（Linux）。`terminal_name`即为这一终端的标题或这一screen的名称，方便运维。实现方式参见[README-通过命令行启动镜像服终端](../README.md#terminal-通过命令行启动镜像服终端的配置)
 
-`regex_strict`与`system`一般无需修改。`system`默认为`null`时，插件会自动获取操作系统。只有当插件获取操作系统出错时才需要认为配置。有关`regex_strict`的详细信息参见[README-通过命令行启动镜像服终端](../README.md#terminal-通过命令行启动镜像服终端的配置)。
+`regex_strict`、`is_mcdr`与`system`一般无需修改。`is_mcdr`默认为`true`，表示镜像服由MCDReforged启动；`system`默认为`null`时，插件会自动获取操作系统。有关这些配置的详细信息参见[README-通过命令行启动镜像服终端](../README.md#terminal-通过命令行启动镜像服终端的配置)。Linux terminal下可使用`!!mirror kill -f`或`!!mirror kill --force`清理端口监听进程和screen，请确认端口配置正确。
 
 至此，**对于Linux用户**，你可以跳至[存档同步](#存档同步)来进行下一步了，或选择性地继续查看`rcon`配置。**对于Windows用户**，请继续配置`rcon`。
 
