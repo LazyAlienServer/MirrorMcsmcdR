@@ -2,7 +2,7 @@ import re
 import time
 from copy import deepcopy
 from threading import Event, Timer
-from typing import Callable, Dict, Optional, TypedDict, Union
+from typing import Callable, Dict, Optional, TypedDict, Union, cast, Any
 
 from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PluginServerInterface, RAction, RColor, RText, \
     RTextList, SimpleCommandBuilder, new_thread
@@ -186,9 +186,14 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             self.server_api = ServerProxy()
             for proxy in self.server_api.proxies:
                 try:
-                    _: Union[ServerProxy.set_terminal,
-                    ServerProxy.set_mcsm,
-                    ServerProxy.set_rcon, None] = getattr(self.server_api, "set_%s" % proxy)(**self.config[proxy])
+                    _obj = getattr(self.server_api, f"set_{proxy}", None)
+                    if not callable(_obj):
+                        raise ProxySettingException(
+                            proxy,
+                            missing_keys=[f"set_{proxy}"]
+                        )
+                    _ = cast(Callable[..., Any], _obj)
+                    _(**self.config[proxy])
                 except ProxySettingException as e:
                     self.server.broadcast(
                         self.rtr(
@@ -250,13 +255,15 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             source.reply(self.rtr(f"command.status.fail.{status_code}"))
             return False
         if status_code in available_status:
-            rep: Union[ServerProxy.start,
-            ServerProxy.stop,
-            ServerProxy.status,
-            ServerProxy.kill,
-            ServerProxy.forcekill, None] = getattr(
-                self.server_api, backend_command or command
-            )()
+            action_name = backend_command or command
+            action_obj = getattr(self.server_api, action_name, None)
+            if not callable(action_obj):
+                raise ProxySettingException(
+                    action_name,
+                    missing_keys=[action_name],
+                )
+            action = cast(Callable[[], Optional[str]], action_obj)
+            rep: Optional[str] = action()
             if rep == "success":
                 self.server.broadcast(
                     self.rtr(
