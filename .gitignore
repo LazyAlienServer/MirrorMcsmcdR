@@ -1,4 +1,15 @@
+# Idea
 .idea/
+
+
+# 自动生成的 Python 字节码缓存目录（Python 3+）
 __pycache__/
+
+# 匹配并忽略所有 Python 编译文件（.pyc、.pyo、.pyd）
 *.py[cod]
+
+# PID
 mirror.pid
+
+# 测试
+tests/

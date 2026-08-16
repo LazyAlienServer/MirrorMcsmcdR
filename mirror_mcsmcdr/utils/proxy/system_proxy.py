@@ -104,10 +104,17 @@ class LinuxProxy(AbstractSystemProxy):
         return "success"
 
     def kill(self):
-        if self.is_mcdr:
-            self.screen.kill()
-        else:
+        if not self.is_mcdr:
             return self.forcekill()
+        status = self.status()
+        if status == "detached_screen":
+            return "force_required"
+        if status == "detached_java":
+            self.screen.forcekill()
+            return "success"
+        if status == "stopped":
+            return "stopped"
+        self.screen.kill()
         return "success"
 
     def forcekill(self):
