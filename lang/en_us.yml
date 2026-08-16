@@ -92,6 +92,7 @@ mirror_mcsmcdr:
         unknown: status unknown, please report this problem to operators
         stopped: stopped
         unavailable: Current config does not support kill command. You need to configure MCSM or Linux terminal
+        force_required: Screen is unavailable. Use {prefix} kill -f to forcefully terminate the remaining process
       success:
         stopping: forced termination in progress...
         starting: forced termination in progress...

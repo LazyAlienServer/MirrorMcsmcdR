@@ -92,6 +92,7 @@ mirror_mcsmcdr:
         unknown: 状态未知, 请报告管理员
         stopped: 已停止
         unavailable: 当前配置文件不支持kill命令, 需要配置MCSM或Linux terminal
+        force_required: Screen已不存在, 请使用{prefix} kill -f强制终止残留进程
       success:
         stopping: 强制终止...
         starting: 强制终止...
