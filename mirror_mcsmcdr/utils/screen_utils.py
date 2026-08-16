@@ -100,15 +100,16 @@ class Screen:
         os.popen(command)
 
     @_check_existence_decorator()
-    def stop(self):
-        os.popen(f'screen -x -S {self.pid}.{self.name} -p 0 -X stuff "\nstop\n"')
-        if os.path.exists(self.pid_path):
-            os.remove(self.pid_path)
-        self.pid = None
+    def stop(self, is_mcdr: bool = True):
+        command = "!!MCDR server stop_exit" if is_mcdr else "stop"
+        os.popen(f'screen -x -S {self.pid}.{self.name} -p 0 -X stuff "{command}\n"')
 
     @_check_existence_decorator()
     def kill(self):
+        os.popen(
+            f'screen -x -S {self.pid}.{self.name} -p 0 -X stuff "!!MCDR server kill\n"'
+        )
+
+    @_check_existence_decorator()
+    def forcekill(self):
         os.popen(f'screen -S {self.pid}.{self.name} -X quit')
-        if os.path.exists(self.pid_path):
-            os.remove(self.pid_path)
-        self.pid = None

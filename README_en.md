@@ -39,7 +39,9 @@ The default command prefix is `!!mirror`. When controlling multiple mirror serve
 
 `!!mirror stop` Stops the mirror server instance
 
-`!!mirror kill` Forcefully terminates the mirror server instance
+`!!mirror kill` Terminates the mirror server instance
+
+`!!mirror kill -f` or `!!mirror kill --force` Forcefully terminates the mirror server instance (Linux terminal only)
 
 `!!mirror sync` Synchronizes files
 
@@ -141,6 +143,7 @@ After enabling MCSM, the terminal and RCON will be disabled.
     "port": null,
     "terminal_name": "Mirror",
     "regex_strict": false,
+    "is_mcdr": true,
     "system": null
 }
 ```
@@ -172,6 +175,11 @@ Note: Under Linux system, the plugin can close the mirror server through the scr
 
 **regex_strict** `bool`
 - Whether to continue to verify if the process name must be `java.exe` after finding the port when checking the running status of the mirror server. Generally, there is no need to turn it on. If different processes may run on the same port at different times, for example, during a certain period, Minecraft runs on port `port`, and during another period, another program runs on port `port` while Minecraft is not running, then to a certain extent this option can avoid misjudging other processes as java processes.
+
+**is_mcdr** `bool`
+- Whether the mirror server is started by MCDReforged. Defaults to `true`. When `true`, `stop` and `kill` send `!!MCDR server stop_exit` and `!!MCDR server kill` to screen; when `false`, `stop` sends Minecraft's `stop` command and `kill` immediately performs a force kill.
+
+`!!mirror kill -f` and `!!mirror kill --force` are only available for Linux terminal control. They kill every process listening on the configured port, then close screen; confirm that `port` is correct before using them.
 
 **system** `str`
 - System type, if it is `null`, the system type will be automatically obtained. Optional: `Linux` `Windows` (the first letter should be capitalized)
@@ -406,6 +414,7 @@ Players can only confirm the commands they have executed
             "port": null,
             "terminal_name": "Mirror",
             "regex_strict": false,
+            "is_mcdr": true,
             "system": null
         },
         "rcon": {

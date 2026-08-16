@@ -1,5 +1,6 @@
 import os
 import re
+import signal
 from abc import ABC, abstractmethod
 from typing import Union
 
@@ -8,9 +9,11 @@ from mirror_mcsmcdr.utils.screen_utils import Screen
 
 class AbstractSystemProxy(ABC):
 
-    def __init__(self, terminal_name: str, path: str, command: str, port: int, regex_strict: bool) -> None:
+    def __init__(self, terminal_name: str, path: str, command: str, port: int, regex_strict: bool,
+                 is_mcdr: bool = True) -> None:
         self.terminal_name, self.path, self.command = terminal_name, path, command
         self.port, self.regex_strict =  port, regex_strict
+        self.is_mcdr = is_mcdr
     
     @abstractmethod
     def start(self) -> str:
@@ -28,17 +31,21 @@ class AbstractSystemProxy(ABC):
     def kill(self) -> str:
         ...
 
+    @abstractmethod
+    def forcekill(self) -> str:
+        ...
+
 
 class SystemProxy(AbstractSystemProxy):
 
     def __init__(self, terminal_name: str, launch_path: str, launch_command: str, port: int, regex_strict: bool,
-                 system: str) -> None:
-        super().__init__(terminal_name, launch_path, launch_command, port, regex_strict)
+                 system: str, is_mcdr: bool = True) -> None:
+        super().__init__(terminal_name, launch_path, launch_command, port, regex_strict, is_mcdr)
         self.system_api: Union[LinuxProxy, WindowsProxy]
         if system == "Linux":
-            self.system_api = LinuxProxy(terminal_name, launch_path, launch_command, port, regex_strict)
+            self.system_api = LinuxProxy(terminal_name, launch_path, launch_command, port, regex_strict, is_mcdr)
         elif system == "Windows":
-            self.system_api = WindowsProxy(terminal_name, launch_path, launch_command, port, regex_strict)
+            self.system_api = WindowsProxy(terminal_name, launch_path, launch_command, port, regex_strict, is_mcdr)
 
     def start(self):
         return self.system_api.start()
@@ -52,12 +59,15 @@ class SystemProxy(AbstractSystemProxy):
     def kill(self):
         return self.system_api.kill()
 
+    def forcekill(self):
+        return self.system_api.forcekill()
+
 
 class LinuxProxy(AbstractSystemProxy):
 
     def __init__(self, terminal_name: str, launch_path: str, launch_command: str, port: int,
-                 regex_strict: bool) -> None:
-        super().__init__(terminal_name, launch_path, launch_command, port, regex_strict)
+                 regex_strict: bool, is_mcdr: bool = True) -> None:
+        super().__init__(terminal_name, launch_path, launch_command, port, regex_strict, is_mcdr)
         self.screen: Union[Screen] = Screen(self)
 
     def create_screen(self):
@@ -90,13 +100,29 @@ class LinuxProxy(AbstractSystemProxy):
             return "stopped"
 
     def stop(self):
-        # command = f'screen -x -S {self.terminal_name} -p 0 -X stuff "\nstop\n"'
-        # os.popen(command)
-        self.screen.stop()
+        self.screen.stop(self.is_mcdr)
         return "success"
 
     def kill(self):
-        self.screen.kill()
+        if self.is_mcdr:
+            self.screen.kill()
+        else:
+            return self.forcekill()
+        return "success"
+
+    def forcekill(self):
+        text = os.popen(
+            f"lsof -t -iTCP:{self.port} -sTCP:LISTEN"
+        ).read()
+        try:
+            for pid in {int(pid) for pid in text.split() if pid.isdigit()}:
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+        finally:
+            if self.screen.check_existence():
+                self.screen.forcekill()
         return "success"
 
 
@@ -125,3 +151,6 @@ class WindowsProxy(AbstractSystemProxy):
     
     def kill(self):
         ...
+
+    def forcekill(self):
+        return "unavailable_windows"
