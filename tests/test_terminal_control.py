@@ -142,11 +142,11 @@ class TerminalSettingTest(unittest.TestCase):
 
 
 class CommandRegistrationTest(unittest.TestCase):
-    def test_force_kill_aliases_are_registered(self):
+    def test_force_kill_aliases_share_one_literal_node(self):
         source = Path("mirror_mcsmcdr/mirror_manager.py").read_text(encoding="utf-8")
 
-        self.assertIn('builder.command(\n            f"{command_prefix} kill -f"', source)
-        self.assertIn('builder.command(\n            f"{command_prefix} kill --force"', source)
+        self.assertIn('builder.literal("-f", lambda _: Literal(("-f", "--force")))', source)
+        self.assertIn('builder.command(f"{command_prefix} kill -f", self.force_kill)', source)
 
 
 if __name__ == "__main__":

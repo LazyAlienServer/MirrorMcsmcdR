@@ -4,7 +4,7 @@ from copy import deepcopy
 from threading import Event, Timer
 from typing import Callable, Dict, Optional, TypedDict, Union
 
-from mcdreforged.api.all import CommandContext, CommandSource, Info, PluginServerInterface, RAction, RColor, RText, \
+from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PluginServerInterface, RAction, RColor, RText, \
     RTextList, SimpleCommandBuilder, new_thread
 
 from mirror_mcsmcdr.constants import DEFAULT_CONFIG, TITLE
@@ -149,14 +149,8 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         builder.command(f"{command_prefix} start", self.start)
         builder.command(f"{command_prefix} stop", self.stop)
         builder.command(f"{command_prefix} kill", self.kill)
-        builder.command(
-            f"{command_prefix} kill -f",
-            lambda source, context: self.kill(source, context, force=True),
-        )
-        builder.command(
-            f"{command_prefix} kill --force",
-            lambda source, context: self.kill(source, context, force=True),
-        )
+        builder.literal("-f", lambda _: Literal(("-f", "--force")))
+        builder.command(f"{command_prefix} kill -f", self.force_kill)
         builder.command(f"{command_prefix} sync", self.sync)
         builder.command(f"{command_prefix} confirm", self.confirm)
         builder.register(server)
@@ -374,6 +368,9 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             ["stopping", "starting", "running", "detached_java", "detached_screen"],
             "forcekill" if force else None,
         )
+
+    def force_kill(self, source: CommandSource, context: CommandContext):
+        return self.kill(source, context, force=True)
 
     @new_thread(f"{TITLE}-sync")
     @catch_api_error
