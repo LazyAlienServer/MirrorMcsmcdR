@@ -156,7 +156,9 @@
    - Linux `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
    - Windos `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{launch_command}')"`
 
-注意：在Linux系统下，插件可以通过screen关闭镜像服。在Windows系统下，你必须设置MCSM或RCON才能通过插件关闭镜像服。
+注意：Linux系统下，插件可以通过screen关闭镜像服。Windows terminal下，`stop`会向监听镜像服端口的进程发送`SIGINT`（即`Ctrl+C`命令），`kill`会使用`taskkill`强制终止该进程；请确认`port`配置正确。MCSM或RCON仍可作为替代控制方式。
+
+**在 Windows Terminal 下，直接向进程发送`SIGINT`存在一定风险。请尽可能配置 RCON ，避免产生不必要的运维成本。**
 
 **enable** `bool`
 - 是否启用终端，当MCSM未启用且此选项为`true`时将通过终端启动镜像服。
@@ -177,7 +179,7 @@
 - 在通过端口检查镜像服运行状态时，是否在找到端口后继续验证进程名必须为`java.exe`。一般情况下无需开启。若不同的进程在不同时间可能同时占用了设置的端口，例如在某一时间段Minecraft运行在端口`port`上，另一时间段有其他程序运行在端口`port`上而Minecraft没有运行，那么此选项可以一定程度上避免将其他进程误判为java进程。
 
 **is_mcdr** `bool`
-- 是否通过MCDReforged启动镜像服，默认为`true`。为`true`时，`stop`和`kill`会向screen输入`!!MCDR server stop_exit`和`!!MCDR server kill`；为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。
+- 是否通过MCDReforged启动镜像服，默认为`true`。Linux系统下为`true`时，`stop`和`kill`会向screen输入`!!MCDR server stop_exit`和`!!MCDR server kill`；为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。Windows terminal下，`stop`使用`SIGINT`，`kill`使用`taskkill`强制终止监听端口的进程。
 
 `!!mirror kill -f`和`!!mirror kill --force`仅适用于Linux terminal。它们会杀死配置端口的所有监听进程，再关闭screen；请确认`port`配置正确，避免终止其他服务。
 

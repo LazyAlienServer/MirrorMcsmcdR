@@ -156,7 +156,9 @@ If you cannot start the mirror server with this command, try the following steps
    - Linux `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
    - Windows `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{launch_command}')"`
 
-Note: Under Linux system, the plugin can close the mirror server through the screen. Under Windows system, you must set MCSM or RCON to close the mirror server through the plugin.
+Note: Under Linux, the plugin can close the mirror server through screen. Under Windows terminal control, `stop` sends `SIGINT` to the process listening on the configured mirror port, and `kill` forcefully terminates that process with `taskkill`; confirm that `port` is correct. MCSM or RCON can still be used as alternative control methods.
+
+**Under Windows Terminal, sending `SIGINT` directly to a process carries some risk. Configure RCON whenever possible to avoid unnecessary operational overhead.**
 
 **enable** `bool`
 - Whether to enable the terminal. when MCSM is not enabled and this option is `true`, the mirror server will be started through the terminal.
@@ -177,7 +179,7 @@ Note: Under Linux system, the plugin can close the mirror server through the scr
 - Whether to continue to verify if the process name must be `java.exe` after finding the port when checking the running status of the mirror server. Generally, there is no need to turn it on. If different processes may run on the same port at different times, for example, during a certain period, Minecraft runs on port `port`, and during another period, another program runs on port `port` while Minecraft is not running, then to a certain extent this option can avoid misjudging other processes as java processes.
 
 **is_mcdr** `bool`
-- Whether the mirror server is started by MCDReforged. Defaults to `true`. When `true`, `stop` and `kill` send `!!MCDR server stop_exit` and `!!MCDR server kill` to screen; when `false`, `stop` sends Minecraft's `stop` command and `kill` immediately performs a force kill.
+- Whether the mirror server is started by MCDReforged. Defaults to `true`. Under Linux, when `true`, `stop` and `kill` send `!!MCDR server stop_exit` and `!!MCDR server kill` to screen; when `false`, `stop` sends Minecraft's `stop` command and `kill` immediately performs a force kill. Under Windows terminal control, `stop` uses `SIGINT` and `kill` uses `taskkill` to forcefully terminate the process listening on the configured port.
 
 `!!mirror kill -f` and `!!mirror kill --force` are only available for Linux terminal control. They kill every process listening on the configured port, then close screen; confirm that `port` is correct before using them.
 
