@@ -16,7 +16,6 @@ mirror_mcsmcdr:
       fail.unavailable_system: "§cterminal disabled: system {system} unsupported§7 ({prefix})"
     permission_denied: §b{server_name}§c Permission denied
     mcsm_disabled: §cMCSM-API is disabled
-    mcsm_disabled: §cMCSM-API is disabled
     unavailable: §cConfig error, §4{prefix}§c instance disabled
   
   command:
@@ -79,8 +78,7 @@ mirror_mcsmcdr:
         stopped: stopped
         stopping: stopping, please wait for a moment
         starting: starting, please stop after §b{server_name}§c started
-        unavailable: " Current config does not support stop command. You need to configure MCSM or RCON"
-        unavailable_windows: " Windows system does not support execute stop command from terminal. You need to configure MCSM or RCON"
+        unavailable: " Current config does not support stop command. You need to configure MCSM, RCON, or terminal"
         detached_java: " Cannot stop, Screen is running without Java; please try the kill command"
         detached_screen: " Cannot stop, Java is running without Screen; please close the Java process in the console first"
       success:

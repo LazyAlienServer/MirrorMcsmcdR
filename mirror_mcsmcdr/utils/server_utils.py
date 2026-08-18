@@ -3,6 +3,7 @@ from mirror_mcsmcdr.utils.proxy.rcon_proxy import RConProxy
 from mirror_mcsmcdr.utils.proxy.system_proxy import SystemProxy, LinuxProxy
 import platform
 from typing import List, Union, Optional, Literal
+from mirror_mcsmcdr.utils.status import ServerStatus
 
 class ProxySettingException(Exception):
 
@@ -62,25 +63,25 @@ class ServerProxy:
                 invalid_keys.append("is_mcdr")
             raise ProxySettingException("terminal", invalid_keys)
     
-    def status(self):
+    def status(self) -> ServerStatus:
         if self.mcsm:
             return self.mcsm.status()
         if self.rcon:
             status = self.rcon.status()
-            if status == "stopped" and self.terminal:
+            if status == ServerStatus.STOPPED and self.terminal:
                 status_sys = self.terminal.status()
-                if status_sys in ["detached_java", "detached_screen"]:
+                if status_sys in (ServerStatus.DETACHED_JAVA, ServerStatus.DETACHED_SCREEN):
                     return status_sys
-                return "stopped" if status_sys == "stopped" else "rcon_status_mismatch"
+                return ServerStatus.STOPPED if status_sys == ServerStatus.STOPPED else ServerStatus.RCON_STATUS_MISMATCH
             return status
-        return self.terminal.status() if self.terminal else "unavailable"
+        return self.terminal.status() if self.terminal else ServerStatus.UNAVAILABLE
     
     def start(self):
         if self.mcsm:
             return self.mcsm.start()
         if self.terminal:
             return self.terminal.start()
-        return "unavailable"
+        return ServerStatus.UNAVAILABLE
     
     def stop(self):
         if self.mcsm:
@@ -89,16 +90,16 @@ class ServerProxy:
             return self.rcon.stop()
         if self.terminal:
             return self.terminal.stop()
-        return "unavailable"
+        return ServerStatus.UNAVAILABLE
 
     def kill(self):
         if self.mcsm:
             return self.mcsm.kill()
-        if self.terminal and isinstance(self.terminal.system_api, LinuxProxy):
+        if self.terminal:
             return self.terminal.kill()
-        return "unavailable"
+        return ServerStatus.UNAVAILABLE
     
     def forcekill(self):
         if self.terminal and isinstance(self.terminal.system_api, LinuxProxy):
             return self.terminal.forcekill()
-        return "unavailable"
+        return ServerStatus.UNAVAILABLE

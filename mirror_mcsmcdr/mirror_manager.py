@@ -12,6 +12,7 @@ from mirror_mcsmcdr.utils.display_utils import help_msg, rtr
 from mirror_mcsmcdr.utils.sync.classic_synchronizer import ClassicWorldSynchronizer
 from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxyError
 from mirror_mcsmcdr.utils.server_utils import ProxySettingException, ServerProxy, TerminalSettingException
+from mirror_mcsmcdr.utils.status import ServerStatus
 
 
 def catch_api_error(func):
@@ -247,11 +248,11 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
     @new_thread("{TITLE}-execute")
     @catch_api_error
     def _execute(
-        self, source: CommandSource, command: str, available_status: list,
+        self, source: CommandSource, command: str, available_status: list[ServerStatus],
         backend_command: Optional[str] = None,
     ):  # <failed_prompt> & <succeeded_prompt> : {status_code: "prompt"}
         status_code = self.server_api.status()
-        if not self.status_available(status_code):
+        if not ServerStatus.is_available(status_code):
             source.reply(self.rtr(f"command.status.fail.{status_code}"))
             return False
         if status_code in available_status:
@@ -262,8 +263,8 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                     action_name,
                     missing_keys=[action_name],
                 )
-            action = cast(Callable[[], Optional[str]], action_obj)
-            rep: Optional[str] = action()
+            action = cast(Callable[[], Optional[Union[str, ServerStatus]]], action_obj)
+            rep: Optional[Union[str, ServerStatus]] = action()
             if rep == "success":
                 self.server.broadcast(
                     self.rtr(
@@ -284,9 +285,6 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             )
         )
         return False
-
-    def status_available(self, status):
-        return status in ["unknown", "stopped", "stopping", "starting", "running", "detached_java", "detached_screen"]
 
     def pre_check(
         self,
@@ -341,7 +339,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         if not self.pre_check("status", source, context, confirm):
             return
         status_code = self.server_api.status()
-        flag = "success" if self.status_available(status_code) else "fail"
+        flag = "success" if ServerStatus.is_available(status_code) else "fail"
         prompt = self.rtr(f"command.status.{flag}.{status_code}", title=False).to_legacy_text()
         self.server.broadcast(
             self.rtr(
@@ -353,12 +351,12 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
     def start(self, source: CommandSource, context: CommandContext, confirm=False):
         if not self.pre_check("start", source, context, confirm):
             return
-        return self._execute(source, "start", ["stopped"])
+        return self._execute(source, "start", [ServerStatus.STOPPED])
 
     def stop(self, source: CommandSource, context: CommandContext, confirm=False):
         if not self.pre_check("stop", source, context, confirm):
             return
-        return self._execute(source, "stop", ["running"])
+        return self._execute(source, "stop", [ServerStatus.RUNNING])
 
     def kill(
         self, source: CommandSource, context: CommandContext, confirm=False,
@@ -372,7 +370,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         return self._execute(
             source,
             "kill",
-            ["stopping", "starting", "running", "detached_java", "detached_screen"],
+            [ServerStatus.STOPPING, ServerStatus.STARTING, ServerStatus.RUNNING, ServerStatus.DETACHED_JAVA, ServerStatus.DETACHED_SCREEN],
             "forcekill" if force else None,
         )
 
@@ -394,10 +392,10 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         if sync_action_config["ensure_server_closed"]:
             status_code = self.server_api.status()
 
-            if status_code == "stopped":
+            if status_code == ServerStatus.STOPPED:
                 pass
             elif (
-                status_code != "running"
+                status_code != ServerStatus.RUNNING
                 or not sync_action_config["auto_server_restart"]
             ):
                 source.reply(self.rtr(f"command.sync.fail.{status_code}"))
@@ -414,9 +412,9 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                 for _ in range(times):  # wait for server to stop
                     time.sleep(interval)
                     status_code = self.server_api.status()
-                    if status_code == "stopped":
+                    if status_code == ServerStatus.STOPPED:
                         break
-                    if not self.status_available(
+                    if not ServerStatus.is_available(
                         status_code
                     ):  # if status command is not available, skip and end
                         self.server.broadcast(

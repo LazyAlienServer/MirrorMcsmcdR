@@ -96,7 +96,7 @@
 
 ### 通过终端控制镜像服
 
-**注意**：如果你是Linux用户，那么你只需要配置`terminal`，而`rcon`不是必选项。如果你是Windows用户，那么你需要同时配置`terminal`和`rcon`，若不配置`rcon`则无法使用`!!mirror stop`指令。
+**注意**：Linux用户只需要配置`terminal`，`rcon`不是必选项。Windows用户也可以仅配置`terminal`：`stop`通过`SIGINT`停止监听端口的进程，`kill`通过`taskkill`强制终止该进程；`rcon`为可选的替代控制方式。
 
 ```json
 "terminal": {
@@ -129,9 +129,9 @@ mcdr_root
 
 与其他镜像服插件不同的是，此插件在启动镜像服时，会创建一个新的终端（Windows）或screen（Linux）。`terminal_name`即为这一终端的标题或这一screen的名称，方便运维。实现方式参见[README-通过命令行启动镜像服终端](../README.md#terminal-通过命令行启动镜像服终端的配置)
 
-`regex_strict`、`is_mcdr`与`system`一般无需修改。`is_mcdr`默认为`true`，表示镜像服由MCDReforged启动；`system`默认为`null`时，插件会自动获取操作系统。有关这些配置的详细信息参见[README-通过命令行启动镜像服终端](../README.md#terminal-通过命令行启动镜像服终端的配置)。Linux terminal下可使用`!!mirror kill -f`或`!!mirror kill --force`清理端口监听进程和screen，请确认端口配置正确。
+`regex_strict`、`is_mcdr`与`system`一般无需修改。`is_mcdr`默认为`true`，表示镜像服由MCDReforged启动；`system`默认为`null`时，插件会自动获取操作系统。有关这些配置的详细信息参见[README-通过命令行启动镜像服终端](../README.md#terminal-通过命令行启动镜像服终端的配置)。Linux terminal下可使用`!!mirror kill -f`或`!!mirror kill --force`清理端口监听进程和screen；Windows terminal下`stop`使用`SIGINT`，`kill`使用`taskkill`强制终止监听端口的进程，请确认`port`配置正确。
 
-至此，**对于Linux用户**，你可以跳至[存档同步](#存档同步)来进行下一步了，或选择性地继续查看`rcon`配置。**对于Windows用户**，请继续配置`rcon`。
+至此，Linux和Windows用户都可以跳至[存档同步](#存档同步)来进行下一步了，或选择性地继续查看`rcon`配置。
 
 同样的，配置完成后，你需要将`enable`设置为`true`，以真正地启用终端控制。
 

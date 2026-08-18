@@ -80,8 +80,7 @@ mirror_mcsmcdr:
         stopped: 已停止
         stopping: 正在停止, 请稍等
         starting: 正在启动, 请等待§b{server_name}§c启动后重新停止
-        unavailable: " 当前配置文件不支持stop命令, 需要配置MCSM或RCON"
-        unavailable_windows: " Windows系统不支持通过终端执行stop命令, 需要配置MCSM或RCON"
+        unavailable: " 当前配置文件不支持stop命令, 需要配置MCSM, RCON或terminal"
         detached_java: 不能停止, Screen已启动但未运行Java, 请尝试使用kill指令
         detached_screen: 不能停止, Java运行中但无Screen终端, 请先在控制台关闭正在运行的java进程
       success:

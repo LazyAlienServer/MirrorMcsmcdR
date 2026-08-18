@@ -2,6 +2,7 @@ import requests, json
 from requests import Response
 from mirror_mcsmcdr.utils.display_utils import rtr
 from abc import ABC, abstractmethod
+from mirror_mcsmcdr.utils.status import ServerStatus
 
 class HTTPProxyError(Exception):
 
@@ -15,11 +16,11 @@ class AbstractHTTPProxy(ABC):
         self.url = url if url[-1] != "/" else url[:-1]
         self.params = kwargs
         self.status_to_text = {
-            -1: "unknown",
-            0: "stopped",
-            1: "stopping",
-            2: "starting",
-            3: "running"
+            -1: ServerStatus.UNKNOWN,
+            0: ServerStatus.STOPPED,
+            1: ServerStatus.STOPPING,
+            2: ServerStatus.STARTING,
+            3: ServerStatus.RUNNING,
         }
     
     def _request(self, path: str, exception: type = HTTPProxyError):
@@ -30,7 +31,7 @@ class AbstractHTTPProxy(ABC):
             raise exception(req)
     
     @abstractmethod
-    def status(self) -> str:
+    def status(self) -> ServerStatus:
         ...
     
     @abstractmethod
@@ -64,7 +65,7 @@ class MCSManagerProxy(AbstractHTTPProxy):
     def _request(self, path: str, exception: type = MCSManagerProxyError):
         return super()._request(path, exception)
     
-    def status(self):
+    def status(self) -> ServerStatus:
         return self.status_to_text[self._request("/api/instance")["data"]["status"]]
     
     def start(self):

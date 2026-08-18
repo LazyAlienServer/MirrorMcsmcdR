@@ -100,7 +100,7 @@ Jump to [Save Synchronization](#save-synchronization) for the next step.
 
 ### Controlling the Mirror Server through the Terminal
 
-**Note**: If you are a Linux user, you only need to configure `terminal`, and `rcon` is not a required option. If you are a Windows user, you need to configure both `terminal` and `rcon`. If you do not configure `rcon`, you will not be able to use the `!!mirror stop` command.
+**Note**: Linux users only need to configure `terminal`; `rcon` is not required. Windows users can also configure only `terminal`: `stop` sends `SIGINT` to the process listening on the configured port, and `kill` forcefully terminates it with `taskkill`; `rcon` is an optional alternative control method.
 
 ```json
 "terminal": {
@@ -134,9 +134,9 @@ In the example, the mirror server is located in `mcdr_root/Mirror` and is starte
 
 Unlike other mirror server plugins, this plugin creates a new terminal (Windows) or screen (Linux) when starting the mirror server. `terminal_name` is the title of this terminal or the name of this screen, which is convenient for operation and maintenance. For implementation, see [README-Configuring the Mirror Server Terminal through the Command Line](../README_en.md#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line)
 
-`regex_strict`, `is_mcdr`, and `system` generally do not need to be modified. `is_mcdr` defaults to `true`, meaning the mirror server is started by MCDReforged; `system` is set to `null` by default, and the plugin will automatically obtain the operating system. See [README-Configuring the Mirror Server Terminal through the Command Line](../README_en.md#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) for details. On Linux terminal control, use `!!mirror kill -f` or `!!mirror kill --force` to clear the listening process and screen; confirm that the port configuration is correct first.
+`regex_strict`, `is_mcdr`, and `system` generally do not need to be modified. `is_mcdr` defaults to `true`, meaning the mirror server is started by MCDReforged; `system` defaults to `null`, and the plugin automatically detects the operating system. See [README-Configuring the Mirror Server Terminal through the Command Line](../README_en.md#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) for details. On Linux terminal control, use `!!mirror kill -f` or `!!mirror kill --force` to clear listening processes and screen. On Windows terminal control, `stop` uses `SIGINT` and `kill` uses `taskkill` to forcefully terminate the process listening on the configured port; confirm that `port` is correct.
 
-So far, **for Linux users**, you can jump to [Save Synchronization](#save-synchronization) for the next step, or optionally continue to view the `rcon` configuration. **For Windows users**, please continue to configure `rcon`.
+At this point, Linux and Windows users can jump to [Save Synchronization](#save-synchronization), or optionally continue to view the `rcon` configuration.
 
 Similarly, after the configuration is completed, you need to set `enable` to `true` to truly enable terminal control.
 
