@@ -2,7 +2,7 @@ import re
 import time
 from copy import deepcopy
 from functools import wraps
-from threading import Event, Timer
+from threading import Event, Lock, Timer
 from typing import Any, Callable, Dict, Optional, Union, cast
 
 from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PluginServerInterface, RAction, RColor, RText, RTextList, SimpleCommandBuilder, new_thread
@@ -209,8 +209,8 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         server.logger.info(rtr("manager.load", prefix=command_prefix))
         self.command_prefix = command_prefix
 
-        # init flag
-        self.sync_flag: bool = False
+        # init state
+        self.sync_lock = Lock()
         self.save_world_wait: Event = Event()
         self.save_world_wait.set()
         self.save_world_regex = re.compile(self.command_action["sync"]["save_world"]["saved_world_regex"])
@@ -396,72 +396,62 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
     @new_thread(f"{TITLE}-sync")
     @catch_api_error
     def sync(self, source: CommandSource, context: CommandContext):
-        if self.sync_flag:
+        if not self.sync_lock.acquire(blocking=False):
             source.reply(self.rtr("command.sync.fail.task_exist"))
             return
 
         auto_restart_flag = False
-        sync_action_config = self.command_action["sync"]
-        if sync_action_config["ensure_server_closed"]:
-            status_code = self.server_api.status()
-
-            if status_code == ServerStatus.STOPPED:
-                pass
-            elif status_code != ServerStatus.RUNNING or not sync_action_config["auto_server_restart"]:
-                source.reply(self.rtr(f"command.sync.fail.{status_code}"))
-                return
-            else:  # restart server
-                self.server.broadcast(self.rtr("command.sync.auto_restart.restarting"))
-                self.server_api.stop()
-                interval, times = sync_action_config["check_status_interval"], sync_action_config["max_attempt_times"]
-                for _ in range(times):  # wait for server to stop
-                    time.sleep(interval)
-                    status_code = self.server_api.status()
-                    if status_code == ServerStatus.STOPPED:
-                        break
-                    if not ServerStatus.is_available(status_code):  # if status command is not available, skip and end
-                        self.server.broadcast(self.rtr("command.sync.auto_restart.fail", status=self.rtr(f"command.status.failed.{status_code}", title=False)))
-                        return
-                else:
-                    self.server.broadcast(self.rtr("command.sync.auto_restart.fail", status=self.rtr(f"command.status.success.{status_code}", title=False)))
-                    return
-                auto_restart_flag = True
-
-        self.sync_flag = True
         try:
+            sync_action_config = self.command_action["sync"]
+            if sync_action_config["ensure_server_closed"]:
+                status_code = self.server_api.status()
+
+                if status_code == ServerStatus.STOPPED:
+                    pass
+                elif status_code != ServerStatus.RUNNING or not sync_action_config["auto_server_restart"]:
+                    source.reply(self.rtr(f"command.sync.fail.{status_code}"))
+                    return
+                else:  # restart server
+                    self.server.broadcast(self.rtr("command.sync.auto_restart.restarting"))
+                    self.server_api.stop()
+                    interval, times = sync_action_config["check_status_interval"], sync_action_config["max_attempt_times"]
+                    for _ in range(times):
+                        time.sleep(interval)
+                        status_code = self.server_api.status()
+                        if status_code == ServerStatus.STOPPED:
+                            break
+                        if not ServerStatus.is_available(status_code):
+                            self.server.broadcast(self.rtr("command.sync.auto_restart.fail", status=self.rtr(f"command.status.failed.{status_code}", title=False)))
+                            return
+                    else:
+                        self.server.broadcast(self.rtr("command.sync.auto_restart.fail", status=self.rtr(f"command.status.success.{status_code}", title=False)))
+                        return
+                    auto_restart_flag = True
+
             self.server.broadcast(self.rtr("command.sync.success"))
             t = time.time()
-
-            # save the world
             save_world_config = sync_action_config["save_world"]
             turn_off_auto_save = save_world_config["turn_off_auto_save"]
             if turn_off_auto_save:
                 self.server.execute(save_world_config["commands"]["auto_save_off"])
             self.save_world_wait.clear()
             self.server.execute(save_world_config["commands"]["save_all_worlds"])
-            self.save_world_wait.wait(timeout=save_world_config["save_world_max_wait_sec"])  # wait for finishing saving world
+            self.save_world_wait.wait(timeout=save_world_config["save_world_max_wait_sec"])
             if turn_off_auto_save:
                 self.server.execute(save_world_config["commands"]["auto_save_on"])
 
-            # sync
             changed_files_count, paths_notfound = self.world_sync.sync()
-
-            # calc time
             m, s = divmod(time.time() - t, 60)
             h, m = divmod(m, 60)
             t = ("%02d:" % h if h else "") + ("%02d:" % m if m else "") + ("%02d" % s if m or h else ("%.02f" % s).zfill(5))
             if paths_notfound:
                 self.server.broadcast(self.rtr("command.sync.skip_dictionary", paths="§f`§7".join(paths_notfound)))
-            self.server.broadcast(
-                self.rtr("command.sync.completed", time=t, changed_files_count=changed_files_count)
-                if changed_files_count != 0 else self.rtr("command.sync.identical")
-            )
+            self.server.broadcast(self.rtr("command.sync.completed", time=t, changed_files_count=changed_files_count) if changed_files_count != 0 else self.rtr("command.sync.identical"))
         except Exception as e:
             self.server.broadcast(self.rtr("command.sync.error"))
             self.server.logger.error(e, exc_info=e)
         finally:
-            self.sync_flag = False
-
+            self.sync_lock.release()
             if auto_restart_flag:
                 self.start(source, context, _confirmed=True)
 
