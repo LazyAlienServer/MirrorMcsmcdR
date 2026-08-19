@@ -245,7 +245,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             return False
         return True
 
-    @new_thread("{TITLE}-execute")
+    @new_thread(f"{TITLE}-execute")
     @catch_api_error
     def _execute(
         self, source: CommandSource, command: str, available_status: list[ServerStatus],
