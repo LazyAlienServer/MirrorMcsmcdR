@@ -1,4 +1,4 @@
-import os, subprocess
+import os
 import re
 import signal
 from abc import ABC, abstractmethod
@@ -91,19 +91,13 @@ class LinuxProxy(AbstractSystemProxy):
         is_mcdr: bool = True
     ) -> None:
         super().__init__(terminal_name, launch_path, launch_command, port, regex_strict, is_mcdr)
-        self.screen = Screen(self)
+        self.screen = Screen(terminal_name, launch_path)
 
-    def create_screen(self):
-        terminal_name = self.terminal_name
-        screen_process = run_shell_command(f"screen -dmS {terminal_name}", cwd=self.path)
-        if screen_process.wait() != 0:
-            return
-        run_shell_command(f"screen -x -S {terminal_name} -p 0 -X stuff '{self.command}&&exit\\n'")
 
     def start(self):
         if not os.path.exists(self.path):
             return "path_not_found"
-        self.screen.create()
+        self.screen.create(self.command)
         return "success"
 
     def status(self) -> ServerStatus:
@@ -125,7 +119,8 @@ class LinuxProxy(AbstractSystemProxy):
             return ServerStatus.STOPPED
 
     def stop(self):
-        self.screen.stop(self.is_mcdr)
+        command = "!!MCDR server stop_exit" if self.is_mcdr else "stop"
+        self.screen.stop(command)
         return "success"
 
     def kill(self):
@@ -139,7 +134,7 @@ class LinuxProxy(AbstractSystemProxy):
             return "success"
         if status == ServerStatus.STOPPED:
             return ServerStatus.STOPPED
-        self.screen.kill()
+        self.screen.kill("!!MCDR server kill")
         return "success"
 
     def forcekill(self):

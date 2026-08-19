@@ -2,14 +2,8 @@ import functools
 import os
 import re
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 from mirror_mcsmcdr.utils.command_utils import get_command_output, run_shell_command
-
-if TYPE_CHECKING:
-    # noinspection PyUnresolvedReferences
-    from mirror_mcsmcdr.utils.proxy.system_proxy import AbstractSystemProxy
-    # noinspection PyUnresolvedReferences
-    from mirror_mcsmcdr.utils.proxy.system_proxy import LinuxProxy
 
 
 class ScreenNotExistError(RuntimeError):
@@ -31,11 +25,11 @@ def _check_existence_decorator():
 
 
 class Screen:
-    def __init__(self, system_proxy: 'LinuxProxy', name: Optional[str] = None, pid: Optional[int] = None) -> None:
-        self.name = name or system_proxy.terminal_name
+    def __init__(self, name: str, path: str, pid: Optional[int] = None) -> None:
+        self.name = name
+        self.path = path
         self.pid = pid
-        self.system_proxy: 'LinuxProxy' = system_proxy
-        self.pid_path = os.path.join(self.system_proxy.path, "mirror.pid")
+        self.pid_path = os.path.join(path, "mirror.pid")
 
         self._load_pid()
 
@@ -46,7 +40,7 @@ class Screen:
             if not self.check_existence():
                 self.pid = None
 
-    def create(self):
+    def create(self, command: str):
         if os.path.exists(self.pid_path):
             with open(self.pid_path, 'r') as f:
                 existing_pid = int(f.read().strip())
@@ -57,10 +51,11 @@ class Screen:
                 os.remove(self.pid_path)
 
         pre_ls = get_command_output("screen -ls").splitlines()
-        self.system_proxy.create_screen()
+        screen_process = run_shell_command(f"screen -dmS {self.name}", cwd=self.path)
+        if screen_process.wait() == 0:
+            run_shell_command(f"screen -x -S {self.name} -p 0 -X stuff '{command}&&exit\\n'")
         time.sleep(0.1)
         post_ls = get_command_output("screen -ls").splitlines()
-
         diff_lines = set(post_ls) - set(pre_ls)
         if not diff_lines:
             raise RuntimeError("Failed to detect new screen session")
@@ -99,13 +94,12 @@ class Screen:
         run_shell_command(f"screen -S {self.pid}.{self.name} -p 0 -X stuff '{cmd}\n'")
 
     @_check_existence_decorator()
-    def stop(self, is_mcdr: bool = True):
-        command = "!!MCDR server stop_exit" if is_mcdr else "stop"
+    def stop(self, command: str):
         run_shell_command(f"screen -x -S {self.pid}.{self.name} -p 0 -X stuff '{command}\n'")
 
     @_check_existence_decorator()
-    def kill(self):
-        run_shell_command("screen -x -S {0}.{1} -p 0 -X stuff '!!MCDR server kill\n'".format(self.pid, self.name))
+    def kill(self, command: str):
+        run_shell_command(f"screen -x -S {self.pid}.{self.name} -p 0 -X stuff '{command}\n'")
 
     @_check_existence_decorator()
     def forcekill(self):
