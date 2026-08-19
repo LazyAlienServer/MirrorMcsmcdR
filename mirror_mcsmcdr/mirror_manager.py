@@ -1,11 +1,12 @@
 import re
-import time
+import time, datetime
+from pathlib import Path
 from copy import deepcopy
 from functools import wraps
 from threading import Event, Lock, Timer
 from typing import Any, Callable, Dict, Optional, Union, cast
 
-from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PluginServerInterface, RAction, RColor, RText, RTextList, SimpleCommandBuilder, new_thread
+from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PluginServerInterface, RAction, RColor, RText, RTextList, SimpleCommandBuilder, new_thread, Integer
 
 from mirror_mcsmcdr.constants import DEFAULT_CONFIG, TITLE
 from mirror_mcsmcdr.utils.display_utils import help_msg, rtr
@@ -13,7 +14,10 @@ from mirror_mcsmcdr.utils.sync.classic_synchronizer import ClassicWorldSynchroni
 from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxyError
 from mirror_mcsmcdr.utils.server_utils import ProxySettingException, ServerProxy, TerminalSettingException
 from mirror_mcsmcdr.utils.status import ServerStatus
+from mirror_mcsmcdr.utils.history_utils import SyncHistory
+from mirror_mcsmcdr.utils.page_utils import Page
 
+PAGE_SIZE = 5
 
 def catch_api_error(func):
     @wraps(func)
@@ -213,7 +217,6 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         self.sync_lock = Lock()
         self.save_world_wait: Event = Event()
         self.save_world_wait.set()
-        self.save_world_regex = re.compile(self.command_action["sync"]["save_world"]["saved_world_regex"])
         self.confirmations: ConfirmationManager
 
         # register mcdr command
@@ -228,6 +231,9 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         builder.literal("-f", lambda _: Literal(("-f", "--force")))
         builder.command(f"{command_prefix} kill -f", lambda source, context: self.kill(source, context, force=True))
         builder.command(f"{command_prefix} sync", self.sync)
+        builder.arg("page", Integer)
+        builder.command(f"{command_prefix} history", self.history)
+        builder.command(f"{command_prefix} history <page>", self.history)
         builder.command(f"{command_prefix} confirm", self.confirm)
         builder.register(server)
         if not self.set_config(config):
@@ -252,6 +258,10 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                 config["command"]["action"],
                 config["display"]["server_name"],
             )
+            self.save_world_regex = re.compile(self.command_action["sync"]["save_world"]["saved_world_regex"])
+            self.max_history_count = self.command_action["history"]["max_history_count"]
+            data_path = Path(self.server.get_data_folder()) / self.command_prefix
+            self.sync_history = SyncHistory(data_path / "history.json", self.max_history_count)
             self.server_api = ServerProxy()
             for proxy in self.server_api.proxies:
                 try:
@@ -400,6 +410,11 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             source.reply(self.rtr("command.sync.fail.task_exist"))
             return
 
+        record = {
+            "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "operator": source.player if source.is_player else "[console]"
+        } if self.max_history_count != 0 else None
+
         auto_restart_flag = False
         try:
             sync_action_config = self.command_action["sync"]
@@ -444,16 +459,65 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             m, s = divmod(time.time() - t, 60)
             h, m = divmod(m, 60)
             t = ("%02d:" % h if h else "") + ("%02d:" % m if m else "") + ("%02d" % s if m or h else ("%.02f" % s).zfill(5))
+            if record:
+                record["status"] = "success" if changed_files_count != 0 else "identical"
+                record["detail"] = {
+                    "duration": t,
+                    "changed_files_count": changed_files_count,
+                    "paths_notfound": paths_notfound,
+                }
             if paths_notfound:
                 self.server.broadcast(self.rtr("command.sync.skip_dictionary", paths="§f`§7".join(paths_notfound)))
             self.server.broadcast(self.rtr("command.sync.completed", time=t, changed_files_count=changed_files_count) if changed_files_count != 0 else self.rtr("command.sync.identical"))
         except Exception as e:
             self.server.broadcast(self.rtr("command.sync.error"))
             self.server.logger.error(e, exc_info=e)
+            if record:
+                record["status"] = "failed"
+                record["detail"] = {
+                    "exception": str(e),
+                }
         finally:
             self.sync_lock.release()
+            if record:
+                self.sync_history.append(record)
             if auto_restart_flag:
                 self.start(source, context, _confirmed=True)
+
+    @command_call("history")
+    def history(self, source: CommandSource, context: CommandContext):
+        page_size = PAGE_SIZE
+        page = Page(self.sync_history.read(), page_size, f"{self.command_prefix} history")
+        page.set_page_index(context)
+        for record in page.get_items_on_page():
+            source.reply(self._get_history_rtext(record))
+        source.reply(page.get_rtext())
+
+    def _get_history_rtext(self, record: dict):
+        sync_time, operator, status = record.get("time"), record.get("operator"), record.get("status")
+        detail = record.get("detail", {})
+        if status == "success":
+            duration, changed_files_count = detail.get("duration"), detail.get("changed_files_count")
+            return self.rtr(
+                "command.history.record.success",
+                title=False,
+                time=sync_time,
+                operator=operator,
+                duration=duration,
+                change_file_count=changed_files_count,
+            )
+        if status == "failed":
+            exception = detail.get("exception")
+            return self.rtr(
+                "command.history.record.failed",
+                title=False,
+                time=sync_time,
+                operator=operator,
+                exception=exception,
+            )
+        self.server.broadcast(self.rtr("command.history.record.error"))
+        raise ValueError(f"Invalid history record status: {status}")
+
 
     def _on_confirmation_timeout(self, task: ConfirmationTask):
         task.source.reply(self.rtr("command.confirm.timeout", action=task.action))

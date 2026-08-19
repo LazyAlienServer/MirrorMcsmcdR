@@ -44,6 +44,7 @@ DEFAULT_CONFIG = {
                 "stop": 2,
                 "kill": 3,
                 "sync": 2,
+                "history": 0,
                 "confirm": 0,
                 "abort": 0
             },
@@ -76,6 +77,10 @@ DEFAULT_CONFIG = {
                         "save_world_max_wait_sec": 60
                     },
                     "require_confirm": True
+                },
+                "history": {
+                    "require_confirm": False,
+                    "max_history_count": 5
                 },
                 "confirm": {
                     "timeout": 30,

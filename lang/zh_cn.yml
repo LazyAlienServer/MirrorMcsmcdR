@@ -1,5 +1,18 @@
 mirror_mcsmcdr: 
 
+  page:
+    page_error: §4页码应为整数
+    page_outofindex: §4错误的页码范围
+    nodata: §c暂无同步历史
+    page: §7[ §f第 §b{current}§f/§b{total}§f 页 §7]
+    left: "§8----- "
+    right: " §8-----"
+    pre: "§3<<"
+    pre_prompt: 上一页
+    next: "§3>>"
+    next_prompt: 下一页
+    end_prompt: 已经到头了
+
   multi_manager:
     init:
       error: "设置{prefix}时出错: {e}"
@@ -32,6 +45,7 @@ mirror_mcsmcdr:
       stop: §7{prefix} stop §f停止{server_name}
       kill: §7{prefix} kill [-f|--force] §f终止{server_name}
       sync: §7{prefix} sync §f同步{server_name}
+      history: §7{prefix} history [page] §f查看同步历史
       reload: §7{prefix} reload §f重载{server_name}配置文件
 
     proxy:
@@ -118,6 +132,12 @@ mirror_mcsmcdr:
       completed: §a同步完成! §f用时 §b{time}s §7/ §f更新了§b{changed_files_count}§f个文件
       identical: §a文件完全相同, 无需同步
       error: "§c同步时发生错误, 请前往终端查看错误信息"
+    
+    history:
+      record:
+        success: "§e[{time}] §b{operator} §a成功 §7| §f变化文件: §b{change_file_count} §f个 §f耗时: §b{duration}s"
+        failed: "§e[{time}] §b{operator} §c失败 §7| §f异常: §c{exception}"
+        error: "§c读取同步历史时发生错误, 请前往终端查看错误信息"
   
   mcsm:
     disabled: §cMCSM-API未启用

@@ -1,5 +1,18 @@
 mirror_mcsmcdr: 
 
+  page:
+    page_error: §4Page number should be an integer!
+    page_outofindex: §4The page number does not exist!
+    nodata: §cNo synchronization history
+    page: §7[ §fPage §b{current}§f/§b{total}§7 ]
+    left: "§8----- "
+    right: " §8-----"
+    pre: "§3<<"
+    pre_prompt: Previous Page
+    next: "§3>>"
+    next_prompt: Next Page
+    end_prompt: You've reached the end
+
   multi_manager:
     init:
       error: "An error occurred when configuring {prefix}: {e}"
@@ -32,6 +45,7 @@ mirror_mcsmcdr:
       stop: §7{prefix} stop §fStop {server_name}
       kill: §7{prefix} kill [-f|--force] §fKill {server_name}
       sync: §7{prefix} sync §fSynchronize {server_name}
+      history: §7{prefix} history [page] §fView synchronization history
       reload: §7{prefix} reload §fReload config of {server_name}
 
     proxy:
@@ -116,6 +130,12 @@ mirror_mcsmcdr:
       completed: §aSynchronization completed!! §fTime taken | §b{time}s §7/ §f§b{changed_files_count}§f files updated
       identical: §aNo changes detected
       error: "§cAn error occurred while syncing, please check the console for details"
+    
+    history:
+      record:
+        success: "§e[{time}] §b{operator} §aSuccess §7| §fChanged files: §b{change_file_count} §fTime taken: §b{duration}s"
+        failed: "§e[{time}] §b{operator} §cFailed §7| §fException: §c{exception}"
+        error: "§cAn error occurred while reading the sync history, please check the console for details"
   
   mcsm:
     disabled: §cMCSM-API is disabled
