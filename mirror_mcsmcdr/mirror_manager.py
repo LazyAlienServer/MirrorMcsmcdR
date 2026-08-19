@@ -1,8 +1,9 @@
 import re
 import time
 from copy import deepcopy
+from functools import wraps
 from threading import Event, Timer
-from typing import Callable, Dict, Optional, TypedDict, Union, cast, Any
+from typing import Any, Callable, Dict, Optional, Union, cast
 
 from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PluginServerInterface, RAction, RColor, RText, \
     RTextList, SimpleCommandBuilder, new_thread
@@ -16,9 +17,10 @@ from mirror_mcsmcdr.utils.status import ServerStatus
 
 
 def catch_api_error(func):
-    def wrapper(self, source: CommandSource, command: str, *args, **kwargs):
+    @wraps(func)
+    def wrapper(self, source: CommandSource, *args, **kwargs):
         try:
-            return func(self, source, command, *args, **kwargs)
+            return func(self, source, *args, **kwargs)
         except MCSManagerProxyError as e:
             source.reply(rtr("mcsm.error.request", e=e))
         except Exception as e:
@@ -26,6 +28,109 @@ def catch_api_error(func):
             raise e
 
     return wrapper
+
+
+def command_call(command: str):
+    def decorator(function):
+        @wraps(function)
+        def wrapper(self, source: CommandSource, context: CommandContext, *args, **kwargs):
+            confirmed = kwargs.pop("_confirmed", False)
+            return self._call_command(
+                command,
+                function,
+                wrapper,
+                source,
+                context,
+                args,
+                kwargs,
+                confirmed,
+            )
+
+        return wrapper
+
+    return decorator
+
+
+class ConfirmationTask:
+    def __init__(
+        self,
+        action: str,
+        source: CommandSource,
+        context: CommandContext,
+        callback: Callable[..., Any],
+        callback_args: tuple,
+        callback_kwargs: dict,
+    ) -> None:
+        self.action = action
+        self.source = source
+        self.context = context
+        self.callback = callback
+        self.callback_args = callback_args
+        self.callback_kwargs = callback_kwargs
+        self.timer: Optional[Timer] = None
+
+    def cancel(self):
+        if self.timer is not None:
+            self.timer.cancel()
+
+    def execute(self):
+        return self.callback(*self.callback_args, **self.callback_kwargs)
+
+
+class ConfirmationManager:
+    def __init__(self, timeout: float, on_timeout: Callable[[ConfirmationTask], None]) -> None:
+        self.timeout = timeout
+        self.on_timeout = on_timeout
+        self.tasks: Dict[str, ConfirmationTask] = {}
+
+    def request(
+        self,
+        operator: str,
+        action: str,
+        source: CommandSource,
+        context: CommandContext,
+        callback: Callable[..., Any],
+        callback_args: tuple,
+        callback_kwargs: dict,
+    ):
+        task = ConfirmationTask(
+            action,
+            source,
+            context,
+            callback,
+            callback_args,
+            callback_kwargs,
+        )
+        task.timer = Timer(self.timeout, self._timeout, args=(operator,))
+        self.tasks[operator] = task
+        task.timer.start()
+
+    def _timeout(self, operator: str):
+        task = self.tasks.pop(operator, None)
+        if task is not None:
+            self.on_timeout(task)
+
+    def cancel(self, operator: str) -> Optional[ConfirmationTask]:
+        task = self.tasks.pop(operator, None)
+        if task is not None:
+            task.cancel()
+        return task
+
+    def confirm(self, operator: str) -> Optional[ConfirmationTask]:
+        task = self.cancel(operator)
+        if task is not None:
+            task.execute()
+        return task
+
+    def has(self, operator: str) -> bool:
+        return operator in self.tasks
+
+    def has_any(self) -> bool:
+        return bool(self.tasks)
+
+    def clear(self):
+        for operator in tuple(self.tasks):
+            self.cancel(operator)
 
 
 class MultiMirrorManager:  # The manager at large which manage multi single mirror server manager
@@ -111,12 +216,6 @@ class MultiMirrorManager:  # The manager at large which manage multi single mirr
         manager.reload_config(single_config)
 
 
-class ConfirmationInfoDict(TypedDict):
-    action: str
-    timer: Timer
-    callback_kwargs: dict
-
-
 class MirrorManager:  # The single mirror server manager which manages a specific mirror server
 
     def __init__(
@@ -136,7 +235,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         self.sync_flag: bool = False
         self.save_world_wait: Event = Event()
         self.save_world_wait.set()
-        self.confirmation: Dict[str, ConfirmationInfoDict] = {}
+        self.confirmations: ConfirmationManager
 
         # register mcdr command
         builder = SimpleCommandBuilder()
@@ -151,7 +250,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         builder.command(f"{command_prefix} stop", self.stop)
         builder.command(f"{command_prefix} kill", self.kill)
         builder.literal("-f", lambda _: Literal(("-f", "--force")))
-        builder.command(f"{command_prefix} kill -f", self.force_kill)
+        builder.command(f"{command_prefix} kill -f", lambda source, context: self.kill(source, context, force=True))
         builder.command(f"{command_prefix} sync", self.sync)
         builder.command(f"{command_prefix} confirm", self.confirm)
         builder.register(server)
@@ -207,6 +306,10 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                     self.server.broadcast(
                         self.rtr("manager.reload.fail.unavailable_system")
                     )
+            self.confirmations = ConfirmationManager(
+                self.command_action["confirm"]["timeout"],
+                self._on_confirmation_timeout,
+            )
             return True
         except Exception as e:
             if self.server.is_server_startup():
@@ -245,7 +348,46 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             return False
         return True
 
-    @new_thread(f"{TITLE}-execute")
+    def _call_command(
+        self,
+        command: str,
+        function: Callable[..., Any],
+        wrapper: Callable[..., Any],
+        source: CommandSource,
+        context: CommandContext,
+        args: tuple,
+        kwargs: dict,
+        confirmed: bool,
+    ):
+        if not self.manager_available:
+            source.reply(self.rtr("manager.unavailable"))
+            return
+
+        operator = source.player if source.is_player else "[console]"
+        if self.confirmations.has(operator) and not confirmed:
+            task = self.confirmations.cancel(operator)
+            source.reply(self.rtr("command.confirm.previous", action=task.action))
+
+        if not self.check_permission(source, command):
+            return False
+        if not confirmed and self.command_action[command]["require_confirm"]:
+            self.confirmations.request(
+                operator,
+                command,
+                source,
+                context,
+                wrapper,
+                (self, source, context, *args),
+                {**kwargs, "_confirmed": True},
+            )
+            source.reply(
+                self.rtr("command.confirm.prompt").set_click_event(
+                    RAction.run_command, f"{self.command_prefix} confirm"
+                )
+            )
+            return False
+        return function(self, source, context, *args, **kwargs)
+
     @catch_api_error
     def _execute(
         self, source: CommandSource, command: str, available_status: list[ServerStatus],
@@ -286,58 +428,9 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         )
         return False
 
-    def pre_check(
-        self,
-        command: str,
-        source: CommandSource,
-        context: CommandContext,
-        confirm=False,
-        confirmation_kwargs: Optional[dict] = None,
-    ):
-        if not self.manager_available:
-            source.reply(self.rtr("manager.unavailable"))
-            return
-
-        operator = source.player if source.is_player else "[console]"
-
-        # automatically cancel old operation
-        if operator in self.confirmation.keys() and not confirm:
-            source.reply(
-                self.rtr(
-                    "command.confirm.previous",
-                    action=self.confirmation[operator]["action"],
-                )
-            )
-            self.confirm_end(operator)
-
-        if not self.check_permission(source, command):
-            return False
-        if not confirm and self.command_action[command]["require_confirm"]:
-            timer = Timer(
-                self.command_action["confirm"]["timeout"],
-                self.confirm_timer,
-                args=[source, context, operator],
-            )
-            self.confirmation[operator] = {
-                "action": command,
-                "timer": timer,
-                "callback_kwargs": confirmation_kwargs or {},
-            }
-            timer.start()
-
-            run_command = f"{self.command_prefix} confirm"
-            source.reply(
-                self.rtr("command.confirm.prompt").set_click_event(
-                    RAction.run_command, run_command
-                )
-            )
-            return False
-        return True
-
+    @command_call("status")
     @catch_api_error
-    def status(self, source: CommandSource, context: CommandContext, confirm=False):
-        if not self.pre_check("status", source, context, confirm):
-            return
+    def status(self, source: CommandSource, context: CommandContext):
         status_code = self.server_api.status()
         flag = "success" if ServerStatus.is_available(status_code) else "fail"
         prompt = self.rtr(f"command.status.{flag}.{status_code}", title=False).to_legacy_text()
@@ -348,40 +441,28 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             )
         )
 
-    def start(self, source: CommandSource, context: CommandContext, confirm=False):
-        if not self.pre_check("start", source, context, confirm):
-            return
+    @command_call("start")
+    def start(self, source: CommandSource, context: CommandContext):
         return self._execute(source, "start", [ServerStatus.STOPPED])
 
-    def stop(self, source: CommandSource, context: CommandContext, confirm=False):
-        if not self.pre_check("stop", source, context, confirm):
-            return
+    @command_call("stop")
+    def stop(self, source: CommandSource, context: CommandContext):
         return self._execute(source, "stop", [ServerStatus.RUNNING])
 
+    @command_call("kill")
     def kill(
-        self, source: CommandSource, context: CommandContext, confirm=False,
-        force=False,
+        self, source: CommandSource, context: CommandContext, force=False,
     ):
-        if not self.pre_check(
-            "kill", source, context, confirm,
-            confirmation_kwargs={"force": force},
-        ):
-            return
         return self._execute(
             source,
             "kill",
             [ServerStatus.STOPPING, ServerStatus.STARTING, ServerStatus.RUNNING, ServerStatus.DETACHED_JAVA, ServerStatus.DETACHED_SCREEN],
             "forcekill" if force else None,
         )
-
-    def force_kill(self, source: CommandSource, context: CommandContext):
-        return self.kill(source, context, force=True)
-
+    @command_call("sync")
     @new_thread(f"{TITLE}-sync")
     @catch_api_error
-    def sync(self, source: CommandSource, context: CommandContext, confirm=False):
-        if not self.pre_check("sync", source, context, confirm):
-            return
+    def sync(self, source: CommandSource, context: CommandContext):
 
         if self.sync_flag:
             source.reply(self.rtr("command.sync.fail.task_exist"))
@@ -403,8 +484,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             else:  # restart server
                 self.server.broadcast(
                     self.rtr("command.sync.auto_restart.restarting"))
-                if not self.stop(source, context, confirm=True):
-                    return
+                self.server_api.stop()
                 interval, times = (
                     sync_action_config["check_status_interval"],
                     sync_action_config["max_attempt_times"],
@@ -493,41 +573,23 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             self.sync_flag = False
 
             if auto_restart_flag:
-                self.start(source, context)
+                self.start(source, context, _confirmed=True)
+
+
+    def _on_confirmation_timeout(self, task: ConfirmationTask):
+        task.source.reply(
+            self.rtr("command.confirm.timeout", action=task.action)
+        )
 
     def confirm(self, source: CommandSource, context: CommandContext):
         operator = source.player if source.is_player else "[console]"
-        if operator not in self.confirmation.keys():
-            if self.confirmation.keys():
+        if not self.confirmations.has(operator):
+            if self.confirmations.has_any():
                 source.reply(self.rtr("command.confirm.others"))
-                return
-            source.reply(self.rtr("command.confirm.none"))
+            else:
+                source.reply(self.rtr("command.confirm.none"))
             return
-        self.confirm_end(operator, source, context)
-
-    def confirm_timer(self, source: CommandSource, _: CommandContext, operator):
-        source.reply(
-            self.rtr(
-                "command.confirm.timeout", action=self.confirmation[operator]["action"]
-            )
-        )
-        self.confirmation.pop(operator)
-
-    def confirm_end(
-        self,
-        operator,
-        source: Optional[CommandSource] = None,
-        context: Optional[CommandContext] = None,
-    ):
-        self.confirmation[operator]["timer"].cancel()
-        if source != None and context != None:
-            getattr(self, self.confirmation[operator]["action"])(
-                source,
-                context,
-                True,
-                **self.confirmation[operator]["callback_kwargs"],
-            )
-        self.confirmation.pop(operator)
+        self.confirmations.confirm(operator)
 
     def on_info(self, _: PluginServerInterface, info: Info):
         if (
@@ -545,12 +607,9 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         operator = info.player
         if info.content[: len(self.command_prefix)] == self.command_prefix:
             return
-        if operator in self.confirmation.keys():
+        task = self.confirmations.cancel(operator)
+        if task is not None:
             server.reply(
                 info,
-                self.rtr(
-                    "command.confirm.cancel",
-                    action=self.confirmation[operator]["action"],
-                ),
+                self.rtr("command.confirm.cancel", action=task.action),
             )
-            self.confirm_end(operator)
