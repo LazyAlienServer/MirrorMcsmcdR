@@ -49,6 +49,8 @@ The default command prefix is `!!mirror`. When controlling multiple mirror serve
 
 `!!mirror reload` Hot reloads the configuration file for the specified mirror server
 
+`!!mirror history` Displays synchronization history
+
 ## Configuration File
 
 **This configuration file is quite long**. We recommend that you read the [Quick Start](/docs/quickstart_en.md) to complete the preliminary configuration. If you need to find an explanation for a specific configuration item, you can read the following.
@@ -158,7 +160,7 @@ If you cannot start the mirror server with this command, try the following steps
 
 Note: Under Linux, the plugin can close the mirror server through screen. Under Windows terminal control, `stop` sends `SIGINT` to the process listening on the configured mirror port, and `kill` forcefully terminates that process with `taskkill`; confirm that `port` is correct. MCSM or RCON can still be used as alternative control methods.
 
-**Under Windows Terminal, sending `SIGINT` directly to a process carries some risk. Configure RCON whenever possible to avoid unnecessary operational overhead.**
+**The stop command under Windows Terminal is experimental; use it at your own risk. Configure RCON whenever possible to avoid unnecessary operational overhead.**
 
 **enable** `bool`
 - Whether to enable the terminal. when MCSM is not enabled and this option is `true`, the mirror server will be started through the terminal.
@@ -314,6 +316,10 @@ mcdr_root (./)
         "save_world": {/* Save world configuration */},
         "require_confirm": true
     },
+    "history": {
+        "require_confirm": false,
+        "max_history_count": 5
+    },
     "confirm": {
         "timeout": 30,
         "cancel_anymsg": true
@@ -371,6 +377,11 @@ mcdr_root (./)
 
 **save_world_max_wait_sec** `int`
 - The maximum waiting time (seconds) for saving the world. After the timeout it will skip saving the world and perform synchronization
+
+### history Configuration
+
+**max_history_count** `int`
+- The maximum number of synchronization history records to save. Set it to `-1` to remove the limit, or `0` to disable synchronization history. The default is `5`.
 
 ### confirm Configuration
 Players can only confirm the commands they have executed

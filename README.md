@@ -49,6 +49,8 @@
 
 `!!mirror reload` 热重载对应镜像服的配置文件
 
+`!!mirror history` 查看同步历史
+
 ## 配置文件
 
 **此配置文件较长**。我们建议你阅读[快速开始](/docs/quickstart.md)来完成初步的配置。若你需要查找某一具体配置项的解释，你可以阅读下文。
@@ -158,7 +160,7 @@
 
 注意：Linux系统下，插件可以通过screen关闭镜像服。Windows terminal下，`stop`会向监听镜像服端口的进程发送`SIGINT`（即`Ctrl+C`命令），`kill`会使用`taskkill`强制终止该进程；请确认`port`配置正确。MCSM或RCON仍可作为替代控制方式。
 
-**在 Windows Terminal 下，直接向进程发送`SIGINT`存在一定风险。请尽可能配置 RCON ，避免产生不必要的运维成本。**
+**Windows Terminal 下的 stop 命令为实验性功能，请自行承担使用风险。请尽可能配置 RCON ，避免产生不必要的运维成本。**
 
 **enable** `bool`
 - 是否启用终端，当MCSM未启用且此选项为`true`时将通过终端启动镜像服。
@@ -314,6 +316,10 @@ mcdr_root (./)
         "save_world": {/* 保存世界配置 */},
         "require_confirm": true
     },
+    "history": {
+        "require_confirm": false,
+        "max_history_count": 5
+    },
     "confirm": {
         "timeout": 30,
         "cancel_anymsg": true
@@ -372,6 +378,11 @@ mcdr_root (./)
 
 **save_world_max_wait_sec** `int`
 - 保存世界的最大等待时间(秒)，超时将会跳过世界保存并进行同步
+
+### history配置
+
+**max_history_count** `int`
+- 最多保存多少条同步历史。设置为`-1`以不限制最大数量，设置为`0`以禁用同步历史功能。默认最多保存`5`条
 
 ### confirm配置
 玩家只能确认自己执行的指令
