@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Union
 
 from mirror_mcsmcdr.utils.screen_utils import Screen
-from mirror_mcsmcdr.utils.command_utils import capture_command_output
+from mirror_mcsmcdr.utils.command_utils import get_command_output, run_shell_command
 from mirror_mcsmcdr.utils.status import ServerStatus
 
 
@@ -95,10 +95,10 @@ class LinuxProxy(AbstractSystemProxy):
 
     def create_screen(self):
         terminal_name = self.terminal_name
-        screen_process = subprocess.Popen(["screen", "-dmS", terminal_name], cwd=self.path)
+        screen_process = run_shell_command(f"screen -dmS {terminal_name}", cwd=self.path)
         if screen_process.wait() != 0:
             return
-        subprocess.Popen(["screen", "-x", "-S", terminal_name, "-p", "0", "-X", "stuff", f"{self.command}&&exit\n",])
+        run_shell_command(f"screen -x -S {terminal_name} -p 0 -X stuff '{self.command}&&exit\\n'")
 
     def start(self):
         if not os.path.exists(self.path):
@@ -109,7 +109,7 @@ class LinuxProxy(AbstractSystemProxy):
     def status(self) -> ServerStatus:
         terminal_open = self.screen.check_existence()
         port = self.port
-        text = capture_command_output(["lsof", f"-i:{port}"])
+        text = get_command_output(f"lsof -i:{port}")
         if not text:
             java_running = False
         else:
@@ -143,7 +143,7 @@ class LinuxProxy(AbstractSystemProxy):
         return "success"
 
     def forcekill(self):
-        text = capture_command_output(["lsof", "-t", f"-iTCP:{self.port}", "-sTCP:LISTEN"])
+        text = get_command_output(f"lsof -t -iTCP:{self.port} -sTCP:LISTEN")
         try:
             for pid in {int(pid) for pid in text.split() if pid.isdigit()}:
                 try:
@@ -157,10 +157,11 @@ class LinuxProxy(AbstractSystemProxy):
 
 
 class WindowsProxy(AbstractSystemProxy):
+
     def _get_listening_pids(self) -> set[int]:
         port = str(self.port)
         pids = set()
-        for line in capture_command_output(["netstat", "-ano"]).splitlines():
+        for line in get_command_output(f"netstat -ano | findstr :{port}").splitlines():
             fields = line.split()
             if len(fields) < 5 or fields[0].upper() not in ("TCP", "TCPv6"):
                 continue
@@ -174,10 +175,7 @@ class WindowsProxy(AbstractSystemProxy):
         if not os.path.exists(self.path):
             return "path_not_found"
         terminal_name = self.terminal_name
-        subprocess.Popen([
-            "cmd.exe", "/C", "start", "cmd.exe", "cmd", "/C",
-            f"title {terminal_name}&&{self.command}",
-        ], cwd=self.path)
+        run_shell_command(f'''start cmd.exe cmd /C "title {terminal_name}&&{self.command}"''', cwd=self.path)
         return "success"
     
     def status(self) -> ServerStatus:
@@ -187,7 +185,7 @@ class WindowsProxy(AbstractSystemProxy):
         if not self.regex_strict:
             return ServerStatus.RUNNING
 
-        tasklist_lines = capture_command_output(["tasklist"]).splitlines()
+        tasklist_lines = get_command_output(["tasklist"]).splitlines()
         for line in tasklist_lines:
             fields = line.split()
             if len(fields) >= 2 and fields[0].lower() == "java.exe" and fields[1].isdigit():
@@ -202,7 +200,7 @@ class WindowsProxy(AbstractSystemProxy):
         for pid in pids:
             try:
                 os.kill(pid, signal.SIGINT)
-            except ProcessLookupError:
+            except (ProcessLookupError, PermissionError):
                 pass
         return "success"
     
@@ -211,7 +209,7 @@ class WindowsProxy(AbstractSystemProxy):
         if not pids:
             return ServerStatus.STOPPED
         for pid in pids:
-            subprocess.Popen(["taskkill", "/PID", str(pid), "/F"])
+            run_shell_command(["taskkill", "/PID", str(pid), "/F"])
         return "success"
 
     def forcekill(self):

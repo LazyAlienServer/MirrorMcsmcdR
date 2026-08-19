@@ -1,9 +1,9 @@
 import functools
-import os, subprocess
+import os
 import re
 import time
 from typing import TYPE_CHECKING, Optional
-from mirror_mcsmcdr.utils.command_utils import capture_command_output
+from mirror_mcsmcdr.utils.command_utils import get_command_output, run_shell_command
 
 if TYPE_CHECKING:
     # noinspection PyUnresolvedReferences
@@ -56,10 +56,10 @@ class Screen:
             else:
                 os.remove(self.pid_path)
 
-        pre_ls = capture_command_output(["screen", "-ls"]).splitlines()
+        pre_ls = get_command_output("screen -ls").splitlines()
         self.system_proxy.create_screen()
         time.sleep(0.1)
-        post_ls = capture_command_output(["screen", "-ls"]).splitlines()
+        post_ls = get_command_output("screen -ls").splitlines()
 
         diff_lines = set(post_ls) - set(pre_ls)
         if not diff_lines:
@@ -91,26 +91,22 @@ class Screen:
         return True
 
     def _screen_exists(self, pid: int) -> bool:
-        ls_output = capture_command_output(["screen", "-ls"])
+        ls_output = get_command_output("screen -ls")
         return f"{pid}.{self.name}" in ls_output
 
     @_check_existence_decorator()
     def execute_command(self, cmd: str):
-        command = ["screen", "-S", f"{self.pid}.{self.name}", "-p", "0", "-X", "stuff", f"{cmd}\n"]
-        subprocess.Popen(command)
+        run_shell_command(f"screen -S {self.pid}.{self.name} -p 0 -X stuff '{cmd}\n'")
 
     @_check_existence_decorator()
     def stop(self, is_mcdr: bool = True):
         command = "!!MCDR server stop_exit" if is_mcdr else "stop"
-        subprocess.Popen([
-            "screen", "-x", "-S", f"{self.pid}.{self.name}", "-p", "0", "-X", "stuff",
-            f"{command}\n",
-        ])
+        run_shell_command(f"screen -x -S {self.pid}.{self.name} -p 0 -X stuff '{command}\n'")
 
     @_check_existence_decorator()
     def kill(self):
-        subprocess.Popen(["screen", "-x", "-S", f"{self.pid}.{self.name}", "-p", "0", "-X", "stuff", "!!MCDR server kill\n"])
+        run_shell_command("screen -x -S {0}.{1} -p 0 -X stuff '!!MCDR server kill\n'".format(self.pid, self.name))
 
     @_check_existence_decorator()
     def forcekill(self):
-        subprocess.Popen(["screen", "-S", f"{self.pid}.{self.name}", "-X", "quit"])
+        run_shell_command(f"screen -S {self.pid}.{self.name} -X quit")
