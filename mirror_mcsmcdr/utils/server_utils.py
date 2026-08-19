@@ -1,6 +1,6 @@
 from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxy
 from mirror_mcsmcdr.utils.proxy.rcon_proxy import RConProxy
-from mirror_mcsmcdr.utils.proxy.system_proxy import SystemProxy, LinuxProxy
+from mirror_mcsmcdr.utils.proxy.system_proxy import SystemProxy, LinuxProxy, WindowsProxy
 import platform
 from typing import List, Union, Optional, Literal
 from mirror_mcsmcdr.utils.status import ServerStatus
@@ -102,4 +102,6 @@ class ServerProxy:
     def forcekill(self):
         if self.terminal and isinstance(self.terminal.system_api, LinuxProxy):
             return self.terminal.forcekill()
+        if self.mcsm and isinstance(self.terminal, WindowsProxy):
+            return self.terminal.kill()
         return ServerStatus.UNAVAILABLE
