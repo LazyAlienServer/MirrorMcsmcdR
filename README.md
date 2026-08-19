@@ -557,5 +557,5 @@ mcdr_root (./)
 - [ ] 指令禁用
 - [x] RCON支持
 - [x] 无MCSM下通过命令行启动服务端
-- [ ] Linux/Windows通过终端执行`kill`指令
-- [ ] 历史同步记录显示
+- [x] Linux/Windows通过终端执行`kill`指令
+- [x] 历史同步记录显示

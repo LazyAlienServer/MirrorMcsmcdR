@@ -556,5 +556,5 @@ Players can only confirm the commands they have executed
 - [ ] Command disable
 - [x] RCON support
 - [x] Start server through command line without MCSM
-- [ ] Linux/Windows execute `kill` command through terminal
-- [ ] Display history synchronization records
+- [x] Linux/Windows execute `kill` command through terminal
+- [x] Display history synchronization records
