@@ -26,6 +26,12 @@
 
 `!!mirror reload` 热重载对应镜像服的配置文件
 
+`!!mirror execute <command>` 向subprocess代理中的镜像服发送指令
+
+`!!mirror log enable [count]` 启用控制台日志输出，可选地限制输出行数
+
+`!!mirror log disable` 禁用控制台日志输出
+
 **接下来的内容将引导你完成对这一镜像服的配置**
 
 ## 配置文件的组成

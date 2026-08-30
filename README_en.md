@@ -51,6 +51,12 @@ The default command prefix is `!!mirror`. When controlling multiple mirror serve
 
 `!!mirror history` Displays synchronization history
 
+`!!mirror execute <command>` Sends a command to the mirror server (currently support subprocess proxy only)
+
+`!!mirror log enable [count]` Enables console output, optionally limited to a number of lines
+
+`!!mirror log disable` Disables console log output
+
 ## Configuration File
 
 **This configuration file is quite long**. We recommend that you read the [Quick Start](/docs/quickstart_en.md) to complete the preliminary configuration. If you need to find an explanation for a specific configuration item, you can read the following.
@@ -285,11 +291,13 @@ mcdr_root (./)
     "kill": 3,
     "sync": 2,
     "confirm": 0,
-    "abort": 0
+    "abort": 0,
+    "log": "console",
+    "execute": "console"
 }
 ```
 `int`
-- The minimum MCDR permission level required to execute each command
+- The minimum MCDR permission level required to execute each command, set to `console` for console available only.
 
 <br>
 

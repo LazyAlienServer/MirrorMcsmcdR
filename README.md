@@ -51,6 +51,12 @@
 
 `!!mirror history` 查看同步历史
 
+`!!mirror execute <command>` 向镜像服发送指令（目前仅支持 subprocess 启动的镜像服）
+
+`!!mirror log enable [count]` 启用控制台日志输出，可选地限制输出行数
+
+`!!mirror log disable` 禁用控制台日志输出
+
 ## 配置文件
 
 **此配置文件较长**。我们建议你阅读[快速开始](/docs/quickstart.md)来完成初步的配置。若你需要查找某一具体配置项的解释，你可以阅读下文。
@@ -285,12 +291,13 @@ mcdr_root (./)
     "kill": 3,
     "sync": 2,
     "confirm": 0,
-    "abort": 0
+    "abort": 0,
+    "log": "console",
+    "execute": "console"
 }
 ```
-`int`
-- 执行各指令所需的最低MCDR权限等级
-
+`int | str`
+- 执行各指令所需的最低MCDR权限等级，或设置为`console`以限制只允许控制台执行
 <br>
 
 ### action: 指令行为配置
