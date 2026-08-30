@@ -28,6 +28,7 @@ mirror_mcsmcdr:
       fail.proxy: §c配置文件§7({prefix})§c的接口 §4{proxy} §c缺少有效值 §4'{keys}'
       fail.unavailable_system: "§cterminal未启用: 不支持{system}系统§7({prefix})"
     permission_denied: §b{server_name}§c操作权限不足
+    console_only: §b{server_name}§c此命令仅可通过终端执行
     mcsm_disabled: §cMCSM-API未启用
     unavailable: §c配置文件错误, §4{prefix}§c实例已禁用
   
@@ -47,6 +48,8 @@ mirror_mcsmcdr:
       sync: §7{prefix} sync §f同步{server_name}
       history: §7{prefix} history [page] §f查看同步历史
       reload: §7{prefix} reload §f重载{server_name}配置文件
+      log: §7{prefix} log [enable [count]|disable] §f控制subprocess代理日志输出
+      execute: §7{prefix} execute <command> §f向subprocess代理发送指令
 
     proxy:
       title: "§e接口状态"
@@ -62,6 +65,20 @@ mirror_mcsmcdr:
       none: §c没有需要确认的任务
       others: §c你不能确认其他人的任务
 
+    log:
+      status: "控制台日志输出: {status}"
+      enabled: "§a已启用控制台日志输出"
+      enabled_count: "§a已启用控制台日志输出，输出 {count} 行后停止"
+      disabled: "§c已禁用控制台日志输出"
+      invalid_count: "§c输出行数必须是正整数"
+      permission_denied: "§c此命令仅限控制台使用"
+      help: "§7用法: {prefix} log enable [count]|disable"
+      output_end: "§7输出 {count} 行结束"
+    execute:
+      sent: "§a命令已发送: §f{cmd}"
+      failed: "§c命令发送失败"
+      not_running: "§c镜像服未运行，无法发送命令"
+      not_available: "§c此命令仅在使用 subprocess 代理时可用"
     status:
       fail:
         unavailable: 当前配置文件不支持status命令, 需要配置MCSM, terminal或RCON

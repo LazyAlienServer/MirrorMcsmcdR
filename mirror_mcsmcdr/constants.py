@@ -15,7 +15,8 @@ DEFAULT_CONFIG = {
             "terminal_name": "Mirror",
             "regex_strict": False,
             "is_mcdr": True,
-            "system": None
+            "proxy_type": None,
+            "console_log": False
         },
         "rcon": {
             "enable": False,
@@ -46,7 +47,9 @@ DEFAULT_CONFIG = {
                 "sync": 2,
                 "history": 0,
                 "confirm": 0,
-                "abort": 0
+                "abort": 0,
+                "log": "console",
+                "execute": "console"
             },
             "action": {
                 "status": {

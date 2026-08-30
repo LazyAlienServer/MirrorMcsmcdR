@@ -28,6 +28,7 @@ mirror_mcsmcdr:
       fail.proxy: §cInterface §7({prefix})§c config §4{proxy} §cmisses valid value(s) §4'{keys}'
       fail.unavailable_system: "§cterminal disabled: system {system} unsupported§7 ({prefix})"
     permission_denied: §b{server_name}§c Permission denied
+    console_only: §b{server_name}§c Console-only command
     mcsm_disabled: §cMCSM-API is disabled
     unavailable: §cConfig error, §4{prefix}§c instance disabled
   
@@ -47,6 +48,8 @@ mirror_mcsmcdr:
       sync: §7{prefix} sync §fSynchronize {server_name}
       history: §7{prefix} history [page] §fView synchronization history
       reload: §7{prefix} reload §fReload config of {server_name}
+      log: §7{prefix} log [enable [count]|disable] §fControl subprocess proxy logs
+      execute: §7{prefix} execute <command> §fSend a command through the subprocess proxy
 
     proxy:
       title: "§eInterface Status"
@@ -62,6 +65,20 @@ mirror_mcsmcdr:
       none: §cNo tasks to confirm
       others: §cYou cannot confirm other people's task
 
+    log:
+      status: "Console log output: {status}"
+      enabled: "§aConsole log output enabled"
+      enabled_count: "§aConsole log output enabled for the next {count} lines"
+      disabled: "§cConsole log output disabled"
+      invalid_count: "§cOutput count must be a positive integer"
+      permission_denied: "§cThis command is restricted to the console"
+      help: "§7Usage: {prefix} log enable [count]|disable"
+      output_end: "§7Output of {count} lines ended"
+    execute:
+      sent: "§aCommand sent: §f{cmd}"
+      failed: "§cFailed to send command"
+      not_running: "§cThe mirror server is not running; cannot send command"
+      not_available: "§cThis command is only available with the subprocess proxy"
     status:
       fail:
         unavailable: Current config does not support status command. You need to configure MCSM, terminal or RCON

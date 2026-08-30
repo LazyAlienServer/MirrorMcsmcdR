@@ -6,12 +6,13 @@ from functools import wraps
 from threading import Event, Lock, Timer
 from typing import Any, Callable, Dict, Optional, Union, cast
 
-from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PluginServerInterface, RAction, RColor, RText, RTextList, SimpleCommandBuilder, new_thread, Integer
+from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PluginServerInterface, RAction, RColor, RText, RTextList, SimpleCommandBuilder, new_thread, Integer, Text, GreedyText
 
 from mirror_mcsmcdr.constants import DEFAULT_CONFIG, TITLE
 from mirror_mcsmcdr.utils.display_utils import help_msg, rtr
 from mirror_mcsmcdr.utils.sync.classic_synchronizer import ClassicWorldSynchronizer
 from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxyError
+from mirror_mcsmcdr.utils.proxy.subprocess_proxy import SubprocessProxy
 from mirror_mcsmcdr.utils.server_utils import ProxySettingException, ServerProxy, TerminalSettingException
 from mirror_mcsmcdr.utils.status import ServerStatus
 from mirror_mcsmcdr.utils.history_utils import SyncHistory
@@ -33,11 +34,11 @@ def catch_api_error(func):
     return wrapper
 
 
-def command_call(command: str):
+def command_call(command: str, enable_confirm: bool = True):
     def decorator(function):
         @wraps(function)
         def wrapper(self, source: CommandSource, context: CommandContext, *args, **kwargs):
-            confirmed = kwargs.pop("_confirmed", False)
+            confirmed = kwargs.pop("_confirmed", False if enable_confirm else True)
             return self._call_command(
                 command,
                 function,
@@ -198,6 +199,10 @@ class MultiMirrorManager:  # The manager at large which manage multi single mirr
         single_config = self._conf_update(default_conf, config[prefix])
         manager.reload_config(single_config)
 
+    def on_unload(self, _: PluginServerInterface):
+        for manager in self.managers.values():
+            manager.on_unload(_)
+
 
 class MirrorManager:  # The single mirror server manager which manages a specific mirror server
     def __init__(
@@ -235,6 +240,13 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         builder.command(f"{command_prefix} history", self.history)
         builder.command(f"{command_prefix} history <page>", self.history)
         builder.command(f"{command_prefix} confirm", self.confirm)
+        builder.arg("count", Integer)
+        builder.arg("cmd", GreedyText)
+        builder.command(f"{command_prefix} log", self.log_help)
+        builder.command(f"{command_prefix} log enable", lambda source, context: self.set_console_log(source, context, True))
+        builder.command(f"{command_prefix} log enable <count>", lambda source, context: self.set_console_log(source, context, int(context["count"])))
+        builder.command(f"{command_prefix} log disable", lambda source, context: self.set_console_log(source, context, False))
+        builder.command(f"{command_prefix} execute <cmd>", self.mirror_execute)
         builder.register(server)
         if not self.set_config(config):
             return
@@ -269,7 +281,22 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                     if not callable(_obj):
                         raise ProxySettingException(proxy, missing_keys=[f"set_{proxy}"])
                     _ = cast(Callable[..., Any], _obj)
-                    _(**self.config[proxy])
+                    if proxy == "terminal":
+                        terminal_config = self.config["terminal"]
+                        _(
+                            enable=terminal_config["enable"],
+                            regex_strict=terminal_config["regex_strict"],
+                            is_mcdr=terminal_config["is_mcdr"],
+                            proxy_type=terminal_config.get("proxy_type"),
+                            console_log=terminal_config.get("console_log", False),
+                            server=self.server,
+                            terminal_name=terminal_config["terminal_name"],
+                            path=terminal_config["launch_path"],
+                            command=terminal_config["launch_command"],
+                            port=terminal_config.get("port"),
+                        )
+                    else:
+                        _(**self.config[proxy])
                 except ProxySettingException as e:
                     self.server.broadcast(self.rtr("manager.reload.fail.proxy", proxy=e.proxy, keys="', '".join(e.missing_keys)))
                 except TerminalSettingException as _:
@@ -282,9 +309,12 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             self.server.logger.error(e, exc_info=e)
 
     def reload_config(self, config):
+        old_terminal = getattr(self.server_api, "terminal", None)
         self.manager_available = False
         if not self.set_config(config):
             return
+        if isinstance(old_terminal, SubprocessProxy) and old_terminal is not self.server_api.terminal:
+            old_terminal.forcekill()
         self.server.broadcast(self.rtr("manager.reload.success"))
         self.manager_available = True
 
@@ -305,10 +335,15 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         return info
 
     def check_permission(self, source: CommandSource, command: str):
-        if not source.has_permission(self.permission[command]):
-            source.reply(self.rtr("manager.permission_denied"))
-            return False
-        return True
+        if self.permission[command] == "console":
+            if source.is_console:
+                return True
+            source.reply(self.rtr("manager.console_only"))
+            return  False
+        if source.has_permission(self.permission[command]):
+            return True
+        source.reply(self.rtr("manager.permission_denied"))
+        return False
 
     def _call_command(
         self,
@@ -518,6 +553,53 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         self.server.broadcast(self.rtr("command.history.record.error"))
         raise ValueError(f"Invalid history record status: {status}")
 
+    def _get_subprocess_proxy(self) -> Optional[SubprocessProxy]:
+        terminal = getattr(getattr(self, "server_api", None), "terminal", None)
+        return terminal if isinstance(terminal, SubprocessProxy) else None
+
+    @command_call("log", False)
+    def log_help(self, source: CommandSource, context: CommandContext):
+        terminal = self._get_subprocess_proxy()
+        if terminal is None:
+            source.reply(self.rtr("command.log.not_available"))
+            return
+        status = "enabled" if terminal.console_log_enabled else "disabled"
+        source.reply(self.rtr("command.log.status", status=self.rtr(f"command.log.{status}", title=False).to_legacy_text()))
+        source.reply(self.rtr("command.log.help"))
+
+    def set_console_log(self, source: CommandSource, context: CommandContext, enabled):
+        terminal = self._get_subprocess_proxy()
+        if terminal is None:
+            source.reply(self.rtr("command.log.not_available"))
+            return
+        count = None if enabled is True else enabled
+        if count is not None and count < 1:
+            source.reply(self.rtr("command.log.invalid_count"))
+            return
+        terminal.set_console_log(enabled is not False)
+        terminal.console_log_limit = count
+        terminal._output_count = 0
+        prompt_key = "command.log.enabled_count" if count is not None else "command.log.enabled"
+        prompt_kwargs = {"count": count} if count is not None else {}
+        source.reply(self.rtr(prompt_key, **prompt_kwargs) if enabled is not False else self.rtr("command.log.disabled"))
+
+    @command_call("execute", False)
+    def mirror_execute(self, source: CommandSource, context: CommandContext):
+        if not self.manager_available:
+            source.reply(self.rtr("manager.unavailable"))
+            return
+        terminal = self._get_subprocess_proxy()
+        if terminal is None:
+            source.reply(self.rtr("command.execute.not_available"))
+            return
+        if terminal.status() != ServerStatus.RUNNING:
+            source.reply(self.rtr("command.execute.not_running"))
+            return
+        command = context["cmd"]
+        if not terminal._send_command(command):
+            source.reply(self.rtr("command.execute.failed"))
+            return
+        source.reply(self.rtr("command.execute.sent", cmd=command))
 
     def _on_confirmation_timeout(self, task: ConfirmationTask):
         task.source.reply(self.rtr("command.confirm.timeout", action=task.action))
@@ -549,3 +631,8 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         task = self.confirmations.cancel(operator)
         if task is not None:
             server.reply(info, self.rtr("command.confirm.cancel", action=task.action))
+
+    def on_unload(self, _: PluginServerInterface):
+        terminal = getattr(getattr(self, "server_api", None), "terminal", None)
+        if isinstance(terminal, SubprocessProxy):
+            terminal.forcekill()

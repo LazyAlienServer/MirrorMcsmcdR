@@ -10,6 +10,7 @@ from mirror_mcsmcdr.utils.status import ServerStatus
 
 
 class AbstractSystemProxy(ABC):
+    """Base interface shared by all terminal proxy implementations."""
 
     def __init__(
         self,
@@ -23,15 +24,15 @@ class AbstractSystemProxy(ABC):
         self.terminal_name, self.path, self.command = terminal_name, path, command
         self.port, self.regex_strict =  port, regex_strict
         self.is_mcdr = is_mcdr
-    
+
     @abstractmethod
     def start(self) -> str:
         ...
-    
+
     @abstractmethod
     def status(self) -> ServerStatus:
         ...
-    
+
     @abstractmethod
     def stop(self) -> str:
         ...
@@ -65,10 +66,10 @@ class SystemProxy(AbstractSystemProxy):
 
     def start(self):
         return self.system_api.start()
-    
+
     def status(self) -> ServerStatus:
         return self.system_api.status()
-    
+
     def stop(self):
         return self.system_api.stop()
 
@@ -172,7 +173,7 @@ class WindowsProxy(AbstractSystemProxy):
         terminal_name = self.terminal_name
         run_shell_command(f'''start cmd.exe cmd /C "title {terminal_name}&&{self.command}"''', cwd=self.path)
         return "success"
-    
+
     def status(self) -> ServerStatus:
         pids = self._get_listening_pids()
         if not pids:
@@ -187,7 +188,7 @@ class WindowsProxy(AbstractSystemProxy):
                 if int(fields[1]) in pids:
                     return ServerStatus.RUNNING
         return ServerStatus.STOPPED
-    
+
     def stop(self):
         pids = self._get_listening_pids()
         if not pids:
@@ -198,7 +199,7 @@ class WindowsProxy(AbstractSystemProxy):
             except (ProcessLookupError, PermissionError):
                 pass
         return "success"
-    
+
     def kill(self):
         pids = self._get_listening_pids()
         if not pids:
