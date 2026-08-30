@@ -21,3 +21,5 @@ tests/
 *.mcdr
 world/
 *.bat
+
+dist/
