@@ -59,9 +59,9 @@ class SystemProxy(AbstractSystemProxy):
     ) -> None:
         super().__init__(terminal_name, launch_path, launch_command, port, regex_strict, is_mcdr)
         self.system_api: Union[LinuxProxy, WindowsProxy]
-        if system == "Linux":
+        if system == "linux":
             self.system_api = LinuxProxy(terminal_name, launch_path, launch_command, port, regex_strict, is_mcdr)
-        elif system == "Windows":
+        elif system == "windows":
             self.system_api = WindowsProxy(terminal_name, launch_path, launch_command, port, regex_strict, is_mcdr)
 
     def start(self):
