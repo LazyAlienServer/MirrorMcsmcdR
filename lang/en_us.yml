@@ -48,7 +48,7 @@ mirror_mcsmcdr:
       sync: §7{prefix} sync §fSynchronize {server_name}
       history: §7{prefix} history [page] §fView synchronization history
       reload: §7{prefix} reload §fReload config of {server_name}
-      log: §7{prefix} log [enable [count]|disable] §fControl subprocess proxy logs
+      log: §7{prefix} log [count]|enable|disable §fControl subprocess proxy logs
       execute: §7{prefix} execute <command> §fSend a command through the subprocess proxy
 
     proxy:
@@ -72,8 +72,9 @@ mirror_mcsmcdr:
       disabled: "§cConsole log output disabled"
       invalid_count: "§cOutput count must be a positive integer"
       permission_denied: "§cThis command is restricted to the console"
-      help: "§7Usage: {prefix} log enable [count]|disable"
+      help: "§7Usage: {prefix} log [count]|enable|disable"
       output_end: "§7Output of {count} lines ended"
+      reset_on_stop: "§7Subprocess thread stopped"
     execute:
       sent: "§aCommand sent: §f{cmd}"
       failed: "§cFailed to send command"

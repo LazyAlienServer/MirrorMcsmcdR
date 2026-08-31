@@ -78,12 +78,14 @@ class SubprocessProxy(AbstractSystemProxy):
             return ServerStatus.STOPPED
 
         stop_command = "!!MCDR server stop_exit" if self.is_mcdr else "stop"
-        if not self._send_command(stop_command):
+        sent = self._send_command(stop_command)
+        if not sent:
+            self.reset_log_limit()
             return ServerStatus.STOPPING
         return "success"
-
     def kill(self) -> str:
         if self.status() == ServerStatus.STOPPED:
+            self.reset_log_limit()
             return ServerStatus.STOPPED
 
         process = self.process
@@ -98,6 +100,7 @@ class SubprocessProxy(AbstractSystemProxy):
 
     def forcekill(self) -> str:
         if self.status() == ServerStatus.STOPPED:
+            self.reset_log_limit()
             return ServerStatus.STOPPED
 
         process = self.process
@@ -112,20 +115,26 @@ class SubprocessProxy(AbstractSystemProxy):
         if process is None or process.stdout is None:
             return
 
-        while not self._stop_event.is_set():
-            line = process.stdout.readline()
-            if not line:
-                break
-            line = line.rstrip("\r\n")
-            self.log_buffer.append(line)
-            if self.console_log_enabled and self.server is not None:
-                if self.console_log_limit is None or self._output_count < self.console_log_limit:
-                    self._output_count += 1
-                    self.server.logger.info(self._format_log_line(line))
-                    if self.console_log_limit is not None and self._output_count == self.console_log_limit:
-                        self.server.logger.info(
-                            self.server.rtr("mirror_mcsmcdr.command.log.output_end", count=self.console_log_limit)
-                        )
+        try:
+            while not self._stop_event.is_set():
+                line = process.stdout.readline()
+                if not line:
+                    break
+                line = line.rstrip("\r\n")
+                self.log_buffer.append(line)
+                if self.server is not None and self.console_log_enabled or self.console_log_limit is not None:
+                    if self.console_log_limit is None or self._output_count < self.console_log_limit:
+                        self._output_count += 1
+                        self.server.logger.info(self._format_log_line(line))
+                        if self.console_log_limit is not None and self._output_count == self.console_log_limit:
+                            self.server.logger.info(
+                                self.server.rtr("mirror_mcsmcdr.command.log.output_end", count=self.console_log_limit)
+                            )
+        finally:
+            limit = self.console_log_limit
+            self.reset_log_limit()
+            if limit is not None and self.server is not None:
+                self.server.logger.info(self.server.rtr("mirror_mcsmcdr.command.log.reset_on_stop"))
 
     def _format_log_line(self, line: str) -> RText:
         return RText(f"§7[{self.terminal_name}] {line}")
@@ -144,7 +153,16 @@ class SubprocessProxy(AbstractSystemProxy):
     def set_console_log(self, enabled: bool) -> None:
         self.console_log_enabled = enabled
 
+    def set_console_log_limit(self, limit: int) -> None:
+        self.console_log_limit = limit
+        self._output_count = 0
+
+    def reset_log_limit(self) -> None:
+        self.console_log_limit = None
+        self._output_count = 0
+
     def _cleanup_process(self) -> None:
+        self.reset_log_limit()
         self._stop_event.set()
         if self._output_thread is not None:
             self._output_thread.join(timeout=3)
