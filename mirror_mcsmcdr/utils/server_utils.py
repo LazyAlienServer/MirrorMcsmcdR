@@ -34,20 +34,22 @@ class ServerProxy:
         self.terminal: Union[AbstractSystemProxy, Literal[False, None]] = None
 
     def set_mcsm(self, enable, **kwargs):
-        if enable and not sum(map(lambda x: not bool(x), kwargs.values())):
+        if not enable:
+            return
+        if not sum(map(lambda x: not bool(x), kwargs.values())):
             self.mcsm = MCSManagerProxy(enable, **kwargs)
-            return True
-        if enable:
-            self.mcsm = False
-            raise ProxySettingException("mcsm", [key for key, value in kwargs.items() if not bool(value)])
+            return
+        self.mcsm = False
+        raise ProxySettingException("mcsm", [key for key, value in kwargs.items() if not bool(value)])
 
     def set_rcon(self, enable, **kwargs):
-        if enable and not sum(map(lambda x: not bool(x), kwargs.values())):
+        if not enable:
+            return
+        if not sum(map(lambda x: not bool(x), kwargs.values())):
             self.rcon = RConProxy(**kwargs)
-            return True
-        if enable:
-            self.rcon = False
-            raise ProxySettingException("rcon", [key for key, value in kwargs.items() if not bool(value)])
+            return
+        self.rcon = False
+        raise ProxySettingException("rcon", [key for key, value in kwargs.items() if not bool(value)])
 
     def set_terminal(
         self,
@@ -59,6 +61,9 @@ class ServerProxy:
         server: Optional[PluginServerInterface] = None,
         **kwargs,
     ):
+        if not enable:
+            return
+
         terminal_name = kwargs.get("terminal_name") or "Mirror"
         path = kwargs.get("path", kwargs.get("launch_path"))
         command = kwargs.get("command", kwargs.get("launch_command"))
@@ -66,18 +71,22 @@ class ServerProxy:
         normalized_proxy_type = proxy_type.lower() if isinstance(proxy_type, str) else proxy_type
         if normalized_proxy_type is None:
             normalized_proxy_type = platform.system().lower()
-        if normalized_proxy_type not in ("linux", "windows", "subprocess"):
-            if enable:
-                self.terminal = False
-                raise TerminalSettingException(proxy_type)
-            return
 
         required_values = {"path": path, "command": command}
         if normalized_proxy_type != "subprocess":
             required_values["port"] = kwargs.get("port")
         missing_keys = [key for key, value in required_values.items() if not bool(value)]
-        if enable and not missing_keys and type(regex_strict) == bool and type(is_mcdr) == bool:
-            if normalized_proxy_type == "linux":
+        invalid_keys = missing_keys
+        if type(regex_strict) != bool:
+            invalid_keys.append("regex_strict")
+        if type(is_mcdr) != bool:
+            invalid_keys.append("is_mcdr")
+        if invalid_keys:
+            self.terminal = False
+            raise ProxySettingException("terminal", invalid_keys)
+
+        match normalized_proxy_type:
+            case "linux":
                 self.terminal = LinuxProxy(
                     terminal_name,
                     path,
@@ -86,7 +95,8 @@ class ServerProxy:
                     regex_strict,
                     is_mcdr,
                 )
-            elif normalized_proxy_type == "windows":
+                return
+            case "windows":
                 self.terminal = WindowsProxy(
                     terminal_name,
                     path,
@@ -95,7 +105,8 @@ class ServerProxy:
                     regex_strict,
                     is_mcdr,
                 )
-            else:
+                return
+            case "subprocess":
                 self.terminal = SubprocessProxy(
                     terminal_name=terminal_name,
                     path=path,
@@ -106,15 +117,9 @@ class ServerProxy:
                     console_log=console_log,
                     server=server,
                 )
-            return True
-        if enable:
-            self.terminal = False
-            invalid_keys = missing_keys
-            if type(regex_strict) != bool:
-                invalid_keys.append("regex_strict")
-            if type(is_mcdr) != bool:
-                invalid_keys.append("is_mcdr")
-            raise ProxySettingException("terminal", invalid_keys)
+                return
+            case _:
+                raise ProxySettingException("terminal", ["proxy_type"])
 
     def status(self) -> ServerStatus:
         if self.mcsm:
