@@ -67,12 +67,11 @@ mirror_mcsmcdr:
 
     log:
       status: "Console log output: {status}"
-      enabled: "§aConsole log output enabled"
-      enabled_count: "§aConsole log output enabled for the next {count} lines"
-      disabled: "§cConsole log output disabled"
+      enabled: "§aEnabled"
+      enabled_count: "§aEnabled for the next {count} lines"
+      disabled: "§cDisabled"
       invalid_count: "§cOutput count must be a positive integer"
-      permission_denied: "§cThis command is restricted to the console"
-      help: "§7Usage: {prefix} log [count]|enable|disable"
+      help: "§7Usage: {prefix} log enable|disable|<count>"
       output_end: "§7Output of {count} lines ended"
       reset_on_stop: "§7Subprocess thread stopped"
     execute:

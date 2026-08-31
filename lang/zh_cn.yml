@@ -67,12 +67,11 @@ mirror_mcsmcdr:
 
     log:
       status: "控制台日志输出: {status}"
-      enabled: "§a已启用控制台日志输出"
-      enabled_count: "§a已启用控制台日志输出，输出 {count} 行后停止"
-      disabled: "§c已禁用控制台日志输出"
+      enabled: "§a已启用"
+      enabled_count: "§a已启用，输出 {count} 行后停止"
+      disabled: "§c已禁用"
       invalid_count: "§c输出行数必须是正整数"
-      permission_denied: "§c此命令仅限控制台使用"
-      help: "§7用法: {prefix} log [count]|enable|disable"
+      help: "§7用法: {prefix} log enable|disable|<count>"
       output_end: "§7输出 {count} 行结束"
       reset_on_stop: "§7Subprocess 线程已停止"
     execute:
