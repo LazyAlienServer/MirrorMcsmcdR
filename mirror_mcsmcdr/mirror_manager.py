@@ -486,6 +486,8 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         status = "enabled" if terminal.console_log_enabled else "disabled"
         source.reply(self.rtr("command.log.status", status=self.rtr(f"command.log.{status}", title=False).to_legacy_text()))
         source.reply(self.rtr("command.log.help"))
+
+    @command_call("log", False)
     def set_console_log(self, source: CommandSource, context: CommandContext, enabled):
         terminal = self._get_subprocess_proxy()
         if terminal is None:
@@ -501,6 +503,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             return
         terminal.set_console_log_limit(enabled)
         source.reply(self.rtr("command.log.enabled_count", count=enabled))
+
     @command_call("execute", False)
     def mirror_execute(self, source: CommandSource, context: CommandContext):
         if not self.manager_available:
