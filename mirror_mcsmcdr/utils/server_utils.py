@@ -160,4 +160,6 @@ class ServerProxy:
     def forcekill(self):
         if self.terminal and isinstance(self.terminal, AbstractSystemProxy):
             return self.terminal.forcekill()
+        if self.mcsm and isinstance(self.terminal, WindowsProxy):
+            return self.terminal.kill()
         return ServerStatus.UNAVAILABLE
