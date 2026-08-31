@@ -66,13 +66,15 @@ mirror_mcsmcdr:
       others: §cYou cannot confirm other people's task
 
     log:
-      status: "Console log output: {status}"
+      status: "{server_name} console log output: {status}"
       enabled: "§aEnabled"
-      enabled_count: "§aEnabled for the next {count} lines"
+      set_enable: "{server_name} console log output §aenabled"
+      enabled_count: "{server_name} console log output §aenabled§f, stopping after §b{count} §flines"
       disabled: "§cDisabled"
+      set_disable: "{server_name} console log output §cdisabled"
       invalid_count: "§cOutput count must be a positive integer"
       help: "§7Usage: {prefix} log enable|disable|<count>"
-      output_end: "§7Output of {count} lines ended"
+      output_end: "§aOutput of §b{count} §alines ended"
       reset_on_stop: "§7Subprocess thread stopped"
     execute:
       sent: "§aCommand sent: §f{cmd}"
@@ -89,6 +91,8 @@ mirror_mcsmcdr:
         stopping: stopping
         starting: starting
         running: running
+        detached_java: "§cDetached (Java: not running; Screen: running)"
+        detached_screen: "§cDetached (Java: running; Screen: not running)"
 
     start:
       fail:

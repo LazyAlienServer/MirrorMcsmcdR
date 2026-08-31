@@ -496,7 +496,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         if isinstance(enabled, bool):
             terminal.set_console_log(enabled)
             terminal.reset_log_limit()
-            source.reply(self.rtr("command.log.enabled" if enabled else "command.log.disabled"))
+            source.reply(self.rtr("command.log.set_enable" if enabled else "command.log.set_disable"))
             return
         if enabled < 1:
             source.reply(self.rtr("command.log.invalid_count"))

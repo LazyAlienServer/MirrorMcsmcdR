@@ -66,13 +66,15 @@ mirror_mcsmcdr:
       others: §c你不能确认其他人的任务
 
     log:
-      status: "控制台日志输出: {status}"
+      status: "{server_name}控制台日志输出: {status}"
       enabled: "§a已启用"
-      enabled_count: "§a已启用，输出 {count} 行后停止"
+      set_enable: "{server_name}控制台日志输出§a已启用"
+      enabled_count: "{server_name}控制台日志输出§a已启用§f，输出 §b{count} §f行后停止"
       disabled: "§c已禁用"
+      set_disable: "{server_name}控制台日志输出§c已禁用"
       invalid_count: "§c输出行数必须是正整数"
       help: "§7用法: {prefix} log enable|disable|<count>"
-      output_end: "§7输出 {count} 行结束"
+      output_end: "§a输出 §b{count} §a行结束"
       reset_on_stop: "§7Subprocess 线程已停止"
     execute:
       sent: "§a命令已发送: §f{cmd}"
