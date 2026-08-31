@@ -53,9 +53,9 @@ The default command prefix is `!!mirror`. When controlling multiple mirror serve
 
 `!!mirror execute <command>` Sends a command to the mirror server (currently support subprocess proxy only)
 
-`!!mirror log enable [count]` Enables console output, optionally limited to a number of lines
+`!!mirror log` View the enabled/disabled status of console log output.
 
-`!!mirror log disable` Disables console log output
+`!!mirror log enable|disable|<count>` Enable or disable console log output, or output only the next `<count>` lines of console logs.
 
 ## Configuration File
 

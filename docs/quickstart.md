@@ -28,9 +28,9 @@
 
 `!!mirror execute <command>` 向subprocess代理中的镜像服发送指令
 
-`!!mirror log enable [count]` 启用控制台日志输出，可选地限制输出行数
+`!!mirror log` 查看控制台日志输出启用/禁用状态
 
-`!!mirror log disable` 禁用控制台日志输出
+`!!mirror log enable|disable|<count>` 启用/禁用控制台日志输出，或仅输出接下来`<count>`行控制台日志
 
 **接下来的内容将引导你完成对这一镜像服的配置**
 
