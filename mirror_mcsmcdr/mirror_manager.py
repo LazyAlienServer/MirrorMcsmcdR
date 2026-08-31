@@ -3,7 +3,7 @@ import time, datetime
 from pathlib import Path
 from copy import deepcopy
 from functools import wraps
-from threading import Event, Lock, Timer
+from threading import Event, Lock
 from typing import Any, Callable, Dict, Optional, Union, cast
 
 from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PluginServerInterface, RAction, RColor, RText, RTextList, SimpleCommandBuilder, new_thread, Integer, Text, GreedyText
@@ -17,6 +17,7 @@ from mirror_mcsmcdr.utils.server_utils import ProxySettingException, ServerProxy
 from mirror_mcsmcdr.utils.status import ServerStatus
 from mirror_mcsmcdr.utils.history_utils import SyncHistory
 from mirror_mcsmcdr.utils.page_utils import Page
+from mirror_mcsmcdr.utils.confirmation_utils import ConfirmationTask, ConfirmationManager
 
 PAGE_SIZE = 5
 
@@ -53,88 +54,6 @@ def command_call(command: str, enable_confirm: bool = True):
         return wrapper
 
     return decorator
-
-
-class ConfirmationTask:
-    def __init__(
-        self,
-        action: str,
-        source: CommandSource,
-        context: CommandContext,
-        callback: Callable[..., Any],
-        callback_args: tuple,
-        callback_kwargs: dict,
-    ) -> None:
-        self.action = action
-        self.source = source
-        self.context = context
-        self.callback = callback
-        self.callback_args = callback_args
-        self.callback_kwargs = callback_kwargs
-        self.timer: Optional[Timer] = None
-
-    def cancel(self):
-        if self.timer is not None:
-            self.timer.cancel()
-
-    def execute(self):
-        return self.callback(*self.callback_args, **self.callback_kwargs)
-
-
-class ConfirmationManager:
-    def __init__(self, timeout: float, on_timeout: Callable[[ConfirmationTask], None]) -> None:
-        self.timeout = timeout
-        self.on_timeout = on_timeout
-        self.tasks: Dict[str, ConfirmationTask] = {}
-
-    def request(
-        self,
-        operator: str,
-        action: str,
-        source: CommandSource,
-        context: CommandContext,
-        callback: Callable[..., Any],
-        callback_args: tuple,
-        callback_kwargs: dict,
-    ):
-        task = ConfirmationTask(
-            action,
-            source,
-            context,
-            callback,
-            callback_args,
-            callback_kwargs,
-        )
-        task.timer = Timer(self.timeout, self._timeout, args=(operator,))
-        self.tasks[operator] = task
-        task.timer.start()
-
-    def _timeout(self, operator: str):
-        task = self.tasks.pop(operator, None)
-        if task is not None:
-            self.on_timeout(task)
-
-    def cancel(self, operator: str) -> Optional[ConfirmationTask]:
-        task = self.tasks.pop(operator, None)
-        if task is not None:
-            task.cancel()
-        return task
-
-    def confirm(self, operator: str) -> Optional[ConfirmationTask]:
-        task = self.cancel(operator)
-        if task is not None:
-            task.execute()
-        return task
-
-    def has(self, operator: str) -> bool:
-        return operator in self.tasks
-
-    def has_any(self) -> bool:
-        return bool(self.tasks)
-
-    def clear(self):
-        for operator in tuple(self.tasks):
-            self.cancel(operator)
 
 
 class MultiMirrorManager:  # The manager at large which manage multi single mirror server manager
