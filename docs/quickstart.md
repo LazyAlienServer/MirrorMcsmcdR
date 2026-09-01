@@ -79,7 +79,7 @@
 ### 通过MCSM配置镜像服
 
 此配置部分若有疑问，你可以查看[MCSManager官方文档](https://docs.mcsmanager.com/#/zh-cn/apis/readme)并对照
-```json
+```jsonc
 "mcsm": {
     "enable": false,
     "url": "http://127.0.0.1:23333/",
@@ -104,7 +104,7 @@
 
 **注意**：`proxy_type`为`linux`（或在Linux系统保持为`null`）时需要安装`screen`；为`windows`时会创建新的命令行终端；为`subprocess`时会在MCDR进程内启动镜像服子进程。Linux/Windows代理的`stop`和`kill`分别通过screen或系统进程控制，subprocess代理通过标准输入输出控制，`rcon`为可选的替代控制方式。
 
-```json
+```jsonc
 "terminal": {
     "enable": false,
     "launch_path": "./Mirror",
@@ -142,7 +142,7 @@ mcdr_root
 
 同样的，配置完成后，你需要将`enable`设置为`true`，以真正地启用终端控制。
 
-```json
+```jsonc
 "rcon": {
     "enable": false,
     "address": null,
@@ -161,7 +161,7 @@ mcdr_root
 
 ### 存档同步
 
-```json
+```jsonc
 "sync": {
     "world": [
 	    "world"

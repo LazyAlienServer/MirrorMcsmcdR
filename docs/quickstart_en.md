@@ -82,7 +82,7 @@ Finally, you can optionally configure command permissions, behavior, and display
 
 If you have any questions about this configuration section, you can refer to the [MCSManager Official Documentation](https://docs.mcsmanager.com/#/zh-cn/apis/readme) and compare
 
-```json
+```jsonc
 "mcsm": {
     "enable": false,
     "url": "http://127.0.0.1:23333/", 
@@ -108,7 +108,7 @@ Jump to [Save Synchronization](#save-synchronization) for the next step.
 
 **Note**: `screen` is required when `proxy_type` is `linux` (or left as `null` on Linux); `windows` creates a new command prompt; and `subprocess` starts the mirror server as a child process inside MCDR. The Linux/Windows proxies control the server through screen or system processes, while the subprocess proxy uses standard input and output. `rcon` is an optional alternative control method.
 
-```json
+```jsonc
 "terminal": {
     "enable": false,
     "launch_path": "./Mirror",
@@ -147,7 +147,7 @@ At this point, Linux and Windows users can jump to [Save Synchronization](#save-
 
 Similarly, after the configuration is completed, you need to set `enable` to `true` to truly enable terminal control.
 
-```json
+```jsonc
 "rcon": {
     "enable": false,
     "address": null,
@@ -166,7 +166,7 @@ Jump to [Save Synchronization](#save-synchronization) for the next step.
 
 ### Save Synchronization
 
-```json
+```jsonc
 "sync": {
     "world": [
         "world"
