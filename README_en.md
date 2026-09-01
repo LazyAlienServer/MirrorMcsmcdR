@@ -23,7 +23,7 @@ An **advance** plugin for [MCDR](https://github.com/Fallen-Breath/MCDReforged) t
 
 **System**
 
-When using the [terminal](#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) to start the mirror server and the system is `Linux`: `screen` is required
+When using the [terminal](#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) with `proxy_type` set to `linux` (or left as `null` on Linux), `screen` is required
 
 ## Commands
 
@@ -152,50 +152,49 @@ After enabling MCSM, the terminal and RCON will be disabled.
     "terminal_name": "Mirror",
     "regex_strict": false,
     "is_mcdr": true,
-    "system": null
+    "proxy_type": null,
+    "console_log": false
 }
 ```
-Under Windows system, the plugin will create a new terminal to run the mirror server; under Linux system, the plugin will create a new screen to run the mirror server. After the mirror server stops, the terminal or screen will be closed automatically.
+When `proxy_type` is `linux`, the plugin creates a screen session; when it is `windows`, it creates a new command prompt; when it is `subprocess`, it starts the mirror server as a child process inside MCDR. The screen or terminal created by the Linux/Windows proxy is closed automatically after the mirror server stops.
 
-If you cannot start the mirror server with this command, try the following steps for inspection. Among them, `terminal_name` `launch_command` are the values of the corresponding keys in the configuration file.
+If you cannot start the mirror server with this command, try the following steps for inspection. Among them, `terminal_name` and `launch_command` are the values of the corresponding keys in the configuration file.
 1. Execute `launch_command` under `launch_path` and confirm that it can start the mirror server successfully
-2. Linux users check if `screen` is installed, Windows users check if `python` command can start Python successfully in the terminal
-3. If the above two suggestions cannot be resolved, then execute the complete command corresponding to the system in the root directory of the current server's MCDR, and check the command echo
+2. Linux users check if `screen` is installed, and Windows users check if the `python` command can start Python successfully in the terminal
+3. If the above two suggestions do not resolve the problem, execute the complete command corresponding to the Linux or Windows proxy in the root directory of the current server's MCDR, and check the command output
    - Linux `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
    - Windows `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{launch_command}')"`
 
-Note: Under Linux, the plugin can close the mirror server through screen. Under Windows terminal control, `stop` sends `SIGINT` to the process listening on the configured mirror port, and `kill` forcefully terminates that process with `taskkill`; confirm that `port` is correct. MCSM or RCON can still be used as alternative control methods.
+Note: The `linux` proxy controls the mirror server through screen. With the `windows` proxy, `stop` sends `SIGINT` to the process listening on the configured mirror port and `kill` forcefully terminates it with `taskkill`. The `subprocess` proxy controls the mirror server through the child process's standard input and output. The Linux/Windows proxies require a correctly configured `port`; the subprocess proxy does not require `port`. MCSM or RCON can still be used as alternative control methods.
 
-**The stop command under Windows Terminal is experimental; use it at your own risk. Configure RCON whenever possible to avoid unnecessary operational overhead.**
+**The stop command under the Windows proxy is experimental; use it at your own risk. Configure RCON whenever possible to avoid unnecessary operational overhead.**
 
 **enable** `bool`
-- Whether to enable the terminal. when MCSM is not enabled and this option is `true`, the mirror server will be started through the terminal.
+- Whether to enable the terminal. When MCSM is not enabled and this option is `true`, the mirror server will be started through the selected terminal proxy.
 
 **launch_path** `str`
 - The path where the startup command is executed, usually the directory where the mirror server is located.
 
 **launch_command** `str`
-- The startup command that needs to be executed, if a simple startup command cannot meet your requirements, you can create a `.bat` (or `.sh`) file and write the startup command in it, and then execute the file.
-
-**port** `int`
-- The port on which the mirror server runs, the plugin will check the running status of the mirror server by checking the port status.
-
+- The startup command that needs to be executed. If a simple startup command cannot meet your requirements, you can create a `.bat` (or `.sh`) file and write the startup command in it, then execute the file.
+**port** `int | null`
+- The mirror server port. The Linux and Windows proxies use it to check the server status and control the process; it is not required by the `subprocess` proxy.
 **terminal_name** `str`
-- The title of the new terminal or the name of the new screen, which is convenient for the operation and maintenance of the mirror server.
-
+- The title of the new command prompt, the name of the new screen, or the prefix used for subprocess proxy log output.
 **regex_strict** `bool`
-- Whether to continue to verify if the process name must be `java.exe` after finding the port when checking the running status of the mirror server. Generally, there is no need to turn it on. If different processes may run on the same port at different times, for example, during a certain period, Minecraft runs on port `port`, and during another period, another program runs on port `port` while Minecraft is not running, then to a certain extent this option can avoid misjudging other processes as java processes.
-
+- Whether the Linux or Windows proxies should continue to verify that the process name is `java.exe` after finding the configured port. Generally, there is no need to enable it.
 **is_mcdr** `bool`
-- Whether the mirror server is started by MCDReforged. Defaults to `true`. Under Linux, when `true`, `stop` and `kill` send `!!MCDR server stop_exit` and `!!MCDR server kill` to screen; when `false`, `stop` sends Minecraft's `stop` command and `kill` immediately performs a force kill. Under Windows terminal control, `stop` uses `SIGINT` and `kill` uses `taskkill` to forcefully terminate the process listening on the configured port.
+- Whether the mirror server is started by MCDReforged. Defaults to `true`. For the Linux proxy, `true` makes `stop` and `kill` send MCDR commands to screen; `false` makes `stop` send Minecraft's `stop` command and `kill` perform a force kill. For the subprocess proxy, `true` makes `stop` send `!!MCDR server stop_exit`, while `false` sends Minecraft's `stop` command; `kill` terminates the child process directly. The Windows proxy uses `SIGINT` for `stop` and `taskkill` for `kill`.
 
-`!!mirror kill -f` and `!!mirror kill --force` are only available for Linux terminal control. They kill every process listening on the configured port, then close screen; confirm that `port` is correct before using them.
+`!!mirror kill -f` and `!!mirror kill --force` are only available for the Linux proxy or Linux/Windows+MCDR. They kill every process listening on the configured port, then close screen; confirm that `port` is correct before using them.
 
-**system** `str`
-- System type, if it is `null`, the system type will be automatically obtained. Optional: `Linux` `Windows` (the first letter should be capitalized)
+**proxy_type** `str | null`
+- The terminal proxy type, replacing the legacy `system` option. Valid values are `linux`, `windows`, and `subprocess`. When set to `null`, the plugin automatically selects `linux` or `windows` based on the current operating system. `subprocess` starts the mirror server as a child process inside MCDR, does not require `port`, and supports sending commands through `!!mirror execute`.
+
+**console_log** `bool`
+- Whether to output the subprocess proxy's mirror server console logs to the MCDR console by default. This option only applies to the `subprocess` proxy.
 
 <br>
-
 ### rcon: RCON Configuration
 ```jsonc
 "rcon": {
@@ -436,7 +435,8 @@ Players can only confirm the commands they have executed
             "terminal_name": "Mirror",
             "regex_strict": false,
             "is_mcdr": true,
-            "system": null
+            "proxy_type": null,
+            "console_log": false
         },
         "rcon": {
             "enable": false,

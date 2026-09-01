@@ -23,7 +23,7 @@
 
 **系统**
 
-当使用[terminal](#terminal-通过命令行启动镜像服终端的配置)启动镜像服且系统为`Linux`时：需要`screen`
+当使用[terminal](#terminal-通过命令行启动镜像服终端的配置)且将`proxy_type`设置为`linux`（或在Linux系统保持为`null`）时，需要`screen`
 
 ## 指令
 
@@ -152,21 +152,22 @@
     "terminal_name": "Mirror",
     "regex_strict": false,
     "is_mcdr": true,
-    "system": null
+    "proxy_type": null,
+    "console_log": false
 }
 ```
-在Windows系统下，插件将创建一个新的命令行终端来运行镜像服；在Linux系统下，插件将创建一个新的screen来运行镜像服。镜像服停止后，终端/screen都会自动关闭。
+当`proxy_type`为`linux`时，插件会创建一个新的screen；为`windows`时，会创建一个新的命令行终端；为`subprocess`时，会在MCDR进程内启动镜像服子进程。镜像服停止后，Linux/Windows代理创建的screen/终端会自动关闭。
 
 如果你无法通过此命令启动镜像服，尝试按以下步骤检查。其中`terminal_name` `launch_command`都为配置文件中对应key的值
 1. 在`launch_path`下执行`launch_command`，并确认能够使镜像服正常启动
 2. Linux用户检查是否安装了`screen`，Windows用户检查终端中输入`python`是否能正常启动Python
-3. 若以上两项都不能解决，则在当前服务端的MCDR根目录下执行对应系统的完整命令，并检查命令回显
+3. 若以上两项都不能解决，则在当前服务端的MCDR根目录下执行Linux或Windows代理对应的完整命令，并检查命令回显
    - Linux `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
    - Windos `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{launch_command}')"`
 
-注意：Linux系统下，插件可以通过screen关闭镜像服。Windows terminal下，`stop`会向监听镜像服端口的进程发送`SIGINT`（即`Ctrl+C`命令），`kill`会使用`taskkill`强制终止该进程；请确认`port`配置正确。MCSM或RCON仍可作为替代控制方式。
+注意：`linux`代理通过screen控制镜像服；`windows`代理的`stop`会向监听镜像服端口的进程发送`SIGINT`（即`Ctrl+C`命令），`kill`会使用`taskkill`强制终止该进程；`subprocess`代理通过子进程标准输入输出进行控制。Linux/Windows代理需要正确配置`port`，subprocess代理无需配置`port`。MCSM或RCON仍可作为替代控制方式。
 
-**Windows Terminal 下的 stop 命令为实验性功能，请自行承担使用风险。请尽可能配置 RCON ，避免产生不必要的运维成本。**
+**Windows代理下的 stop 命令为实验性功能，请自行承担使用风险。请尽可能配置 RCON，避免产生不必要的运维成本。**
 
 **enable** `bool`
 - 是否启用终端，当MCSM未启用且此选项为`true`时将通过终端启动镜像服。
@@ -177,22 +178,25 @@
 **launch_command** `str`
 - 需要执行的启动命令，若简单的启动命令无法满足需求，你可以创建一个`.bat`（或`.sh`）文件，并将启动命令写在该文件中，然后执行该文件。
 
-**port** `int`
-- 镜像服运行的端口，插件将通过检查端口状态的方法检查镜像服的运行状态。
+**port** `int | null`
+- 镜像服运行的端口。Linux/Windows代理通过此端口检查状态并控制进程；subprocess代理无需配置此项。
 
 **terminal_name** `str`
-- 新终端的标题或新screen的名称，便于镜像服运维。
+- 新命令行终端的标题、新screen的名称，或subprocess代理日志输出使用的前缀。
 
 **regex_strict** `bool`
-- 在通过端口检查镜像服运行状态时，是否在找到端口后继续验证进程名必须为`java.exe`。一般情况下无需开启。若不同的进程在不同时间可能同时占用了设置的端口，例如在某一时间段Minecraft运行在端口`port`上，另一时间段有其他程序运行在端口`port`上而Minecraft没有运行，那么此选项可以一定程度上避免将其他进程误判为java进程。
+- Linux/Windows代理在通过端口检查镜像服运行状态时，是否在找到端口后继续验证进程名必须为`java.exe`。一般情况下无需开启。
 
 **is_mcdr** `bool`
-- 是否通过MCDReforged启动镜像服，默认为`true`。Linux系统下为`true`时，`stop`和`kill`会向screen输入`!!MCDR server stop_exit`和`!!MCDR server kill`；为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。Windows terminal下，`stop`使用`SIGINT`，`kill`使用`taskkill`强制终止监听端口的进程。
+- 是否通过MCDReforged启动镜像服，默认为`true`。Linux代理设置为`true`时，`stop`和`kill`会向screen输入MCDR指令；设置为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。subprocess代理设置为`true`时，`stop`会发送`!!MCDR server stop_exit`，设置为`false`时会发送Minecraft的`stop`命令，`kill`会直接终止子进程。Windows代理的`stop`使用`SIGINT`，`kill`使用`taskkill`强制终止监听端口的进程。
 
-`!!mirror kill -f`和`!!mirror kill --force`仅适用于Linux terminal。它们会杀死配置端口的所有监听进程，再关闭screen；请确认`port`配置正确，避免终止其他服务。
+`!!mirror kill -f`和`!!mirror kill --force`仅适用于Linux terminal或Windows/Linux+MCDR。它们会杀死配置端口的所有监听进程，再关闭screen；请确认`port`配置正确，避免终止其他服务。
 
-**system** `str`
-- 系统类型，若为`null`则将自动获取系统类型。可选：`Linux` `Windows`（需首字母大写）
+**proxy_type** `str | null`
+- 终端代理类型，替代旧版的`system`配置项。可选值为`linux`、`windows`和`subprocess`。设置为`null`时，将根据当前操作系统自动选择`linux`或`windows`。`subprocess`会在MCDR进程内启动镜像服子进程，不需要配置`port`，并支持通过`!!mirror execute`发送指令。
+
+**console_log** `bool`
+- 是否默认将`subprocess`代理的镜像服控制台日志输出到MCDR控制台。此配置仅对`subprocess`代理生效。
 
 <br>
 
@@ -436,7 +440,8 @@ mcdr_root (./)
             "terminal_name": "Mirror",
             "regex_strict": false,
             "is_mcdr": true,
-            "system": null
+            "proxy_type": null,
+            "console_log": false
         },
         "rcon": {
             "enable": false,

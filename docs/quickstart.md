@@ -102,7 +102,7 @@
 
 ### 通过终端控制镜像服
 
-**注意**：Linux用户只需要配置`terminal`，`rcon`不是必选项。Windows用户也可以仅配置`terminal`：`stop`通过`SIGINT`停止监听端口的进程，`kill`通过`taskkill`强制终止该进程；`rcon`为可选的替代控制方式。
+**注意**：`proxy_type`为`linux`（或在Linux系统保持为`null`）时需要安装`screen`；为`windows`时会创建新的命令行终端；为`subprocess`时会在MCDR进程内启动镜像服子进程。Linux/Windows代理的`stop`和`kill`分别通过screen或系统进程控制，subprocess代理通过标准输入输出控制，`rcon`为可选的替代控制方式。
 
 ```json
 "terminal": {
@@ -113,7 +113,8 @@
     "terminal_name": "Mirror",
     "regex_strict": false,
     "is_mcdr": true,
-    "system": null
+    "proxy_type": null,
+    "console_log": false
 }
 ```
 
@@ -133,9 +134,9 @@ mcdr_root
 
 `port`为镜像服的端口，即镜像服的`server.properties`文件中的`server-port`项。它应当是一个整数，无需用`"xxx"`包裹。
 
-与其他镜像服插件不同的是，此插件在启动镜像服时，会创建一个新的终端（Windows）或screen（Linux）。`terminal_name`即为这一终端的标题或这一screen的名称，方便运维。实现方式参见[README-通过命令行启动镜像服终端](../README.md#terminal-通过命令行启动镜像服终端的配置)
+当`proxy_type`为`linux`时，插件会创建screen；为`windows`时会创建新的命令行终端；为`subprocess`时会在MCDR进程内启动镜像服子进程。`terminal_name`即为命令行终端的标题、screen的名称，或subprocess日志输出的前缀。
 
-`regex_strict`、`is_mcdr`与`system`一般无需修改。`is_mcdr`默认为`true`，表示镜像服由MCDReforged启动；`system`默认为`null`时，插件会自动获取操作系统。有关这些配置的详细信息参见[README-通过命令行启动镜像服终端](../README.md#terminal-通过命令行启动镜像服终端的配置)。Linux terminal下可使用`!!mirror kill -f`或`!!mirror kill --force`清理端口监听进程和screen；Windows terminal下`stop`使用`SIGINT`，`kill`使用`taskkill`强制终止监听端口的进程，请确认`port`配置正确。
+`regex_strict`、`is_mcdr`与`proxy_type`一般无需修改。`is_mcdr`默认为`true`，表示镜像服由MCDReforged启动；`proxy_type`默认为`null`时，插件会根据操作系统自动选择`linux`或`windows`。设置为`subprocess`时，镜像服会作为MCDR子进程启动，`port`无需配置，并可通过`console_log`配置是否默认输出控制台日志。有关这些配置的详细信息参见[README-通过命令行启动镜像服终端](../README.md#terminal-通过命令行启动镜像服终端的配置)。
 
 至此，Linux和Windows用户都可以跳至[存档同步](#存档同步)来进行下一步了，或选择性地继续查看`rcon`配置。
 

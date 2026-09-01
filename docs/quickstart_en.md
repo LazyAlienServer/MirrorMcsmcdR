@@ -106,7 +106,7 @@ Jump to [Save Synchronization](#save-synchronization) for the next step.
 
 ### Controlling the Mirror Server through the Terminal
 
-**Note**: Linux users only need to configure `terminal`; `rcon` is not required. Windows users can also configure only `terminal`: `stop` sends `SIGINT` to the process listening on the configured port, and `kill` forcefully terminates it with `taskkill`; `rcon` is an optional alternative control method.
+**Note**: `screen` is required when `proxy_type` is `linux` (or left as `null` on Linux); `windows` creates a new command prompt; and `subprocess` starts the mirror server as a child process inside MCDR. The Linux/Windows proxies control the server through screen or system processes, while the subprocess proxy uses standard input and output. `rcon` is an optional alternative control method.
 
 ```json
 "terminal": {
@@ -117,7 +117,8 @@ Jump to [Save Synchronization](#save-synchronization) for the next step.
     "terminal_name": "Mirror",
     "regex_strict": false,
     "is_mcdr": true,
-    "system": null
+    "proxy_type": null,
+    "console_log": false
 }
 ```
 
@@ -138,9 +139,9 @@ In the example, the mirror server is located in `mcdr_root/Mirror` and is starte
 
 `port` is the port of the mirror server, that is, the `server-port` item in the `server.properties` file of the mirror server. It should be an integer and does not need to be wrapped in `"xxx"`.
 
-Unlike other mirror server plugins, this plugin creates a new terminal (Windows) or screen (Linux) when starting the mirror server. `terminal_name` is the title of this terminal or the name of this screen, which is convenient for operation and maintenance. For implementation, see [README-Configuring the Mirror Server Terminal through the Command Line](../README_en.md#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line)
+When `proxy_type` is `linux`, the plugin creates a screen session; when it is `windows`, it creates a new command prompt; and when it is `subprocess`, it starts the mirror server as a child process inside MCDR. `terminal_name` is the title of the command prompt, the name of the screen, or the prefix used for subprocess log output.
 
-`regex_strict`, `is_mcdr`, and `system` generally do not need to be modified. `is_mcdr` defaults to `true`, meaning the mirror server is started by MCDReforged; `system` defaults to `null`, and the plugin automatically detects the operating system. See [README-Configuring the Mirror Server Terminal through the Command Line](../README_en.md#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) for details. On Linux terminal control, use `!!mirror kill -f` or `!!mirror kill --force` to clear listening processes and screen. On Windows terminal control, `stop` uses `SIGINT` and `kill` uses `taskkill` to forcefully terminate the process listening on the configured port; confirm that `port` is correct.
+`regex_strict`, `is_mcdr`, and `proxy_type` generally do not need to be modified. `is_mcdr` defaults to `true`, meaning the mirror server is started by MCDReforged. When `proxy_type` is `null`, the plugin automatically selects `linux` or `windows` based on the operating system. When set to `subprocess`, the mirror server runs as an MCDR child process, `port` is not required, and `console_log` controls whether its console logs are output by default. See [README-Configuring the Mirror Server Terminal through the Command Line](../README_en.md#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) for details.
 
 At this point, Linux and Windows users can jump to [Save Synchronization](#save-synchronization), or optionally continue to view the `rcon` configuration.
 
