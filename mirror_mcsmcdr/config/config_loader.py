@@ -44,6 +44,7 @@ class MultiConfigLoader:
         self.user_config = user_config
 
         annotated_first = deepcopy(template[template_prefix])
+        self._apply_values(annotated_first, parent_config.serialize())
         needs_save = needs_save or source_path is None or source_path != self.config_path or first_data != annotated_first
         if not needs_save:
             return
@@ -97,3 +98,14 @@ class MultiConfigLoader:
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         with self.config_path.open('w', encoding='utf8', newline='\n') as file:
             yaml.dump(data, file)
+
+    @classmethod
+    def _apply_values(cls, target: dict, values: dict) -> None:
+        """Apply resolved config values while retaining template comments."""
+        for key, value in values.items():
+            if key not in target:
+                continue
+            if isinstance(target[key], dict) and isinstance(value, dict):
+                cls._apply_values(target[key], value)
+            else:
+                target[key] = value
