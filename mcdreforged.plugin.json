@@ -16,6 +16,6 @@
     "resources": [
         "LICENSE",
         "lang",
-        "default_config.yml"
+        "default_config"
     ]
 }

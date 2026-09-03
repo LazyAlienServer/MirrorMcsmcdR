@@ -1,0 +1,125 @@
+# MirrorMcsmcdR 配置文件
+# 第一个镜像条目是后续条目的基础配置。
+# 添加另一个前缀，例如 "!!mirror2"，以配置另一个镜像服务器。
+
+"!!mirror":
+  # MCSManager 连接设置。启用时，terminal 和 RCON 不被使用。
+  mcsm:
+    # 是否通过 MCSManager 控制镜像服务器。
+    enable: false
+    # MCSManager API 地址。
+    url: http://127.0.0.1:23333/
+    # MCSManager 服务器实例 UID。
+    uuid:
+    # MCSManager 远程节点 GID。
+    remote_uuid:
+    # MCSManager API 密钥。
+    apikey:
+
+  # 通过终端或子进程启动镜像服务器的设置。
+  terminal:
+    # MCSManager 禁用时，是否启用终端控制。
+    enable: false
+    # 镜像服务器启动命令运行的目录。
+    launch_path: ./Mirror
+    # 用于启动镜像服务器的命令。
+    launch_command: python -m mcdreforged
+    # 镜像服务器端口；子进程代理不需要。
+    port:
+    # 终端标题、screen 名称或子进程日志前缀。
+    terminal_name: Mirror
+    # Linux/Windows 代理是否验证 Java 进程名称。
+    regex_strict: false
+    # 镜像服务器本身是否由 MCDReforged 启动。
+    is_mcdr: true
+    # 代理类型：linux、windows、subprocess 或 null 以自动选择。
+    proxy_type:
+    # 子进程控制台输出是否默认显示。
+    console_log: false
+
+  # RCON 连接设置。
+  rcon:
+    # 是否启用 RCON。
+    enable: false
+    # RCON 服务器地址。
+    address:
+    # RCON 服务器端口。
+    port:
+    # RCON 服务器密码。
+    password:
+
+  # 文件同步设置。
+  sync:
+    # 要同步的世界目录。
+    world:
+      - world
+    # 源服务器目录。
+    source: ./server
+    # 一个或多个目标服务器目录。
+    target:
+      - ./Mirror/server
+    # 是否忽略缺失的目标目录。
+    ignore_inexistent_target_path: false
+    # 同步工作线程数。
+    concurrency: 4
+    # 同步时排除的文件名。
+    ignore_files:
+      - session.lock
+
+  # 命令权限和命令行为。
+  command:
+    permission:
+      # 所需权限等级，或 "console" 表示仅限控制台命令。
+      status: 0
+      start: 0
+      stop: 2
+      kill: 3
+      sync: 2
+      history: 0
+      confirm: 0
+      abort: 0
+      log: console
+      execute: console
+    action:
+      status:
+        require_confirm: false
+      start:
+        require_confirm: false
+      stop:
+        require_confirm: true
+      kill:
+        require_confirm: true
+      sync:
+        require_confirm: true
+        ensure_server_closed: true
+        auto_server_restart: false
+        check_status_interval: 5
+        max_attempt_times: 3
+        save_world:
+          # 复制世界时禁用自动保存。
+          turn_off_auto_save: true
+          commands:
+            save_all_worlds: save-all flush
+            auto_save_off: save-off
+            auto_save_on: save-on
+          # 保存命令完成后匹配的服务器输出。
+          saved_world_regex: '^Saved the game$'
+          # 等待保存确认的最长时间。
+          save_world_max_wait_sec: 60
+      history:
+        require_confirm: false
+        max_history_count: 5
+      confirm:
+        timeout: 30
+        cancel_anymsg: true
+      abort:
+        operator: everyone
+
+  # 显示设置。
+  display:
+    # 此镜像服务器在命令反馈中使用的名称。
+    server_name: Mirror
+
+# 对于额外的镜像服务器，你可以使用类 yaml 的语法来覆盖基础配置。例如：
+# "!!mirror2":
+#   mcsm.uuid: 12345678-1234-1234-1234-123456789012

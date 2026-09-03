@@ -13,7 +13,8 @@ class MultiConfigLoader:
 
     CONFIG_FILE_NAME = 'config.yml'
     LEGACY_CONFIG_FILE_NAME = 'config.json'
-    DEFAULT_CONFIG_FILE_NAME = 'default_config.yml'
+    DEFAULT_CONFIG_DIR = 'default_config'
+    DEFAULT_LANGUAGE = 'en_us'
 
     def __init__(self, server: PluginServerInterface) -> None:
         self.user_config: Optional[dict[str, dict]] = None
@@ -47,7 +48,8 @@ class MultiConfigLoader:
 
         annotated_first = deepcopy(template[template_prefix])
         self._apply_values(annotated_first, parent_config.serialize())
-        needs_save = needs_save or source_path is None or source_path != self.config_path or first_data != annotated_first
+        first_data_defined = user_config and first_prefix in user_config
+        needs_save = needs_save or source_path is None or source_path != self.config_path or (first_data_defined and first_data != annotated_first)
         if not needs_save:
             return
         export_config = deepcopy(template)
@@ -80,8 +82,15 @@ class MultiConfigLoader:
         return config
 
     def _load_template(self, yaml: YAML) -> CommentedMap:
-        with self.server.open_bundled_file(self.DEFAULT_CONFIG_FILE_NAME) as file:
-            return yaml.load(file.read().decode('utf8'))
+        lang = self.server.get_mcdr_language()
+        template_name = f'{self.DEFAULT_CONFIG_DIR}/{lang}.yml'
+        try:
+            with self.server.open_bundled_file(template_name) as file:
+                return yaml.load(file.read().decode('utf8'))
+        except (FileNotFoundError, OSError):
+            fallback_name = f'{self.DEFAULT_CONFIG_DIR}/{self.DEFAULT_LANGUAGE}.yml'
+            with self.server.open_bundled_file(fallback_name) as file:
+                return yaml.load(file.read().decode('utf8'))
 
     def _load_user_config(self) -> Tuple[Dict[str, dict] | {}, Optional[Path]]:
         path = self.config_path
