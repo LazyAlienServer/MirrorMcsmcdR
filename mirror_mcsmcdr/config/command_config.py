@@ -41,7 +41,7 @@ class ConfirmActionConfig(Serializable):
     timeout: int = 30
     cancel_anymsg: bool = True
 
-class AbortActionConfig(ActionConfig):
+class AbortActionConfig(Serializable):
     operator: str = "everyone"
 
 class CommandActionConfig(Serializable):
