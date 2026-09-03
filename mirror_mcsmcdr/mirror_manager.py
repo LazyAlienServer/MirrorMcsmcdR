@@ -1,14 +1,14 @@
 import re
 import time, datetime
 from pathlib import Path
-from copy import deepcopy
 from functools import wraps
 from threading import Event, Lock
-from typing import Any, Callable, Dict, Optional, Union, cast
+from typing import Any, Callable, Optional, Union, cast
 
 from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PluginServerInterface, RAction, RColor, RText, RTextList, SimpleCommandBuilder, new_thread, Integer, Text, GreedyText
 
-from mirror_mcsmcdr.constants import DEFAULT_CONFIG, TITLE
+from mirror_mcsmcdr.constants import TITLE
+from mirror_mcsmcdr.config import MultiConfigLoader, MirrorConfig, MCSMConfig, TerminalConfig, RConConfig, SynchronizationConfig, CommandConfig, DisplayConfig, CommandPermissionConfig
 from mirror_mcsmcdr.utils.display_utils import help_msg, rtr
 from mirror_mcsmcdr.utils.sync.classic_synchronizer import ClassicWorldSynchronizer
 from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxyError
@@ -59,17 +59,17 @@ def command_call(command: str, enable_confirm: bool = True):
 class MultiMirrorManager:  # The manager at large which manage multi single mirror server manager
     def __init__(self, server: PluginServerInterface) -> None:
         self.server = server
-        config, default_conf = self.load_config_all()
+        self.loader = MultiConfigLoader(server)
+        self.loader.load()
 
         self.managers = {}
 
         succeed, failed = [], []
-        for command_prefix, single_conf in config.items():
+        for command_prefix in self.loader.get_all_prefix():
             try:
-                single_conf = self._conf_update(default_conf, single_conf)
                 single_manager = MirrorManager(
                     server,
-                    single_conf,
+                    self.loader.get_mirror_config(command_prefix),
                     command_prefix,
                     reload_method=self.reload_config,
                 )
@@ -79,44 +79,21 @@ class MultiMirrorManager:  # The manager at large which manage multi single mirr
                 succeed.append(command_prefix)
             except Exception as e:
                 server.logger.error(rtr("multi_manager.init.error", prefix=command_prefix, e=e))
+                server.logger.error(e, exc_info=e)
                 failed.append(command_prefix)
         success_info = rtr("multi_manager.init.success", prefix=", ".join(succeed))
         fail_info = (rtr("multi_manager.init.fail",title=False,prefix=" §7/§c " + " ".join(failed)) if failed else "")
-        server.logger.info(success_info)
-        server.say(RTextList(success_info, " ", fail_info))
-
-    def _conf_update(self, default_conf: dict, new_conf: dict):
-        default_conf = deepcopy(default_conf)
-        for key, value in new_conf.items():
-            if key not in default_conf.keys():
-                continue
-            if type(value) == dict:
-                default_conf[key] = self._conf_update(default_conf[key], new_conf[key])
-            elif default_conf[key] != value:
-                default_conf[key] = value
-        return default_conf
-
-    def load_config_all(self):
-        try:
-            config = self.server.load_config_simple()
-        except:
-            config = self.server.load_config_simple(default_config=DEFAULT_CONFIG)
-        default_prefix = list(config.keys())[0]
-        default_conf = self._conf_update(DEFAULT_CONFIG["!!mirror"], config[default_prefix])
-        if config[default_prefix] != default_conf:
-            config[default_prefix] = default_conf
-            self.server.save_config_simple(config)
-        return config, default_conf
+        server.broadcast(RTextList(success_info, " ", fail_info))
 
     def reload_config(self, prefix):
         manager: MirrorManager = self.managers[prefix]
-        config, default_conf = self.load_config_all()
-        if prefix not in config.keys():
+        config = self.loader.get_mirror_config(prefix)
+        if not config:
             rtr("multi_manager.init.prefix_notfound", prefix=prefix)
             manager.manager_available = False
             return False
-        single_config = self._conf_update(default_conf, config[prefix])
-        manager.reload_config(single_config)
+        manager.reload_config(config)
+        return True
 
     def on_unload(self, _: PluginServerInterface):
         for manager in self.managers.values():
@@ -127,7 +104,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
     def __init__(
         self,
         server: PluginServerInterface,
-        config: dict,
+        config: MirrorConfig,
         command_prefix: str,
         reload_method: Callable,
     ) -> None:
@@ -142,6 +119,13 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         self.save_world_wait: Event = Event()
         self.save_world_wait.set()
         self.confirmations: ConfirmationManager
+        self.server_name: str = config.display.server_name
+
+        # config clarification
+        self.config: MirrorConfig
+        self.command_config: CommandConfig
+        self.display_config: DisplayConfig
+        self.permission: CommandPermissionConfig
 
         # register mcdr command
         builder = SimpleCommandBuilder()
@@ -175,57 +159,38 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
     def rtr(self, key, title=True, *args, **kwargs):
         return rtr(key, title, prefix=self.command_prefix, server_name=self.server_name, *args, **kwargs)
 
-    def set_config(self, config):
+    def set_config(self, config: MirrorConfig):
         try:
-            (
-                self.config,
-                self.world_sync,
-                self.permission,
-                self.command_action,
-                self.server_name,
-            ) = (
-                config,
-                ClassicWorldSynchronizer(**config["sync"]),
-                config["command"]["permission"],
-                config["command"]["action"],
-                config["display"]["server_name"],
+            self.config = config
+            self.command_config = config.command
+            self.display_config = config.display
+            self.permission = config.command.permission
+            self.command_action = config.command.action
+            self.world_sync = ClassicWorldSynchronizer(
+                config.sync.world,
+                config.sync.source,
+                config.sync.target,
+                config.sync.ignore_inexistent_target_path,
+                config.sync.concurrency,
+                config.sync.ignore_files
             )
-            self.save_world_regex = re.compile(self.command_action["sync"]["save_world"]["saved_world_regex"])
-            self.max_history_count = self.command_action["history"]["max_history_count"]
+            self.save_world_regex = re.compile(self.command_action.sync.save_world.saved_world_regex)
+            self.max_history_count = self.command_action.history.max_history_count
             data_path = Path(self.server.get_data_folder()) / self.command_prefix
-            self.sync_history = SyncHistory(data_path / "history.json", self.max_history_count)
+            self.sync_history = SyncHistory(data_path / 'history.json', self.max_history_count)
             self.server_api = ServerProxy()
             for proxy in self.server_api.proxies:
                 try:
-                    _obj = getattr(self.server_api, f"set_{proxy}", None)
-                    if not callable(_obj):
-                        raise ProxySettingException(proxy, missing_keys=[f"set_{proxy}"])
-                    _ = cast(Callable[..., Any], _obj)
-                    if proxy == "terminal":
-                        terminal_config = self.config["terminal"]
-                        _(
-                            enable=terminal_config["enable"],
-                            regex_strict=terminal_config["regex_strict"],
-                            is_mcdr=terminal_config["is_mcdr"],
-                            proxy_type=terminal_config.get("proxy_type"),
-                            console_log=terminal_config.get("console_log", False),
-                            server=self.server,
-                            terminal_name=terminal_config["terminal_name"],
-                            path=terminal_config["launch_path"],
-                            command=terminal_config["launch_command"],
-                            port=terminal_config.get("port"),
-                        )
-                    else:
-                        _(**self.config[proxy])
+                    _obj = getattr(self.server_api, f'set_{proxy}')(**getattr(self.config, proxy).serialize())
                 except ProxySettingException as e:
-                    self.server.broadcast(self.rtr("manager.reload.fail.proxy", proxy=e.proxy, keys="', '".join(e.missing_keys)))
-                except TerminalSettingException as _:
-                    self.server.broadcast(self.rtr("manager.reload.fail.unavailable_system"))
-            self.confirmations = ConfirmationManager(self.command_action["confirm"]["timeout"], self._on_confirmation_timeout)
+                    self.server.broadcast(self.rtr('manager.reload.fail.proxy', proxy=e.proxy, keys="', '".join(e.missing_keys)))
+                except TerminalSettingException:
+                    self.server.broadcast(self.rtr('manager.reload.fail.unavailable_system'))
+            self.confirmations = ConfirmationManager(self.command_action.confirm.timeout, self._on_confirmation_timeout)
             return True
         except Exception as e:
             if self.server.is_server_startup():
-                self.server.say(self.rtr("manager.reload.fail"))
+                self.server.say(self.rtr('manager.reload.fail'))
             self.server.logger.error(e, exc_info=e)
 
     def reload_config(self, config):
@@ -255,12 +220,13 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         return info
 
     def check_permission(self, source: CommandSource, command: str):
-        if self.permission[command] == "console":
+        required_permission = getattr(self.permission, command, 0)
+        if required_permission == "console":
             if source.is_console:
                 return True
             source.reply(self.rtr("manager.console_only"))
             return  False
-        if source.has_permission(self.permission[command]):
+        if source.has_permission(required_permission):
             return True
         source.reply(self.rtr("manager.permission_denied"))
         return False
@@ -287,7 +253,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
 
         if not self.check_permission(source, command):
             return False
-        if not confirmed and self.command_action[command]["require_confirm"]:
+        if not confirmed and getattr(self.command_action, command).require_confirm:
             self.confirmations.request(
                 operator,
                 command,
@@ -372,19 +338,19 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
 
         auto_restart_flag = False
         try:
-            sync_action_config = self.command_action["sync"]
-            if sync_action_config["ensure_server_closed"]:
+            sync_action_config = self.command_action.sync
+            if sync_action_config.ensure_server_closed:
                 status_code = self.server_api.status()
 
                 if status_code == ServerStatus.STOPPED:
                     pass
-                elif status_code != ServerStatus.RUNNING or not sync_action_config["auto_server_restart"]:
+                elif status_code != ServerStatus.RUNNING or not sync_action_config.auto_server_restart:
                     source.reply(self.rtr(f"command.sync.fail.{status_code}"))
                     return
                 else:  # restart server
                     self.server.broadcast(self.rtr("command.sync.auto_restart.restarting"))
                     self.server_api.stop()
-                    interval, times = sync_action_config["check_status_interval"], sync_action_config["max_attempt_times"]
+                    interval, times = sync_action_config.check_status_interval, sync_action_config.max_attempt_times
                     for _ in range(times):
                         time.sleep(interval)
                         status_code = self.server_api.status()
@@ -400,15 +366,15 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
 
             self.server.broadcast(self.rtr("command.sync.success"))
             t = time.time()
-            save_world_config = sync_action_config["save_world"]
-            turn_off_auto_save = save_world_config["turn_off_auto_save"]
+            save_world_config = sync_action_config.save_world
+            turn_off_auto_save = save_world_config.turn_off_auto_save
             if turn_off_auto_save:
-                self.server.execute(save_world_config["commands"]["auto_save_off"])
+                self.server.execute(save_world_config.commands.auto_save_off)
             self.save_world_wait.clear()
-            self.server.execute(save_world_config["commands"]["save_all_worlds"])
-            self.save_world_wait.wait(timeout=save_world_config["save_world_max_wait_sec"])
+            self.server.execute(save_world_config.commands.save_all_worlds)
+            self.save_world_wait.wait(timeout=save_world_config.save_world_max_wait_sec)
             if turn_off_auto_save:
-                self.server.execute(save_world_config["commands"]["auto_save_on"])
+                self.server.execute(save_world_config.commands.auto_save_on)
 
             changed_files_count, paths_notfound = self.world_sync.sync()
             m, s = divmod(time.time() - t, 60)
