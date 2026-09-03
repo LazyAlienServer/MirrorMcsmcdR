@@ -1,5 +1,5 @@
 from mcdreforged.api.all import Serializable
-from typing import Optional
+from typing import Optional, Literal
 
 class MCSMConfig(Serializable):
     enable: bool = False
@@ -16,7 +16,7 @@ class TerminalConfig(Serializable):
     terminal_name: str = "Mirror"
     regex_strict: bool = False
     is_mcdr: bool = True
-    proxy_type: Optional[str] = None
+    proxy_type: Optional[Literal["windows", "linux", "subprocess"]] = None
     console_log: bool = False
 
 class RConConfig(Serializable):
