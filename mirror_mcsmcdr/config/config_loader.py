@@ -33,14 +33,15 @@ class MultiConfigLoader:
         if user_config:
             first_prefix = next(iter(user_config))
             first_data = user_config[first_prefix]
+            parent_config = MirrorConfig().deserialize(first_data)
+            needs_save = parent_config.serialize() != first_data
+            if needs_save:
+                self.server.logger.info("Merge missing keys for mirror config.")
         else:
             first_prefix = template_prefix
-            first_data = {}
-
-        parent_config = MirrorConfig().deserialize(first_data)
-        needs_save = parent_config.serialize() != first_data
-        if needs_save:
-            self.server.logger.info("Merge missing keys for mirror config.")
+            parent_config = MirrorConfig()
+            user_config = {first_prefix: parent_config.serialize()}
+            needs_save = False
         self.parent_config = parent_config
         self.user_config = user_config
 
