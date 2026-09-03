@@ -5,6 +5,7 @@ from mirror_mcsmcdr.config.mirror_config import MirrorConfig, MultiMirrorConfig
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 from typing import Dict, Optional, Tuple
+import os
 
 
 class MultiConfigLoader:
@@ -79,8 +80,10 @@ class MultiConfigLoader:
         if not path.is_file():
             if self.legacy_config_path.is_file():
                 path = self.legacy_config_path
-                self.server.logger.warning("JSON format is outdated. Convert legacy config.json to config.yml")
-                return self.server.load_config_simple("config.json"), path
+                self.server.logger.warning("JSON format is outdated. Automatically convert legacy config.json to config.yml and backup to config.json.bak.")
+                config = self.server.load_config_simple("config.json")
+                os.rename(path, path.with_suffix('.json.bak'))
+                return config, path
             else:
                 return {}, None
 
