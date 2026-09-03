@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, wait
 class ClassicWorldSynchronizer:
     
 
-    def __init__(self, world: list, source: str, target: str, ignore_inexistent_target_path: bool, concurrency: int, ignore_files: list) -> None:
+    def __init__(self, world: list, source: str, target: str | list, ignore_inexistent_target_path: bool, concurrency: int, ignore_files: list) -> None:
         self.world, self.source, self.target = world, os.path.normpath(source), target
         self.ignore_inexistent_target_path = ignore_inexistent_target_path
         self.concurrency = concurrency
