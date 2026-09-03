@@ -1,0 +1,124 @@
+# Configuration file for MirrorMcsmcdR
+# The first mirror entry is the base configuration for later entries.
+# Add another prefix such as "!!mirror2" to configure another mirror server.
+# For additional mirror servers, you can use yaml-like syntax to override the base configuration. e.g.
+# "!!mirror2":
+#   mcsm.uuid: 12345678-1234-1234-1234-123456789012
+
+"!!mirror":
+  # MCSManager connection settings. When enabled, terminal and RCON are not used.
+  mcsm:
+    # Whether to control the mirror server through MCSManager.
+    enable: false
+    # MCSManager API address.
+    url: http://127.0.0.1:23333/
+    # MCSManager server instance UID.
+    uuid:
+    # MCSManager remote node GID.
+    remote_uuid:
+    # MCSManager API key.
+    apikey:
+
+  # Settings for starting the mirror server through a terminal or subprocess.
+  terminal:
+    # Whether terminal control is enabled when MCSManager is disabled.
+    enable: false
+    # Directory in which the mirror server start command runs.
+    launch_path: ./Mirror
+    # Command used to start the mirror server.
+    launch_command: python -m mcdreforged
+    # Mirror server port; not required for the subprocess proxy.
+    port:
+    # Terminal title, screen name, or subprocess log prefix.
+    terminal_name: Mirror
+    # Whether Linux/Windows proxies verify the Java process name.
+    regex_strict: false
+    # Whether the mirror server is itself started by MCDReforged.
+    is_mcdr: true
+    # Proxy type: linux, windows, subprocess, or null for automatic selection.
+    proxy_type:
+    # Whether subprocess console output is shown by default.
+    console_log: false
+
+  # RCON connection settings.
+  rcon:
+    # Whether RCON is enabled.
+    enable: false
+    # RCON server address.
+    address:
+    # RCON server port.
+    port:
+    # RCON server password.
+    password:
+
+  # File synchronization settings.
+  sync:
+    # World directories to synchronize.
+    world:
+      - world
+    # Source server directory.
+    source: ./server
+    # One or more target server directories.
+    target:
+      - ./Mirror/server
+    # Whether missing target directories are ignored.
+    ignore_inexistent_target_path: false
+    # Number of synchronization workers.
+    concurrency: 4
+    # File names excluded from synchronization.
+    ignore_files:
+      - session.lock
+
+  # Command permissions and command behavior.
+  command:
+    permission:
+      # Required permission level, or "console" for console-only commands.
+      status: 0
+      start: 0
+      stop: 2
+      kill: 3
+      sync: 2
+      history: 0
+      confirm: 0
+      abort: 0
+      log: console
+      execute: console
+    action:
+      status:
+        require_confirm: false
+      start:
+        require_confirm: false
+      stop:
+        require_confirm: true
+      kill:
+        require_confirm: true
+      sync:
+        require_confirm: true
+        ensure_server_closed: true
+        auto_server_restart: false
+        check_status_interval: 5
+        max_attempt_times: 3
+        save_world:
+          # Disable automatic saving while the world is copied.
+          turn_off_auto_save: true
+          commands:
+            save_all_worlds: save-all flush
+            auto_save_off: save-off
+            auto_save_on: save-on
+          # Server output matched after the save command completes.
+          saved_world_regex: '^Saved the game$'
+          # Maximum time to wait for the save confirmation.
+          save_world_max_wait_sec: 60
+      history:
+        require_confirm: false
+        max_history_count: 5
+      confirm:
+        timeout: 30
+        cancel_anymsg: true
+      abort:
+        operator: everyone
+
+  # Display settings.
+  display:
+    # Name used in command feedback for this mirror server.
+    server_name: Mirror
