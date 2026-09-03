@@ -50,12 +50,18 @@ class MultiConfigLoader:
         needs_save = needs_save or source_path is None or source_path != self.config_path or first_data != annotated_first
         if not needs_save:
             return
+        export_config = deepcopy(template)
+        if template_prefix != first_prefix:
+            del export_config[template_prefix]
+        export_config[first_prefix] = annotated_first
         if source_path is None:
-            export_config = CommentedMap({first_prefix: annotated_first})
-            self.server.logger.warning("Config missing. Create new config.yml with default values.")
+            self.server.logger.warning("Config missing. Automatically create new config.yml with default values.")
         else:
-            export_config = deepcopy(user_config)
-            export_config[first_prefix] = annotated_first
+            for prefix, config in user_config.items():
+                if prefix != first_prefix:
+                    export_config[prefix] = deepcopy(config)
+        export_config.ca.comment = template.ca.comment
+        export_config.ca.end = template.ca.end
         self._save(yaml, export_config)
 
     def get_all_prefix(self):
@@ -69,6 +75,7 @@ class MultiConfigLoader:
         if command_prefix not in self.user_config:
             raise RuntimeError("Command prefix not found in user config.")
         config = deepcopy(self.parent_config)
+
         config.merge_from(MirrorConfig().deserialize(self.user_config[command_prefix]))
         return config
 
