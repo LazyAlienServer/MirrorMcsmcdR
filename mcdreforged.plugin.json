@@ -13,8 +13,9 @@
 	"dependencies": {
 		"mcdreforged": ">=2.6.0"
 	},
-	"resources": [
-		"LICENSE",
-		"lang"
+    "resources": [
+        "LICENSE",
+        "lang",
+        "default_config.yml"
     ]
 }
