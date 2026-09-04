@@ -17,7 +17,7 @@
   - Start mirror servers as child processes inside MCDR through `subprocess`, controlled through standard input and output
   - Send commands through `!!mirror execute <command>`
   - Combine multiple control methods, for example:
-    - Start through Windows and stop through RCON
+    - Start through Windows Terminal and stop through RCON
     - Start and stop through MCDR, then force-terminate through Linux when the mirror process fails
 - **Comprehensive control features**: manage multiple mirror servers, inspect status, start, stop, force-terminate, and synchronize
 - **Hash-based file synchronization**: synchronize only files that differ from the source server, improving speed and reducing disk I/O
