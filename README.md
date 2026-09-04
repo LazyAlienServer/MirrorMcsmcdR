@@ -1,6 +1,6 @@
 # MirrorMcsmcdR
 
-[![MCDR](https://img.shields.io/badge/MCDR-%E2%89%A52.6.0-blue)](https://github.com/Fallen-Breath/MCDReforged) [![许可证](https://img.shields.io/github/license/LazyAlienServer/MirrorMcsmcdR)](./LICENSE)
+[![MCDR](https://img.shields.io/badge/MCDR-%E2%89%A52.6.0-blue)](https://github.com/Fallen-Breath/MCDReforged) [![许可证](https://img.shields.io/github/license/LazyAlienServer/MirrorMcsmcdR)](./LICENSE) [![下载量](https://img.shields.io/github/downloads/LazyAlienServer/MirrorMcsmcdR/total)](https://github.com/LazyAlienServer/MirrorMcsmcdR/releases)
 
 中文 · [English](./README_en.md)
 

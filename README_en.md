@@ -1,8 +1,8 @@
 # MirrorMcsmcdR
 
-[![MCDR](https://img.shields.io/badge/MCDR-%E2%89%A52.6.0-blue)](https://github.com/Fallen-Breath/MCDReforged) [![License](https://img.shields.io/github/license/LazyAlienServer/MirrorMcsmcdR)](./LICENSE)
+[![MCDR](https://img.shields.io/badge/MCDR-%E2%89%A52.6.0-blue)](https://github.com/Fallen-Breath/MCDReforged) [![License](https://img.shields.io/github/license/LazyAlienServer/MirrorMcsmcdR)](./LICENSE) [![Downloads](https://img.shields.io/github/downloads/LazyAlienServer/MirrorMcsmcdR/total)](https://github.com/LazyAlienServer/MirrorMcsmcdR/releases)
 
-[中文](./README.md) | English
+[中文](./README.md) · English
 
 > The most comprehensive [MCDReforged](https://github.com/Fallen-Breath/MCDReforged) mirror server control plugin! Control mirror servers through multiple methods and synchronize additions and deletions based on hashes.
 
