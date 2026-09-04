@@ -1,5 +1,5 @@
 from mcdreforged.api.all import RTextList, ServerInterface, RAction
-from mirror_mcsmcdr.constants import PLUGIN_ID, REPLY_TITLE, TITLE, VERSION
+from mirror_mcsmcdr.constants import PLUGIN_ID, REPLY_TITLE, TITLE
 
 
 def rtr(key, title=True, *args, **kwargs):
@@ -8,7 +8,7 @@ def rtr(key, title=True, *args, **kwargs):
 
 def help_msg(server_name, prefix):
     server = ServerInterface.si()
-    msg = RTextList(server.rtr(PLUGIN_ID+".command.help.info", TITLE=TITLE, VERSION=VERSION))
+    msg = RTextList(server.rtr(PLUGIN_ID+".command.help.info", TITLE=TITLE, VERSION=server.get_plugin_metadata(PLUGIN_ID).version))
     for command in ["help", "reload", "status", "start", "stop", "kill", "sync", "history", "log", "execute"]:
         msg.append("\n", server.rtr(PLUGIN_ID+".command.help."+command, prefix=prefix, server_name=server_name).set_click_event(RAction.run_command, f"{prefix} {command}"))
     return msg
