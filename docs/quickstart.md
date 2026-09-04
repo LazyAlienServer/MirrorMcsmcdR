@@ -38,20 +38,16 @@
 
 配置文件主要是这样构成的：
 
-```jsonc
-{
-    "!!mirror": {
-        "mcsm": {/* MCSManager配置 */},
-        "terminal": {/* 通过命令行启动镜像服终端的配置 */},
-        "rcon": {/* RCON配置 */},
-        "sync": {/* 存档同步配置 */},
-        "command": {
-            "permission": {/* 指令权限配置 */},
-            "action": {/* 指令行为配置 */}
-        },
-        "display": {/* 显示配置 */}
-    }
-}
+```yaml
+!!mirror:
+  mcsm: # MCSManager配置
+  terminal: # 通过命令行启动镜像服终端的配置
+  rcon: # RCON配置
+  sync: # 存档同步配置
+  command:
+    permission: # 指令权限配置
+    action: # 指令行为配置
+  display: # 显示配置
 ```
 
 ### 简要说明
@@ -79,14 +75,13 @@
 ### 通过MCSM配置镜像服
 
 此配置部分若有疑问，你可以查看[MCSManager官方文档](https://docs.mcsmanager.com/#/zh-cn/apis/readme)并对照
-```jsonc
-"mcsm": {
-    "enable": false,
-    "url": "http://127.0.0.1:23333/",
-    "uuid": null,
-    "remote_uuid": null,
-    "apikey": null
-}
+```yaml
+mcsm:
+  enable: false
+  url: http://127.0.0.1:23333/
+  uuid:
+  remote_uuid:
+  apikey:
 ```
 需要注意的是，启用MCSM后，终端（`terminal`）与RCON（`rcon`）配置项都会弃用。
 
@@ -102,20 +97,20 @@
 
 ### 通过终端控制镜像服
 
-**注意**：`proxy_type`为`linux`（或在Linux系统保持为`null`）时需要安装`screen`；为`windows`时会创建新的命令行终端；为`subprocess`时会在MCDR进程内启动镜像服子进程。Linux/Windows代理的`stop`和`kill`分别通过screen或系统进程控制，subprocess代理通过标准输入输出控制，`rcon`为可选的替代控制方式。
+> [!NOTE]
+> `proxy_type`为`linux`（或在Linux系统保持为`null`）时需要安装`screen`；为`windows`时会创建新的命令行终端；为`subprocess`时会在MCDR进程内启动镜像服子进程。Linux/Windows代理的`stop`和`kill`分别通过screen或系统进程控制，subprocess代理通过标准输入输出控制，`rcon`为可选的替代控制方式。
 
-```jsonc
-"terminal": {
-    "enable": false,
-    "launch_path": "./Mirror",
-    "launch_command": "python -m mcdreforged",
-    "port": null,
-    "terminal_name": "Mirror",
-    "regex_strict": false,
-    "is_mcdr": true,
-    "proxy_type": null,
-    "console_log": false
-}
+```yaml
+terminal:
+  enable: false
+  launch_path: ./Mirror
+  launch_command: python -m mcdreforged
+  port:
+  terminal_name: Mirror
+  regex_strict: false
+  is_mcdr: true
+  proxy_type:
+  console_log: false
 ```
 
 假设这是你的目录结构：
@@ -138,22 +133,20 @@ mcdr_root
 
 `regex_strict`、`is_mcdr`与`proxy_type`一般无需修改。`is_mcdr`默认为`true`，表示镜像服由MCDReforged启动；`proxy_type`默认为`null`时，插件会根据操作系统自动选择`linux`或`windows`。设置为`subprocess`时，镜像服会作为MCDR子进程启动，`port`无需配置，并可通过`console_log`配置是否默认输出控制台日志。有关这些配置的详细信息参见[README-通过命令行启动镜像服终端](../README.md#terminal-通过命令行启动镜像服终端的配置)。
 
-**提示：** 使用 `subprocess` 代理启动镜像服 MCDR 实例时，请在镜像服 MCDR 的 `config.yml` 中将 `advanced_console` 设置为 `false`。
+> [!NOTE]
+> 使用 `subprocess` 代理启动镜像服 MCDR 实例时，请在镜像服 MCDR 的 `config.yml` 中将 `advanced_console` 设置为 `false`。
 
 至此，Linux和Windows用户都可以跳至[存档同步](#存档同步)来进行下一步了，或选择性地继续查看`rcon`配置。
 
 同样的，配置完成后，你需要将`enable`设置为`true`，以真正地启用终端控制。
 
-```jsonc
-"rcon": {
-    "enable": false,
-    "address": null,
-    "port": null,
-    "password": null
-}
+```yaml
+rcon:
+  enable: false
+  address:
+  port:
+  password:
 ```
-
-首先，你需要在镜像服的`server.properties`中配置RCON，设置`rcon.port`为自定义的RCON端口，设置`rcon.password`为自定义的RCON密码，并将`enable-rcon`设置为`true`以启用RCON。
 
 然后配置此插件的配置文件。`address`为RCON的连接地址，一般情况下书写本机地址`127.0.0.1`即可。`port`为RCON的端口，即镜像服的`server.properties`文件中的`rcon.port`项。与`terminal`中的`port`同理，它应当是一个整数，无需用`"xxx"`包裹。`password`为RCON的密码，即镜像服的`server.properties`文件中的`rcon.password`项。
 
@@ -163,22 +156,19 @@ mcdr_root
 
 ### 存档同步
 
-```jsonc
-"sync": {
-    "world": [
-	    "world"
-    ],
-    "source": "./server",
-    "target": [
-        "./Mirror/server"
-    ],
-    "ignore_inexistent_target_path": false,
-    "concurrency": 4,
-    "ignore_files": [
-        "session.lock"
-    ]
-}
+```yaml
+sync:
+  world:
+    - world
+  source: ./server
+  target:
+    - ./Mirror/server
+  ignore_inexistent_target_path: false
+  concurrency: 4
+  ignore_files:
+    - session.lock
 ```
+
 假设这是你的目录结构：
 ```
 mcdr_root
@@ -216,23 +206,16 @@ mcdr_root
 镜像服1为`!!mirror`，同时也是其他镜像服的默认配置文件，那么将`!!mirror`放在配置文件中的第一个
 
 通过`!!mirror2`控制镜像服2，并设置`!!mirror2`的实例id为`abc123`，将`!!mirror2`的服务端名称改为`Mirror2`
-```jsonc
-{
-    "!!mirror": {
-        // 第一个镜像服的配置文件
-    },
-    "!!mirror2": {
-        // 第二个镜像服的配置文件，只书写变化的值
-        "mcsm": {
-            "uuid": "abc123"
-        },
-        "display": {
-            "server_name": "Mirror2"
-        }
-    },
-    "!!mirror3": {
-        // 第三个镜像服的配置文件，只书写变化的值
-    }
-}
+```yaml
+"!!mirror":
+  # 第一个镜像服的配置文件
+"!!mirror2":
+  # 第二个镜像服的配置文件，只书写变化的值
+  mcsm:
+    uuid: abc123
+  display:
+    server_name: Mirror2
+"!!mirror3":
+  # 第三个镜像服的配置文件，只书写变化的值
 ```
 详见[多镜像服配置文件示例](../README.md#多镜像服配置文件示例)

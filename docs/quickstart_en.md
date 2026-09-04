@@ -1,7 +1,5 @@
 # Quick Start
 
-*This document is still under manual checking, which is initially translated by Kimi AI*
-
 ## Configuring the First Mirror Server
 
 In the default configuration file, the content under the initial `"!!mirror"` is the configuration file for your first mirror server. In the game, you can use commands starting with `!!mirror` to control this mirror server.
@@ -40,20 +38,16 @@ It includes the following commands:
 
 The configuration file is mainly composed as follows:
 
-```jsonc
-{
-    "!!mirror": {
-        "mcsm": {/* MCSManager configuration */},
-        "terminal": {/* Configuration for starting the mirror server terminal through the command line */},
-        "rcon": {/* RCON configuration */},
-        "sync": {/* Save synchronization configuration */},
-        "command": {
-            "permission": {/* Command permission configuration */},
-            "action": {/* Command behavior configuration */}
-        },
-        "display": {/* Display configuration */}
-    }
-}
+```yaml
+!!mirror:
+    mcsm: # MCSManager configuration
+    terminal: # Configuration for starting the mirror server terminal through the command line
+    rcon: # RCON configuration
+    sync: # Save synchronization configuration
+    command:
+        permission: # Command permission configuration
+        action: # Command behavior configuration
+    display: # Display configuration
 ```
 
 ### Brief Explanation
@@ -82,14 +76,13 @@ Finally, you can optionally configure command permissions, behavior, and display
 
 If you have any questions about this configuration section, you can refer to the [MCSManager Official Documentation](https://docs.mcsmanager.com/#/zh-cn/apis/readme) and compare
 
-```jsonc
-"mcsm": {
-    "enable": false,
-    "url": "http://127.0.0.1:23333/", 
-    "uuid": null,
-    "remote_uuid": null,
-    "apikey": null
-}
+```yaml
+mcsm:
+    enable: false
+    url: http://127.0.0.1:23333/
+    uuid:
+    remote_uuid:
+    apikey:
 ```
 
 Note that after enabling MCSM, the terminal (`terminal`) and RCON (`rcon`) configuration items will be disabled.
@@ -106,20 +99,19 @@ Jump to [Save Synchronization](#save-synchronization) for the next step.
 
 ### Controlling the Mirror Server through the Terminal
 
-**Note**: `screen` is required when `proxy_type` is `linux` (or left as `null` on Linux); `windows` creates a new command prompt; and `subprocess` starts the mirror server as a child process inside MCDR. The Linux/Windows proxies control the server through screen or system processes, while the subprocess proxy uses standard input and output. `rcon` is an optional alternative control method.
-
-```jsonc
-"terminal": {
-    "enable": false,
-    "launch_path": "./Mirror",
-    "launch_command": "python -m mcdreforged",
-    "port": null,
-    "terminal_name": "Mirror",
-    "regex_strict": false,
-    "is_mcdr": true,
-    "proxy_type": null,
-    "console_log": false
-}
+> [!NOTE]
+> `screen` is required when `proxy_type` is `linux` (or left as `null` on Linux); `windows` creates a new command prompt; and `subprocess` starts the mirror server as a child process inside MCDR. The Linux/Windows proxies control the server through screen or system processes, while the subprocess proxy uses standard input and output. `rcon` is an optional alternative control method.
+```yaml
+terminal:
+    enable: false
+    launch_path: ./Mirror
+    launch_command: python -m mcdreforged
+    port:
+    terminal_name: Mirror
+    regex_strict: false
+    is_mcdr: true
+    proxy_type:
+    console_log: false
 ```
 
 Assuming this is your directory structure:
@@ -143,19 +135,19 @@ When `proxy_type` is `linux`, the plugin creates a screen session; when it is `w
 
 `regex_strict`, `is_mcdr`, and `proxy_type` generally do not need to be modified. `is_mcdr` defaults to `true`, meaning the mirror server is started by MCDReforged. When `proxy_type` is `null`, the plugin automatically selects `linux` or `windows` based on the operating system. When set to `subprocess`, the mirror server runs as an MCDR child process, `port` is not required, and `console_log` controls whether its console logs are output by default. See [README-Configuring the Mirror Server Terminal through the Command Line](../README_en.md#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) for details.
 
-**Notice:** When using the `subprocess` proxy to start another MCDR instance, set `advanced_console: false` in mirror server MCDR's `config.yml`.
+> [!NOTE]
+> When using the `subprocess` proxy to start another MCDR instance, set `advanced_console: false` in the mirror server MCDR's `config.yml`.
 
 At this point, Linux and Windows users can jump to [Save Synchronization](#save-synchronization), or optionally continue to view the `rcon` configuration.
 
 Similarly, after the configuration is completed, you need to set `enable` to `true` to truly enable terminal control.
 
-```jsonc
-"rcon": {
-    "enable": false,
-    "address": null,
-    "port": null,
-    "password": null
-}
+```yaml
+rcon:
+    enable: false
+    address:
+    port:
+    password:
 ```
 
 First, you need to configure RCON in the `server.properties` of the mirror server, set `rcon.port` to a custom RCON port, set `rcon.password` to a custom RCON password, and set `enable-rcon` to `true` to enable RCON.
@@ -168,21 +160,17 @@ Jump to [Save Synchronization](#save-synchronization) for the next step.
 
 ### Save Synchronization
 
-```jsonc
-"sync": {
-    "world": [
-        "world"
-    ],
-    "source": "./server",
-    "target": [
-        "./Mirror/server"
-    ],
-    "ignore_inexistent_target_path": false,
-    "concurrency": 4,
-    "ignore_files": [
-        "session.lock"
-    ]
-}
+```yaml
+sync:
+    world:
+        - world
+    source: ./server
+    target:
+        - ./Mirror/server
+    ignore_inexistent_target_path: false
+    concurrency: 4
+    ignore_files:
+        - session.lock
 ```
 
 Assuming this is your directory structure:
@@ -223,24 +211,17 @@ To configure multiple mirror servers, for example, if you want to control the se
 Mirror server 1 is `!!mirror`, which is also the default configuration file for other mirror servers, then put `!!mirror` first in the configuration file.
 
 Control mirror server 2 through `!!mirror2`, and set the instance id of `!!mirror2` to `abc123`, change the server name of `!!mirror2` to `Mirror2`
-```jsonc
-{
-    "!!mirror": {
-        // Configuration file for the first mirror server
-    },
-    "!!mirror2": {
-        // Configuration file for the second mirror server, only write the changed values
-        "mcsm": {
-            "uuid": "abc123"
-        },
-        "display": {
-            "server_name": "Mirror2"
-        }
-    },
-    "!!mirror3": {
-        // Configuration file for the third mirror server, only write the changed values
-    }
-}
+```yaml
+"!!mirror":
+    # Configuration file for the first mirror server
+"!!mirror2":
+    # Configuration file for the second mirror server, only write the changed values
+    mcsm:
+        uuid: abc123
+    display:
+        server_name: Mirror2
+"!!mirror3":
+    # Configuration file for the third mirror server, only write the changed values
 ```
 
 See [Multi-mirror Server Configuration File Example](../README_en.md#example-of-multi-mirror-server-configuration-file) for details.
