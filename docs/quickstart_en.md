@@ -143,6 +143,8 @@ When `proxy_type` is `linux`, the plugin creates a screen session; when it is `w
 
 `regex_strict`, `is_mcdr`, and `proxy_type` generally do not need to be modified. `is_mcdr` defaults to `true`, meaning the mirror server is started by MCDReforged. When `proxy_type` is `null`, the plugin automatically selects `linux` or `windows` based on the operating system. When set to `subprocess`, the mirror server runs as an MCDR child process, `port` is not required, and `console_log` controls whether its console logs are output by default. See [README-Configuring the Mirror Server Terminal through the Command Line](../README_en.md#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) for details.
 
+**Notice:** When using the `subprocess` proxy to start another MCDR instance, set `advanced_console: false` in mirror server MCDR's `config.yml`.
+
 At this point, Linux and Windows users can jump to [Save Synchronization](#save-synchronization), or optionally continue to view the `rcon` configuration.
 
 Similarly, after the configuration is completed, you need to set `enable` to `true` to truly enable terminal control.

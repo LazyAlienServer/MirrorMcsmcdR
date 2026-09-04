@@ -138,6 +138,8 @@ mcdr_root
 
 `regex_strict`、`is_mcdr`与`proxy_type`一般无需修改。`is_mcdr`默认为`true`，表示镜像服由MCDReforged启动；`proxy_type`默认为`null`时，插件会根据操作系统自动选择`linux`或`windows`。设置为`subprocess`时，镜像服会作为MCDR子进程启动，`port`无需配置，并可通过`console_log`配置是否默认输出控制台日志。有关这些配置的详细信息参见[README-通过命令行启动镜像服终端](../README.md#terminal-通过命令行启动镜像服终端的配置)。
 
+**提示：** 使用 `subprocess` 代理启动镜像服 MCDR 实例时，请在镜像服 MCDR 的 `config.yml` 中将 `advanced_console` 设置为 `false`。
+
 至此，Linux和Windows用户都可以跳至[存档同步](#存档同步)来进行下一步了，或选择性地继续查看`rcon`配置。
 
 同样的，配置完成后，你需要将`enable`设置为`true`，以真正地启用终端控制。
