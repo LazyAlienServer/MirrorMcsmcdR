@@ -58,7 +58,7 @@ class SubprocessProxy(AbstractSystemProxy):
         )
         self._output_thread = Thread(
             target=self._read_output_loop,
-            name=f"{self.terminal_name}-output",
+            name=self.terminal_name,
             daemon=True,
         )
         self._output_thread.start()
@@ -132,8 +132,9 @@ class SubprocessProxy(AbstractSystemProxy):
             if limit is not None and server is not None:
                 server.logger.info(server.rtr("mirror_mcsmcdr.command.log.reset_on_stop"))
 
-    def _format_log_line(self, line: str) -> RText:
-        return RText(f"§7[{self.terminal_name}] {line}")
+    @staticmethod
+    def _format_log_line(line: str) -> RText:
+        return RText(f"§7{line}")
 
     def _send_command(self, cmd: str) -> bool:
         process = self.process
