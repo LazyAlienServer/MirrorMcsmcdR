@@ -1,10 +1,9 @@
 import os
 import subprocess
-from collections import deque
 from threading import Event, Thread
 from typing import Optional
 
-from mcdreforged.api.all import PluginServerInterface, RColor, RText
+from mcdreforged.api.all import RText, ServerInterface
 
 
 from mirror_mcsmcdr.utils.proxy.system_proxy import AbstractSystemProxy
@@ -23,17 +22,14 @@ class SubprocessProxy(AbstractSystemProxy):
         regex_strict: bool,
         is_mcdr: bool = True,
         console_log: bool = False,
-        server: Optional[PluginServerInterface] = None,
     ) -> None:
         super().__init__(terminal_name, path, command, port, regex_strict, is_mcdr)
         self.process: Optional[subprocess.Popen] = None
         self.console_log_enabled = console_log
         self.console_log_limit: Optional[int] = None
         self._output_count = 0
-        self.log_buffer: Deque[str] = deque(maxlen=1000)
         self._output_thread: Optional[Thread] = None
         self._stop_event = Event()
-        self.server = server
 
     def start(self) -> str:
         if self.process is not None and self.process.poll() is None:
@@ -112,6 +108,7 @@ class SubprocessProxy(AbstractSystemProxy):
 
     def _read_output_loop(self) -> None:
         process = self.process
+        server = ServerInterface.si()
         if process is None or process.stdout is None:
             return
 
@@ -121,20 +118,19 @@ class SubprocessProxy(AbstractSystemProxy):
                 if not line:
                     break
                 line = line.rstrip("\r\n")
-                self.log_buffer.append(line)
-                if self.server is not None and self.console_log_enabled or self.console_log_limit is not None:
+                if server is not None and self.console_log_enabled or self.console_log_limit is not None:
                     if self.console_log_limit is None or self._output_count < self.console_log_limit:
                         self._output_count += 1
-                        self.server.logger.info(self._format_log_line(line))
+                        server.logger.info(self._format_log_line(line))
                         if self.console_log_limit is not None and self._output_count == self.console_log_limit:
-                            self.server.logger.info(
-                                self.server.rtr("mirror_mcsmcdr.command.log.output_end", count=self.console_log_limit)
+                            server.logger.info(
+                                server.rtr("mirror_mcsmcdr.command.log.output_end", count=self.console_log_limit)
                             )
         finally:
             limit = self.console_log_limit
             self.reset_log_limit()
-            if limit is not None and self.server is not None:
-                self.server.logger.info(self.server.rtr("mirror_mcsmcdr.command.log.reset_on_stop"))
+            if limit is not None and server is not None:
+                server.logger.info(server.rtr("mirror_mcsmcdr.command.log.reset_on_stop"))
 
     def _format_log_line(self, line: str) -> RText:
         return RText(f"§7[{self.terminal_name}] {line}")

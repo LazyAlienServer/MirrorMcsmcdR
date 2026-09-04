@@ -58,7 +58,6 @@ class ServerProxy:
         is_mcdr: bool = True,
         proxy_type: Optional[str] = None,
         console_log: bool = False,
-        server: Optional[PluginServerInterface] = None,
         **kwargs,
     ):
         if not enable:
@@ -115,7 +114,6 @@ class ServerProxy:
                     regex_strict=regex_strict,
                     is_mcdr=is_mcdr,
                     console_log=console_log,
-                    server=server,
                 )
                 return
             case _:
