@@ -93,13 +93,11 @@ class Screen:
     def execute_command(self, cmd: str):
         run_shell_command(f"screen -S {self.pid}.{self.name} -p 0 -X stuff '{cmd}\n'")
 
-    @_check_existence_decorator()
     def stop(self, command: str):
-        run_shell_command(f"screen -x -S {self.pid}.{self.name} -p 0 -X stuff '{command}\n'")
+        self.execute_command(command)
 
-    @_check_existence_decorator()
     def kill(self, command: str):
-        run_shell_command(f"screen -x -S {self.pid}.{self.name} -p 0 -X stuff '{command}\n'")
+        self.execute_command(command)
 
     @_check_existence_decorator()
     def forcekill(self):
