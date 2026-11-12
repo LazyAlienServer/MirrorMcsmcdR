@@ -15,7 +15,7 @@ from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxyError
 from mirror_mcsmcdr.utils.proxy.subprocess_proxy import SubprocessProxy
 from mirror_mcsmcdr.utils.server_utils import ProxySettingException, ServerProxy, TerminalSettingException
 from mirror_mcsmcdr.utils.status import ServerStatus
-from mirror_mcsmcdr.utils.history_utils import SyncHistory
+from mirror_mcsmcdr.utils.history_utils import SyncHistory, SyncRecord, SyncStatus
 from mirror_mcsmcdr.utils.page_utils import Page
 from mirror_mcsmcdr.utils.confirmation_utils import ConfirmationTask, ConfirmationManager
 
@@ -181,9 +181,8 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                 config.sync.ignore_files
             )
             self.save_world_regex = re.compile(self.command_action.sync.save_world.saved_world_regex)
-            self.max_history_count = self.command_action.history.max_history_count
             data_path = Path(self.server.get_data_folder()) / self.command_prefix
-            self.sync_history = SyncHistory(data_path / 'history.json', self.max_history_count)
+            self.sync_history = SyncHistory(data_path / 'history.json', self.command_action.history.max_history_count)
             self.server_api = ServerProxy()
             for proxy in self.server_api.proxies:
                 try:
@@ -337,10 +336,9 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             source.reply(self.rtr("command.sync.fail.task_exist"))
             return
 
-        record = {
-            "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "operator": source.player if source.is_player else "[console]"
-        } if self.max_history_count != 0 else None
+        started_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        operator = source.player if source.is_player else "[console]"
+        record: Optional[SyncRecord] = None
 
         auto_restart_flag = False
         try:
@@ -386,27 +384,24 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             m, s = divmod(time.time() - t, 60)
             h, m = divmod(m, 60)
             t = ("%02d:" % h if h else "") + ("%02d:" % m if m else "") + ("%02d" % s if m or h else ("%.02f" % s).zfill(5))
-            if record:
-                record["status"] = "success" if changed_files_count != 0 else "identical"
-                record["detail"] = {
-                    "duration": t,
-                    "changed_files_count": changed_files_count,
-                    "paths_notfound": paths_notfound,
-                }
+            record = SyncRecord(
+                started_at,
+                operator,
+                SyncStatus.SUCCESS if changed_files_count != 0 else SyncStatus.IDENTICAL,
+                duration=t,
+                changed_files_count=changed_files_count,
+                paths_notfound=paths_notfound,
+            )
             if paths_notfound:
                 self.server.broadcast(self.rtr("command.sync.skip_dictionary", paths="§f`§7".join(paths_notfound)))
             self.server.broadcast(self.rtr("command.sync.completed", time=t, changed_files_count=changed_files_count) if changed_files_count != 0 else self.rtr("command.sync.identical"))
         except Exception as e:
             self.server.broadcast(self.rtr("command.sync.error"))
             self.server.logger.error(e, exc_info=e)
-            if record:
-                record["status"] = "failed"
-                record["detail"] = {
-                    "exception": str(e),
-                }
+            record = SyncRecord(started_at, operator, SyncStatus.FAILED, exception=str(e))
         finally:
             self.sync_lock.release()
-            if record and "status" in record:
+            if record is not None:
                 self.sync_history.append(record)
             if auto_restart_flag:
                 self.start(source, context, _confirmed=True)
@@ -414,40 +409,36 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
     @command_call("history")
     def history(self, source: CommandSource, context: CommandContext):
         page_size = PAGE_SIZE
-        records = [record for record in self.sync_history.read() if record.get("status") in ("success", "identical", "failed")]
-        page = Page(records, page_size, f"{self.command_prefix} history")
+        page = Page(self.sync_history.read(), page_size, f"{self.command_prefix} history")
         page.set_page_index(context)
         for record in page.get_items_on_page():
             source.reply(self._get_history_rtext(record))
         source.reply(page.get_rtext())
 
-    def _get_history_rtext(self, record: dict):
-        sync_time, operator, status = record.get("time"), record.get("operator"), record.get("status")
-        detail = record.get("detail", {})
-        if status == "success":
-            duration, changed_files_count = detail.get("duration"), detail.get("changed_files_count")
+    def _get_history_rtext(self, record: SyncRecord):
+        if record.status == SyncStatus.SUCCESS:
             return self.rtr(
                 "command.history.record.success",
                 title=False,
-                time=sync_time,
-                operator=operator,
-                duration=duration,
-                change_file_count=changed_files_count,
+                time=record.time,
+                operator=record.operator,
+                duration=record.duration,
+                change_file_count=record.changed_files_count,
             )
-        if status == "identical":
+        if record.status == SyncStatus.IDENTICAL:
             return self.rtr(
                 "command.history.record.identical",
                 title=False,
-                time=sync_time,
-                operator=operator,
-                duration=detail.get("duration"),
+                time=record.time,
+                operator=record.operator,
+                duration=record.duration,
             )
         return self.rtr(
             "command.history.record.failed",
             title=False,
-            time=sync_time,
-            operator=operator,
-            exception=detail.get("exception"),
+            time=record.time,
+            operator=record.operator,
+            exception=record.exception,
         )
 
     def _get_subprocess_proxy(self) -> Optional[SubprocessProxy]:
