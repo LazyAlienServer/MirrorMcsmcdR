@@ -433,6 +433,14 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                 duration=duration,
                 change_file_count=changed_files_count,
             )
+        if status == "identical":
+            return self.rtr(
+                "command.history.record.identical",
+                title=False,
+                time=sync_time,
+                operator=operator,
+                duration=detail.get("duration"),
+            )
         if status == "failed":
             exception = detail.get("exception")
             return self.rtr(

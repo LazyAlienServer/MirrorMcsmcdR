@@ -154,6 +154,7 @@ mirror_mcsmcdr:
     history:
       record:
         success: "§e[{time}] §b{operator} §aSuccess §7| §fChanged files: §b{change_file_count} §fTime taken: §b{duration}s"
+        identical: "§e[{time}] §b{operator} §aNo changes §7| §fTime taken: §b{duration}s"
         failed: "§e[{time}] §b{operator} §cFailed §7| §fException: §c{exception}"
         error: "§cAn error occurred while reading the sync history, please check the console for details"
   
