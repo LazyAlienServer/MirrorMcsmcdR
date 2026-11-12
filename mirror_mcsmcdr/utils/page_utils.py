@@ -7,7 +7,6 @@ from mirror_mcsmcdr.utils.display_utils import rtr
 
 
 class PageValidationError(Enum):
-    INVALID = "page_error"
     OUT_OF_INDEX = "page_outofindex"
     NO_DATA = "nodata"
 
@@ -27,11 +26,7 @@ class Page:
     def set_page_index(self, context: CommandContext) -> bool:
         if "page" not in context.keys():
             return self.total_pages > 0
-        page_str = context["page"]
-        if not page_str.isdigit():
-            self.current_page = PageValidationError.INVALID
-            return False
-        page = int(page_str)
+        page: int = context["page"]
         if page < 1 or page > self.total_pages:
             self.current_page = PageValidationError.OUT_OF_INDEX
             return False

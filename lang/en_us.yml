@@ -1,7 +1,6 @@
 mirror_mcsmcdr: 
 
   page:
-    page_error: §4Page number should be an integer!
     page_outofindex: §4The page number does not exist!
     nodata: §cNo synchronization history
     page: §7[ §fPage §b{current}§f/§b{total}§7 ]

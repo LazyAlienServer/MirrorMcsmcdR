@@ -1,7 +1,6 @@
 mirror_mcsmcdr: 
 
   page:
-    page_error: §4页码应为整数
     page_outofindex: §4错误的页码范围
     nodata: §c暂无同步历史
     page: §7[ §f第 §b{current}§f/§b{total}§f 页 §7]
