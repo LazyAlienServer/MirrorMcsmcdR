@@ -39,18 +39,20 @@ class MultiMirrorManager:
         failed: list[str] = []
         for command_prefix in self.loader.get_all_prefix():
             try:
-                self.managers[command_prefix] = MirrorManager(
+                manager = MirrorManager(
                     server,
                     self.loader.get_mirror_config(command_prefix),
                     command_prefix,
                     reload_method=self.reload_config,
                 )
+                # one listener per manager: MCDR isolates listeners, so a failing manager does not affect the others
+                server.register_event_listener("mcdr.general_info", manager.on_info)
+                server.register_event_listener("mcdr.user_info", manager.on_user_info)
+                self.managers[command_prefix] = manager
             except Exception as e:
                 server.logger.error(rtr("multi_manager.init.error", prefix=command_prefix, e=e))
                 server.logger.error(e, exc_info=e)
                 failed.append(command_prefix)
-        server.register_event_listener("mcdr.general_info", self.on_info)
-        server.register_event_listener("mcdr.user_info", self.on_user_info)
 
         success_info = rtr("multi_manager.init.success", prefix=", ".join(self.managers))
         fail_info = (rtr("multi_manager.init.fail",title=False,prefix=" §7/§c " + " ".join(failed)) if failed else "")
@@ -70,14 +72,6 @@ class MultiMirrorManager:
             manager.disable()
             return False
         return manager.reload_config(config)
-
-    def on_info(self, _: PluginServerInterface, info: Info) -> None:
-        for manager in self.managers.values():
-            manager.on_info(info)
-
-    def on_user_info(self, _: PluginServerInterface, info: Info) -> None:
-        for manager in self.managers.values():
-            manager.on_user_info(info)
 
     def on_unload(self) -> None:
         for manager in self.managers.values():
@@ -441,11 +435,11 @@ class MirrorManager:
             return
         self.confirmations.confirm(operator)
 
-    def on_info(self, info: Info) -> None:
+    def on_info(self, _: PluginServerInterface, info: Info) -> None:
         if info.is_from_server and info.content:
             self._sync_workflow.on_server_output(info.content)
 
-    def on_user_info(self, info: Info) -> None:
+    def on_user_info(self, _: PluginServerInterface, info: Info) -> None:
         operator = info.player
         if operator is None or (info.content and info.content.startswith(self.command_prefix)):
             return
