@@ -504,6 +504,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             server.reply(info, self.rtr("command.confirm.cancel", action=task.action))
 
     def on_unload(self, _: PluginServerInterface):
+        self.confirmations.clear()
         terminal = getattr(getattr(self, "server_api", None), "terminal", None)
         if isinstance(terminal, SubprocessProxy):
             terminal.forcekill()
