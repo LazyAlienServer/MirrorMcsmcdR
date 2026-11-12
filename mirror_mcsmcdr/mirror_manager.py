@@ -87,12 +87,17 @@ class MultiMirrorManager:  # The manager at large which manage multi single mirr
 
     def reload_config(self, prefix):
         manager: MirrorManager = self.managers[prefix]
-        config = self.loader.get_mirror_config(prefix)
-        if not config:
-            rtr("multi_manager.init.prefix_notfound", prefix=prefix)
+        try:
+            self.loader.load()
+        except Exception as e:
+            self.server.logger.error(e, exc_info=e)
+            self.server.broadcast(manager.rtr("manager.reload.fail"))
+            return False
+        if prefix not in self.loader.get_all_prefix():
+            self.server.broadcast(rtr("multi_manager.init.prefix_notfound", prefix=prefix))
             manager.manager_available = False
             return False
-        manager.reload_config(config)
+        manager.reload_config(self.loader.get_mirror_config(prefix))
         return True
 
     def on_unload(self, _: PluginServerInterface):
