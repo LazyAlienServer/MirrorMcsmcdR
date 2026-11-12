@@ -117,7 +117,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         builder.arg("count", Integer)
         builder.arg("cmd", GreedyText)
         builder.command(f"{command_prefix} log", self.log_help)
-        builder.command(f"{command_prefix} log <count>", lambda source, context: self.set_console_log(source, context, int(context["count"])))
+        builder.command(f"{command_prefix} log <count>", self.set_console_log_limit)
         builder.command(f"{command_prefix} log enable", lambda source, context: self.set_console_log(source, context, True))
         builder.command(f"{command_prefix} log disable", lambda source, context: self.set_console_log(source, context, False))
         builder.command(f"{command_prefix} execute <cmd>", self.mirror_execute)
@@ -345,24 +345,32 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         source.reply(self.rtr("command.log.status", status=self.rtr(f"command.log.{status}", title=False).to_legacy_text()))
         source.reply(self.rtr("command.log.help"))
 
-    def set_console_log(self, source: CommandSource, context: CommandContext, enabled) -> None:
+    def set_console_log(self, source: CommandSource, context: CommandContext, enabled: bool) -> None:
         self._run_command("log", source, lambda runtime: self._set_console_log(runtime, source, enabled), confirmable=False)
 
-    def _set_console_log(self, runtime: MirrorRuntime, source: CommandSource, enabled) -> None:
+    def _set_console_log(self, runtime: MirrorRuntime, source: CommandSource, enabled: bool) -> None:
         terminal = runtime.subprocess_terminal
         if terminal is None:
             source.reply(self.rtr("command.log.not_available"))
             return
-        if isinstance(enabled, bool):
-            terminal.set_console_log(enabled)
-            terminal.reset_log_limit()
-            source.reply(self.rtr("command.log.set_enable" if enabled else "command.log.set_disable"))
+        terminal.set_console_log(enabled)
+        terminal.reset_log_limit()
+        source.reply(self.rtr("command.log.set_enable" if enabled else "command.log.set_disable"))
+
+    def set_console_log_limit(self, source: CommandSource, context: CommandContext) -> None:
+        count: int = context["count"]
+        self._run_command("log", source, lambda runtime: self._set_console_log_limit(runtime, source, count), confirmable=False)
+
+    def _set_console_log_limit(self, runtime: MirrorRuntime, source: CommandSource, count: int) -> None:
+        terminal = runtime.subprocess_terminal
+        if terminal is None:
+            source.reply(self.rtr("command.log.not_available"))
             return
-        if enabled < 1:
+        if count < 1:
             source.reply(self.rtr("command.log.invalid_count"))
             return
-        terminal.set_console_log_limit(enabled)
-        source.reply(self.rtr("command.log.enabled_count", count=enabled))
+        terminal.set_console_log_limit(count)
+        source.reply(self.rtr("command.log.enabled_count", count=count))
 
     def mirror_execute(self, source: CommandSource, context: CommandContext) -> None:
         self._run_command("execute", source, lambda runtime: self._mirror_execute(runtime, source, context["cmd"]), confirmable=False)
@@ -375,7 +383,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         if terminal.status() != ServerStatus.RUNNING:
             source.reply(self.rtr("command.execute.not_running"))
             return
-        if not terminal._send_command(command):
+        if not terminal.send_command(command):
             source.reply(self.rtr("command.execute.failed"))
             return
         source.reply(self.rtr("command.execute.sent", cmd=command))

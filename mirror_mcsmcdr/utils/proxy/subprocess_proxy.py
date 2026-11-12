@@ -74,7 +74,7 @@ class SubprocessProxy(AbstractSystemProxy):
             return ServerStatus.STOPPED
 
         stop_command = "!!MCDR server stop_exit" if self.is_mcdr else "stop"
-        sent = self._send_command(stop_command)
+        sent = self.send_command(stop_command)
         if not sent:
             self.reset_log_limit()
             return ServerStatus.STOPPING
@@ -136,7 +136,7 @@ class SubprocessProxy(AbstractSystemProxy):
     def _format_log_line(line: str) -> RText:
         return RText(f"§7{line}")
 
-    def _send_command(self, cmd: str) -> bool:
+    def send_command(self, cmd: str) -> bool:
         process = self.process
         if process is None or process.poll() is not None or process.stdin is None:
             return False
