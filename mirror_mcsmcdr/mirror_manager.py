@@ -363,7 +363,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                         if status_code == ServerStatus.STOPPED:
                             break
                         if not ServerStatus.is_available(status_code):
-                            self.server.broadcast(self.rtr("command.sync.auto_restart.fail", status=self.rtr(f"command.status.failed.{status_code}", title=False)))
+                            self.server.broadcast(self.rtr("command.sync.auto_restart.fail", status=self.rtr(f"command.status.fail.{status_code}", title=False)))
                             return
                     else:
                         self.server.broadcast(self.rtr("command.sync.auto_restart.fail", status=self.rtr(f"command.status.success.{status_code}", title=False)))
