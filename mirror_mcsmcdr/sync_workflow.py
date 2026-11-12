@@ -1,7 +1,8 @@
 import datetime
 import time
+from contextlib import contextmanager
 from threading import Event, Lock
-from typing import Any, Optional, Pattern, Protocol
+from typing import Any, Iterator, Optional, Pattern, Protocol
 
 from mcdreforged.api.all import CommandSource, PluginServerInterface, RTextBase
 
@@ -49,9 +50,10 @@ class SaveWorldWaiter:
 
 class SyncWorkflow:
     """
-    Synchronizes the world of the source server to the mirror server, one run at a time.
+    Synchronizes the world of the source server to the mirror server.
 
-    A run works on the runtime it was started with, so a config reload does not affect a sync in progress.
+    Whoever uses or replaces a runtime for syncing has to :meth:`hold` the workflow meanwhile.
+    This keeps syncs from overlapping, and keeps a reload from swapping the runtime under a running sync.
     """
 
     def __init__(self, server: PluginServerInterface, tr: Translator) -> None:
@@ -63,16 +65,22 @@ class SyncWorkflow:
     def on_server_output(self, content: str) -> None:
         self._save_waiter.on_server_output(content)
 
+    @contextmanager
+    def hold(self) -> Iterator[bool]:
+        """Claim the workflow without blocking; yields False if it is already held."""
+        acquired = self._lock.acquire(blocking=False)
+        try:
+            yield acquired
+        finally:
+            if acquired:
+                self._lock.release()
+
     def run(self, runtime: MirrorRuntime, source: CommandSource, operator: str) -> bool:
         """
-        Run a sync and record its result in the history.
+        Run a sync and record its result in the history; the caller must :meth:`hold` the workflow.
 
         :return: True if the mirror server was stopped for this sync and has to be started again
         """
-        if not self._lock.acquire(blocking=False):
-            source.reply(self._tr("command.sync.fail.task_exist"))
-            return False
-
         started_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         record: Optional[SyncRecord] = None
         needs_restart = False
@@ -87,7 +95,6 @@ class SyncWorkflow:
             self._server.logger.error(e, exc_info=e)
             record = SyncRecord(started_at, operator, SyncStatus.FAILED, exception=str(e))
         finally:
-            self._lock.release()
             if record is not None:
                 runtime.history.append(record)
         return needs_restart

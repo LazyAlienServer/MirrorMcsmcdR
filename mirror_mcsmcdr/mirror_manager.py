@@ -99,7 +99,8 @@ class MirrorManager:
         self.server_name = config.display.server_name
         self.confirmations = ConfirmationManager(self._on_confirmation_timeout)
         self._sync_workflow = SyncWorkflow(server, self.rtr)
-        # the runtime is kept while disabled, so that its subprocess can still be cleaned up on unload
+        # Kept while disabled, so that its subprocess can still be cleaned up on unload.
+        # Only replaced while holding the sync workflow.
         self._runtime: Optional[MirrorRuntime] = None
         self._available = False
 
@@ -152,17 +153,25 @@ class MirrorManager:
             self.server.broadcast(self.rtr("manager.reload.fail.proxy", proxy=error.proxy, keys="', '".join(error.missing_keys)))
         return True
 
-    def reload_config(self, config: MirrorConfig) -> None:
-        previous = self._runtime
-        if not self._apply_config(config):
-            return
-        # the new runtime owns a fresh proxy that cannot reach the process started by the previous one
-        if previous is not None and previous.subprocess_terminal is not None:
-            previous.subprocess_terminal.forcekill()
-        self.server.broadcast(self.rtr("manager.reload.success"))
+    def reload_config(self, config: MirrorConfig) -> bool:
+        with self._sync_workflow.hold() as held:
+            if not held:
+                self.server.broadcast(self.rtr("manager.reload.fail.syncing"))
+                return False
+            previous = self._runtime
+            if not self._apply_config(config):
+                return False
+            # the new runtime owns a fresh proxy that cannot reach the process started by the previous one
+            if previous is not None and previous.subprocess_terminal is not None:
+                previous.subprocess_terminal.forcekill()
+            self.server.broadcast(self.rtr("manager.reload.success"))
+            return True
 
     def disable(self) -> None:
         self._available = False
+
+    def _active_runtime(self) -> Optional[MirrorRuntime]:
+        return self._runtime if self._available else None
 
     def help(self, source: CommandSource, _: CommandContext) -> None:
         source.reply(help_msg(self.server_name, self.command_prefix))
@@ -209,8 +218,8 @@ class MirrorManager:
         A confirmable command whose config requires confirmation is parked instead,
         and goes through the availability and permission checks again once confirmed.
         """
-        runtime = self._runtime
-        if not self._available or runtime is None:
+        runtime = self._active_runtime()
+        if runtime is None:
             source.reply(self.rtr("manager.unavailable"))
             return
 
@@ -299,12 +308,22 @@ class MirrorManager:
         ))
 
     def sync(self, source: CommandSource, context: CommandContext) -> None:
-        self._run_command("sync", source, lambda runtime: self._sync(runtime, source))
+        self._run_command("sync", source, lambda _: self._sync(source))
 
     @new_thread(f"{TITLE}-sync")
-    def _sync(self, runtime: MirrorRuntime, source: CommandSource) -> None:
+    def _sync(self, source: CommandSource) -> None:
         with self._report_api_error(source):
-            if self._sync_workflow.run(runtime, source, operator_name(source)):
+            with self._sync_workflow.hold() as held:
+                if not held:
+                    source.reply(self.rtr("command.sync.fail.task_exist"))
+                    return
+                # resolved under the hold, so it cannot be replaced before the sync is done
+                runtime = self._active_runtime()
+                if runtime is None:
+                    source.reply(self.rtr("manager.unavailable"))
+                    return
+                needs_restart = self._sync_workflow.run(runtime, source, operator_name(source))
+            if needs_restart:
                 self._run_command("start", source, lambda current: self._start(current, source), confirmable=False)
 
     def history(self, source: CommandSource, context: CommandContext) -> None:
