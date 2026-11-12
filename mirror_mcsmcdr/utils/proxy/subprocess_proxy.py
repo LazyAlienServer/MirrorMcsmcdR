@@ -33,7 +33,7 @@ class SubprocessProxy(AbstractSystemProxy):
 
     def start(self) -> str:
         if self.process is not None and self.process.poll() is None:
-            return "already running"
+            return ServerStatus.RUNNING
 
         if self._output_thread is not None:
             self._output_thread.join(timeout=3)
