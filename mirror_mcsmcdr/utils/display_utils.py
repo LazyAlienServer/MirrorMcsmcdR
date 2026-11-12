@@ -1,9 +1,12 @@
-from mcdreforged.api.all import RTextList, ServerInterface, RAction
+from typing import Any
+
+from mcdreforged.api.all import RTextBase, RTextList, ServerInterface, RAction
 from mirror_mcsmcdr.constants import PLUGIN_ID, REPLY_TITLE, TITLE
 
 
-def rtr(key, title=True, *args, **kwargs):
-    return RTextList(REPLY_TITLE+" ", ServerInterface.si().rtr(PLUGIN_ID+"."+key, *args, **kwargs)) if title else ServerInterface.si().rtr(PLUGIN_ID+"."+key, *args, **kwargs)
+def rtr(key: str, title: bool = True, **kwargs: Any) -> RTextBase:
+    text = ServerInterface.si().rtr(f"{PLUGIN_ID}.{key}", **kwargs)
+    return RTextList(REPLY_TITLE + " ", text) if title else text
 
 
 def help_msg(server_name, prefix):
