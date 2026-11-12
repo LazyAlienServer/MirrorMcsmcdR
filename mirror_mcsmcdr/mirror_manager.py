@@ -60,16 +60,16 @@ class MultiMirrorManager:
         manager = self.managers[prefix]
         try:
             self.loader.load()
+            config = self.loader.get_mirror_config(prefix) if prefix in self.loader.get_all_prefix() else None
         except Exception as e:
             self.server.logger.error(e, exc_info=e)
             self.server.broadcast(manager.rtr("manager.reload.fail"))
             return False
-        if prefix not in self.loader.get_all_prefix():
+        if config is None:
             self.server.broadcast(rtr("multi_manager.init.prefix_notfound", prefix=prefix))
             manager.disable()
             return False
-        manager.reload_config(self.loader.get_mirror_config(prefix))
-        return True
+        return manager.reload_config(config)
 
     def on_info(self, _: PluginServerInterface, info: Info) -> None:
         for manager in self.managers.values():
