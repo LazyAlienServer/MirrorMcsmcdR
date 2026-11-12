@@ -1,7 +1,5 @@
-import time, datetime
 from contextlib import contextmanager
 from pathlib import Path
-from threading import Event, Lock
 from typing import Any, Callable, Collection, Iterator, Optional
 
 from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PlayerCommandSource, PluginServerInterface, RAction, RColor, RText, RTextBase, RTextList, SimpleCommandBuilder, new_thread, Integer, GreedyText
@@ -9,6 +7,7 @@ from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, Pl
 from mirror_mcsmcdr.constants import TITLE
 from mirror_mcsmcdr.config import MultiConfigLoader, MirrorConfig
 from mirror_mcsmcdr.mirror_runtime import MirrorRuntime
+from mirror_mcsmcdr.sync_workflow import SyncWorkflow
 from mirror_mcsmcdr.utils.display_utils import help_msg, rtr
 from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxyError
 from mirror_mcsmcdr.utils.server_utils import ProxyResult
@@ -89,9 +88,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         self.command_prefix = command_prefix
         self.server_name = config.display.server_name
         self.confirmations = ConfirmationManager(self._on_confirmation_timeout)
-        self._sync_lock = Lock()
-        self._save_world_wait = Event()
-        self._save_world_wait.set()
+        self._sync_workflow = SyncWorkflow(server, self.rtr)
         # the runtime is kept while disabled, so that its subprocess can still be cleaned up on unload
         self._runtime: Optional[MirrorRuntime] = None
         self._available = False
@@ -297,81 +294,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
     @new_thread(f"{TITLE}-sync")
     def _sync(self, runtime: MirrorRuntime, source: CommandSource) -> None:
         with self._report_api_error(source):
-            self._sync_world(runtime, source)
-
-    def _sync_world(self, runtime: MirrorRuntime, source: CommandSource) -> None:
-        if not self._sync_lock.acquire(blocking=False):
-            source.reply(self.rtr("command.sync.fail.task_exist"))
-            return
-
-        started_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        operator = operator_name(source)
-        record: Optional[SyncRecord] = None
-
-        auto_restart_flag = False
-        try:
-            sync_action_config = runtime.config.command.action.sync
-            if sync_action_config.ensure_server_closed:
-                status_code = runtime.proxy.status()
-
-                if status_code == ServerStatus.STOPPED:
-                    pass
-                elif status_code != ServerStatus.RUNNING or not sync_action_config.auto_server_restart:
-                    source.reply(self.rtr(f"command.sync.fail.{status_code}"))
-                    return
-                else:  # restart server
-                    self.server.broadcast(self.rtr("command.sync.auto_restart.restarting"))
-                    runtime.proxy.stop()
-                    interval, times = sync_action_config.check_status_interval, sync_action_config.max_attempt_times
-                    for _ in range(times):
-                        time.sleep(interval)
-                        status_code = runtime.proxy.status()
-                        if status_code == ServerStatus.STOPPED:
-                            break
-                        if not ServerStatus.is_available(status_code):
-                            self.server.broadcast(self.rtr("command.sync.auto_restart.fail", status=self.rtr(f"command.status.fail.{status_code}", title=False)))
-                            return
-                    else:
-                        self.server.broadcast(self.rtr("command.sync.auto_restart.fail", status=self.rtr(f"command.status.success.{status_code}", title=False)))
-                        return
-                    auto_restart_flag = True
-
-            self.server.broadcast(self.rtr("command.sync.success"))
-            started = time.time()
-            save_world_config = sync_action_config.save_world
-            turn_off_auto_save = save_world_config.turn_off_auto_save
-            if turn_off_auto_save:
-                self.server.execute(save_world_config.commands.auto_save_off)
-            self._save_world_wait.clear()
-            self.server.execute(save_world_config.commands.save_all_worlds)
-            self._save_world_wait.wait(timeout=save_world_config.save_world_max_wait_sec)
-            if turn_off_auto_save:
-                self.server.execute(save_world_config.commands.auto_save_on)
-
-            changed_files_count, paths_notfound = runtime.world_sync.sync()
-            m, s = divmod(time.time() - started, 60)
-            h, m = divmod(m, 60)
-            duration = ("%02d:" % h if h else "") + ("%02d:" % m if m else "") + ("%02d" % s if m or h else ("%.02f" % s).zfill(5))
-            record = SyncRecord(
-                started_at,
-                operator,
-                SyncStatus.SUCCESS if changed_files_count != 0 else SyncStatus.IDENTICAL,
-                duration=duration,
-                changed_files_count=changed_files_count,
-                paths_notfound=paths_notfound,
-            )
-            if paths_notfound:
-                self.server.broadcast(self.rtr("command.sync.skip_dictionary", paths="§f`§7".join(paths_notfound)))
-            self.server.broadcast(self.rtr("command.sync.completed", time=duration, changed_files_count=changed_files_count) if changed_files_count != 0 else self.rtr("command.sync.identical"))
-        except Exception as e:
-            self.server.broadcast(self.rtr("command.sync.error"))
-            self.server.logger.error(e, exc_info=e)
-            record = SyncRecord(started_at, operator, SyncStatus.FAILED, exception=str(e))
-        finally:
-            self._sync_lock.release()
-            if record is not None:
-                runtime.history.append(record)
-            if auto_restart_flag:
+            if self._sync_workflow.run(runtime, source, operator_name(source)):
                 self._run_command("start", source, lambda current: self._start(current, source), confirmable=False)
 
     def history(self, source: CommandSource, context: CommandContext) -> None:
@@ -471,15 +394,8 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         self.confirmations.confirm(operator)
 
     def on_info(self, _: PluginServerInterface, info: Info) -> None:
-        runtime = self._runtime
-        if (
-            runtime is not None
-            and not self._save_world_wait.is_set()
-            and info.is_from_server
-            and info.content
-            and runtime.save_world_regex.match(info.content)
-        ):
-            self._save_world_wait.set()  # stop waiting in sync function
+        if info.is_from_server and info.content:
+            self._sync_workflow.on_server_output(info.content)
 
     def on_user_info(self, server: PluginServerInterface, info: Info) -> None:
         operator = info.player
