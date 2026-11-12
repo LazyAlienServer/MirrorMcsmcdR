@@ -1,62 +1,39 @@
-from mcdreforged.api.all import CommandSource, CommandContext
-from typing import Any, Callable, Dict, Optional
 from threading import Timer
+from typing import Callable, Dict, Optional
+
+from mcdreforged.api.all import CommandSource
+
 
 class ConfirmationTask:
-    def __init__(
-        self,
-        action: str,
-        source: CommandSource,
-        context: CommandContext,
-        callback: Callable[..., Any],
-        callback_args: tuple,
-        callback_kwargs: dict,
-    ) -> None:
+    def __init__(self, action: str, source: CommandSource, callback: Callable[[], object]) -> None:
         self.action = action
         self.source = source
-        self.context = context
         self.callback = callback
-        self.callback_args = callback_args
-        self.callback_kwargs = callback_kwargs
         self.timer: Optional[Timer] = None
 
-    def cancel(self):
+    def cancel(self) -> None:
         if self.timer is not None:
             self.timer.cancel()
 
-    def execute(self):
-        return self.callback(*self.callback_args, **self.callback_kwargs)
+    def execute(self) -> None:
+        self.callback()
 
 
 class ConfirmationManager:
+    """Holds at most one pending confirmation per operator."""
+
     def __init__(self, timeout: float, on_timeout: Callable[[ConfirmationTask], None]) -> None:
         self.timeout = timeout
         self.on_timeout = on_timeout
         self.tasks: Dict[str, ConfirmationTask] = {}
 
-    def request(
-        self,
-        operator: str,
-        action: str,
-        source: CommandSource,
-        context: CommandContext,
-        callback: Callable[..., Any],
-        callback_args: tuple,
-        callback_kwargs: dict,
-    ):
-        task = ConfirmationTask(
-            action,
-            source,
-            context,
-            callback,
-            callback_args,
-            callback_kwargs,
-        )
+    def request(self, operator: str, action: str, source: CommandSource, callback: Callable[[], object]) -> None:
+        task = ConfirmationTask(action, source, callback)
         task.timer = Timer(self.timeout, self._timeout, args=(operator,))
         self.tasks[operator] = task
         task.timer.start()
 
-    def _timeout(self, operator: str):
+    def _timeout(self, operator: str) -> None:
         task = self.tasks.pop(operator, None)
         if task is not None:
             self.on_timeout(task)
@@ -79,6 +56,6 @@ class ConfirmationManager:
     def has_any(self) -> bool:
         return bool(self.tasks)
 
-    def clear(self):
+    def clear(self) -> None:
         for operator in tuple(self.tasks):
             self.cancel(operator)

@@ -1,59 +1,30 @@
 import re
 import time, datetime
+from contextlib import contextmanager
 from pathlib import Path
-from functools import wraps
 from threading import Event, Lock
-from typing import Any, Callable, Optional, Union, cast
+from typing import Any, Callable, Collection, Iterator, Optional
 
-from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PluginServerInterface, RAction, RColor, RText, RTextList, SimpleCommandBuilder, new_thread, Integer, Text, GreedyText
+from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PlayerCommandSource, PluginServerInterface, RAction, RColor, RText, RTextBase, RTextList, SimpleCommandBuilder, new_thread, Integer, GreedyText
 
 from mirror_mcsmcdr.constants import TITLE
-from mirror_mcsmcdr.config import MultiConfigLoader, MirrorConfig, MCSMConfig, TerminalConfig, RConConfig, SynchronizationConfig, CommandConfig, DisplayConfig, CommandPermissionConfig
+from mirror_mcsmcdr.config import MultiConfigLoader, MirrorConfig, CommandConfig, DisplayConfig, CommandPermissionConfig
 from mirror_mcsmcdr.utils.display_utils import help_msg, rtr
 from mirror_mcsmcdr.utils.sync.classic_synchronizer import ClassicWorldSynchronizer
 from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxyError
 from mirror_mcsmcdr.utils.proxy.subprocess_proxy import SubprocessProxy
-from mirror_mcsmcdr.utils.server_utils import ProxySettingException, ServerProxy, TerminalSettingException
+from mirror_mcsmcdr.utils.server_utils import ProxyResult, ProxySettingException, ServerProxy, TerminalSettingException
 from mirror_mcsmcdr.utils.status import ServerStatus
 from mirror_mcsmcdr.utils.history_utils import SyncHistory, SyncRecord, SyncStatus
 from mirror_mcsmcdr.utils.page_utils import Page
 from mirror_mcsmcdr.utils.confirmation_utils import ConfirmationTask, ConfirmationManager
 
 PAGE_SIZE = 5
-
-def catch_api_error(func):
-    @wraps(func)
-    def wrapper(self, source: CommandSource, *args, **kwargs):
-        try:
-            return func(self, source, *args, **kwargs)
-        except MCSManagerProxyError as e:
-            source.reply(rtr("mcsm.error.request", e=e))
-        except Exception as e:
-            source.reply(rtr("error.unknown"))
-            raise e
-
-    return wrapper
+CONSOLE_OPERATOR = "[console]"
 
 
-def command_call(command: str, enable_confirm: bool = True):
-    def decorator(function):
-        @wraps(function)
-        def wrapper(self, source: CommandSource, context: CommandContext, *args, **kwargs):
-            confirmed = kwargs.pop("_confirmed", False if enable_confirm else True)
-            return self._call_command(
-                command,
-                function,
-                wrapper,
-                source,
-                context,
-                args,
-                kwargs,
-                confirmed,
-            )
-
-        return wrapper
-
-    return decorator
+def operator_name(source: CommandSource) -> str:
+    return source.player if isinstance(source, PlayerCommandSource) else CONSOLE_OPERATOR
 
 
 class MultiMirrorManager:  # The manager at large which manage multi single mirror server manager
@@ -161,8 +132,8 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             return
         self.manager_available = True
 
-    def rtr(self, key, title=True, *args, **kwargs):
-        return rtr(key, title, prefix=self.command_prefix, server_name=self.server_name, *args, **kwargs)
+    def rtr(self, key: str, title: bool = True, **kwargs: Any) -> RTextBase:
+        return rtr(key, title, prefix=self.command_prefix, server_name=self.server_name, **kwargs)
 
     def set_config(self, config: MirrorConfig):
         self.server_name = config.display.server_name
@@ -224,120 +195,128 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             info.append(" | ", text)
         return info
 
-    def check_permission(self, source: CommandSource, command: str):
-        required_permission = getattr(self.permission, command, 0)
+    def _check_permission(self, source: CommandSource, command: str) -> bool:
+        required_permission = self.permission.requirement_of(command)
         if required_permission == "console":
             if source.is_console:
                 return True
             source.reply(self.rtr("manager.console_only"))
-            return  False
+            return False
         if source.has_permission(required_permission):
             return True
         source.reply(self.rtr("manager.permission_denied"))
         return False
 
-    def _call_command(
+    def _run_command(
         self,
         command: str,
-        function: Callable[..., Any],
-        wrapper: Callable[..., Any],
         source: CommandSource,
-        context: CommandContext,
-        args: tuple,
-        kwargs: dict,
-        confirmed: bool,
-    ):
+        action: Callable[[], object],
+        confirmable: bool = True,
+    ) -> None:
+        """
+        Run ``action`` if the manager is available and the source is permitted.
+
+        A confirmable command whose config requires confirmation is parked instead,
+        and goes through the availability and permission checks again once confirmed.
+        """
         if not self.manager_available:
             source.reply(self.rtr("manager.unavailable"))
             return
 
-        operator = source.player if source.is_player else "[console]"
-        if self.confirmations.has(operator) and not confirmed:
-            task = self.confirmations.cancel(operator)
-            source.reply(self.rtr("command.confirm.previous", action=task.action))
+        operator = operator_name(source)
+        if confirmable:
+            previous = self.confirmations.cancel(operator)
+            if previous is not None:
+                source.reply(self.rtr("command.confirm.previous", action=previous.action))
 
-        if not self.check_permission(source, command):
-            return False
-        if not confirmed and getattr(self.command_action, command).require_confirm:
+        if not self._check_permission(source, command):
+            return
+        if confirmable and self.command_action.requires_confirm(command):
             self.confirmations.request(
                 operator,
                 command,
                 source,
-                context,
-                wrapper,
-                (self, source, context, *args),
-                {**kwargs, "_confirmed": True},
+                lambda: self._run_command(command, source, action, confirmable=False),
             )
             source.reply(self.rtr("command.confirm.prompt").set_click_event(RAction.run_command, f"{self.command_prefix} confirm"))
-            return False
-        return function(self, source, context, *args, **kwargs)
+            return
+        action()
 
-    @catch_api_error
+    @contextmanager
+    def _report_api_error(self, source: CommandSource) -> Iterator[None]:
+        """Reply the error to the source; a MCSM request error is swallowed, anything else propagates."""
+        try:
+            yield
+        except MCSManagerProxyError as e:
+            source.reply(rtr("mcsm.error.request", e=e))
+        except Exception:
+            source.reply(rtr("error.unknown"))
+            raise
+
     def _execute(
         self,
         source: CommandSource,
         command: str,
-        available_status: list[ServerStatus],
-        backend_command: Optional[str] = None,
-    ):  # <failed_prompt> & <succeeded_prompt> : {status_code: "prompt"}
-        status_code = self.server_api.status()
-        if not ServerStatus.is_available(status_code):
-            source.reply(self.rtr(f"command.status.fail.{status_code}"))
-            return False
-        if status_code in available_status:
-            action_name = backend_command or command
-            action_obj = getattr(self.server_api, action_name, None)
-            if not callable(action_obj):
-                raise ProxySettingException(action_name, missing_keys=[action_name])
-            action = cast(Callable[[], Optional[Union[str, ServerStatus]]], action_obj)
-            rep: Optional[Union[str, ServerStatus]] = action()
-            if rep == "success":
-                self.server.broadcast(self.rtr("command._execute.success", prompt=self.rtr(f"command.{command}.success.{status_code}", title=False).to_legacy_text()))
-                return True
-            status_code = rep
-        source.reply(self.rtr("command._execute.fail",prompt=self.rtr(f"command.{command}.fail.{status_code}", title=False).to_legacy_text()))
+        available_status: Collection[ServerStatus],
+        action: Callable[[], ProxyResult],
+    ) -> bool:
+        with self._report_api_error(source):
+            status_code = self.server_api.status()
+            if not ServerStatus.is_available(status_code):
+                source.reply(self.rtr(f"command.status.fail.{status_code}"))
+                return False
+            result: ProxyResult = status_code
+            if status_code in available_status:
+                result = action()
+                if result == "success":
+                    self.server.broadcast(self.rtr("command._execute.success", prompt=self.rtr(f"command.{command}.success.{status_code}", title=False).to_legacy_text()))
+                    return True
+            source.reply(self.rtr("command._execute.fail", prompt=self.rtr(f"command.{command}.fail.{result}", title=False).to_legacy_text()))
         return False
 
-    @command_call("status")
-    @catch_api_error
-    def status(self, source: CommandSource, context: CommandContext):
-        status_code = self.server_api.status()
-        flag = "success" if ServerStatus.is_available(status_code) else "fail"
-        prompt = self.rtr(f"command.status.{flag}.{status_code}", title=False).to_legacy_text()
-        self.server.broadcast(self.rtr(f"command._execute.{flag}", prompt=prompt))
+    def status(self, source: CommandSource, context: CommandContext) -> None:
+        self._run_command("status", source, lambda: self._status(source))
 
-    @command_call("start")
-    def start(self, source: CommandSource, context: CommandContext):
-        return self._execute(source, "start", [ServerStatus.STOPPED])
+    def _status(self, source: CommandSource) -> None:
+        with self._report_api_error(source):
+            status_code = self.server_api.status()
+            flag = "success" if ServerStatus.is_available(status_code) else "fail"
+            prompt = self.rtr(f"command.status.{flag}.{status_code}", title=False).to_legacy_text()
+            self.server.broadcast(self.rtr(f"command._execute.{flag}", prompt=prompt))
 
-    @command_call("stop")
-    def stop(self, source: CommandSource, context: CommandContext):
-        return self._execute(source, "stop", [ServerStatus.RUNNING])
+    def _start(self, source: CommandSource) -> bool:
+        return self._execute(source, "start", [ServerStatus.STOPPED], self.server_api.start)
 
-    @command_call("kill")
-    def kill(
-        self,
-        source: CommandSource,
-        context: CommandContext,
-        force=False,
-    ):
-        return self._execute(
+    def start(self, source: CommandSource, context: CommandContext) -> None:
+        self._run_command("start", source, lambda: self._start(source))
+
+    def stop(self, source: CommandSource, context: CommandContext) -> None:
+        self._run_command("stop", source, lambda: self._execute(source, "stop", [ServerStatus.RUNNING], self.server_api.stop))
+
+    def kill(self, source: CommandSource, context: CommandContext, force: bool = False) -> None:
+        self._run_command("kill", source, lambda: self._execute(
             source,
             "kill",
             [ServerStatus.STOPPING, ServerStatus.STARTING, ServerStatus.RUNNING, ServerStatus.DETACHED_JAVA, ServerStatus.DETACHED_SCREEN],
-            "forcekill" if force else None,
-        )
+            self.server_api.forcekill if force else self.server_api.kill,
+        ))
 
-    @command_call("sync")
+    def sync(self, source: CommandSource, context: CommandContext) -> None:
+        self._run_command("sync", source, lambda: self._sync(source))
+
     @new_thread(f"{TITLE}-sync")
-    @catch_api_error
-    def sync(self, source: CommandSource, context: CommandContext):
+    def _sync(self, source: CommandSource) -> None:
+        with self._report_api_error(source):
+            self._sync_world(source)
+
+    def _sync_world(self, source: CommandSource) -> None:
         if not self.sync_lock.acquire(blocking=False):
             source.reply(self.rtr("command.sync.fail.task_exist"))
             return
 
         started_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        operator = source.player if source.is_player else "[console]"
+        operator = operator_name(source)
         record: Optional[SyncRecord] = None
 
         auto_restart_flag = False
@@ -369,7 +348,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                     auto_restart_flag = True
 
             self.server.broadcast(self.rtr("command.sync.success"))
-            t = time.time()
+            started = time.time()
             save_world_config = sync_action_config.save_world
             turn_off_auto_save = save_world_config.turn_off_auto_save
             if turn_off_auto_save:
@@ -381,20 +360,20 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                 self.server.execute(save_world_config.commands.auto_save_on)
 
             changed_files_count, paths_notfound = self.world_sync.sync()
-            m, s = divmod(time.time() - t, 60)
+            m, s = divmod(time.time() - started, 60)
             h, m = divmod(m, 60)
-            t = ("%02d:" % h if h else "") + ("%02d:" % m if m else "") + ("%02d" % s if m or h else ("%.02f" % s).zfill(5))
+            duration = ("%02d:" % h if h else "") + ("%02d:" % m if m else "") + ("%02d" % s if m or h else ("%.02f" % s).zfill(5))
             record = SyncRecord(
                 started_at,
                 operator,
                 SyncStatus.SUCCESS if changed_files_count != 0 else SyncStatus.IDENTICAL,
-                duration=t,
+                duration=duration,
                 changed_files_count=changed_files_count,
                 paths_notfound=paths_notfound,
             )
             if paths_notfound:
                 self.server.broadcast(self.rtr("command.sync.skip_dictionary", paths="§f`§7".join(paths_notfound)))
-            self.server.broadcast(self.rtr("command.sync.completed", time=t, changed_files_count=changed_files_count) if changed_files_count != 0 else self.rtr("command.sync.identical"))
+            self.server.broadcast(self.rtr("command.sync.completed", time=duration, changed_files_count=changed_files_count) if changed_files_count != 0 else self.rtr("command.sync.identical"))
         except Exception as e:
             self.server.broadcast(self.rtr("command.sync.error"))
             self.server.logger.error(e, exc_info=e)
@@ -404,18 +383,19 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             if record is not None:
                 self.sync_history.append(record)
             if auto_restart_flag:
-                self.start(source, context, _confirmed=True)
+                self._run_command("start", source, lambda: self._start(source), confirmable=False)
 
-    @command_call("history")
-    def history(self, source: CommandSource, context: CommandContext):
-        page_size = PAGE_SIZE
-        page = Page(self.sync_history.read(), page_size, f"{self.command_prefix} history")
+    def history(self, source: CommandSource, context: CommandContext) -> None:
+        self._run_command("history", source, lambda: self._history(source, context))
+
+    def _history(self, source: CommandSource, context: CommandContext) -> None:
+        page = Page(self.sync_history.read(), PAGE_SIZE, f"{self.command_prefix} history")
         page.set_page_index(context)
         for record in page.get_items_on_page():
             source.reply(self._get_history_rtext(record))
         source.reply(page.get_rtext())
 
-    def _get_history_rtext(self, record: SyncRecord):
+    def _get_history_rtext(self, record: SyncRecord) -> RTextBase:
         if record.status == SyncStatus.SUCCESS:
             return self.rtr(
                 "command.history.record.success",
@@ -445,8 +425,10 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         terminal = getattr(getattr(self, "server_api", None), "terminal", None)
         return terminal if isinstance(terminal, SubprocessProxy) else None
 
-    @command_call("log", False)
-    def log_help(self, source: CommandSource, context: CommandContext):
+    def log_help(self, source: CommandSource, context: CommandContext) -> None:
+        self._run_command("log", source, lambda: self._log_help(source), confirmable=False)
+
+    def _log_help(self, source: CommandSource) -> None:
         terminal = self._get_subprocess_proxy()
         if terminal is None:
             source.reply(self.rtr("command.log.not_available"))
@@ -455,8 +437,10 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         source.reply(self.rtr("command.log.status", status=self.rtr(f"command.log.{status}", title=False).to_legacy_text()))
         source.reply(self.rtr("command.log.help"))
 
-    @command_call("log", False)
-    def set_console_log(self, source: CommandSource, context: CommandContext, enabled):
+    def set_console_log(self, source: CommandSource, context: CommandContext, enabled) -> None:
+        self._run_command("log", source, lambda: self._set_console_log(source, enabled), confirmable=False)
+
+    def _set_console_log(self, source: CommandSource, enabled) -> None:
         terminal = self._get_subprocess_proxy()
         if terminal is None:
             source.reply(self.rtr("command.log.not_available"))
@@ -472,11 +456,10 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         terminal.set_console_log_limit(enabled)
         source.reply(self.rtr("command.log.enabled_count", count=enabled))
 
-    @command_call("execute", False)
-    def mirror_execute(self, source: CommandSource, context: CommandContext):
-        if not self.manager_available:
-            source.reply(self.rtr("manager.unavailable"))
-            return
+    def mirror_execute(self, source: CommandSource, context: CommandContext) -> None:
+        self._run_command("execute", source, lambda: self._mirror_execute(source, context["cmd"]), confirmable=False)
+
+    def _mirror_execute(self, source: CommandSource, command: str) -> None:
         terminal = self._get_subprocess_proxy()
         if terminal is None:
             source.reply(self.rtr("command.execute.not_available"))
@@ -484,17 +467,16 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         if terminal.status() != ServerStatus.RUNNING:
             source.reply(self.rtr("command.execute.not_running"))
             return
-        command = context["cmd"]
         if not terminal._send_command(command):
             source.reply(self.rtr("command.execute.failed"))
             return
         source.reply(self.rtr("command.execute.sent", cmd=command))
 
-    def _on_confirmation_timeout(self, task: ConfirmationTask):
+    def _on_confirmation_timeout(self, task: ConfirmationTask) -> None:
         task.source.reply(self.rtr("command.confirm.timeout", action=task.action))
 
-    def confirm(self, source: CommandSource, context: CommandContext):
-        operator = source.player if source.is_player else "[console]"
+    def confirm(self, source: CommandSource, context: CommandContext) -> None:
+        operator = operator_name(source)
         if not self.confirmations.has(operator):
             if self.confirmations.has_any():
                 source.reply(self.rtr("command.confirm.others"))
@@ -515,7 +497,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
 
     def on_user_info(self, server: PluginServerInterface, info: Info):
         operator = info.player
-        if info.content and info.content[: len(self.command_prefix)] == self.command_prefix:
+        if operator is None or (info.content and info.content.startswith(self.command_prefix)):
             return
         task = self.confirmations.cancel(operator)
         if task is not None:

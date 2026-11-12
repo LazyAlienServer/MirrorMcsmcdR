@@ -10,6 +10,9 @@ from mirror_mcsmcdr.utils.proxy.system_proxy import AbstractSystemProxy, LinuxPr
 from mirror_mcsmcdr.utils.status import ServerStatus
 
 
+# Proxy actions report "success", a failure keyword, or the status that blocked them.
+ProxyResult = Union[str, ServerStatus]
+
 class ProxySettingException(Exception):
 
     def __init__(self, proxy: str, missing_keys: List[str]):
@@ -132,14 +135,14 @@ class ServerProxy:
             return status
         return self.terminal.status() if self.terminal else ServerStatus.UNAVAILABLE
 
-    def start(self):
+    def start(self) -> ProxyResult:
         if self.mcsm:
             return self.mcsm.start()
         if self.terminal:
             return self.terminal.start()
         return ServerStatus.UNAVAILABLE
 
-    def stop(self):
+    def stop(self) -> ProxyResult:
         if self.mcsm:
             return self.mcsm.stop()
         if self.rcon:
@@ -148,14 +151,14 @@ class ServerProxy:
             return self.terminal.stop()
         return ServerStatus.UNAVAILABLE
 
-    def kill(self):
+    def kill(self) -> ProxyResult:
         if self.mcsm:
             return self.mcsm.kill()
         if self.terminal:
             return self.terminal.kill()
         return ServerStatus.UNAVAILABLE
 
-    def forcekill(self):
+    def forcekill(self) -> ProxyResult:
         if self.terminal and isinstance(self.terminal, AbstractSystemProxy):
             return self.terminal.forcekill()
         if self.mcsm and isinstance(self.terminal, WindowsProxy):

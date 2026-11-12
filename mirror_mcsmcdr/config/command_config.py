@@ -1,17 +1,22 @@
 from mcdreforged.api.all import Serializable
 from typing import Union, Literal
 
+PermissionRequirement = Union[int, Literal["console"]]
+
 class CommandPermissionConfig(Serializable):
-    status: Union[int, Literal["console"]] = 0
-    start: Union[int, Literal["console"]] = 0
-    stop: Union[int, Literal["console"]] = 2
-    kill: Union[int, Literal["console"]] = 3
-    sync: Union[int, Literal["console"]] = 2
-    history: Union[int, Literal["console"]] = 0
-    confirm: Union[int, Literal["console"]] = 0
-    abort: Union[int, Literal["console"]] = 0
-    log: Union[int, Literal["console"]] = "console"
-    execute: Union[int, Literal["console"]] = "console"
+    status: PermissionRequirement = 0
+    start: PermissionRequirement = 0
+    stop: PermissionRequirement = 2
+    kill: PermissionRequirement = 3
+    sync: PermissionRequirement = 2
+    history: PermissionRequirement = 0
+    confirm: PermissionRequirement = 0
+    abort: PermissionRequirement = 0
+    log: PermissionRequirement = "console"
+    execute: PermissionRequirement = "console"
+
+    def requirement_of(self, command: str) -> PermissionRequirement:
+        return getattr(self, command)
 
 class ActionConfig(Serializable):
     require_confirm: bool = False
@@ -53,6 +58,10 @@ class CommandActionConfig(Serializable):
     history: HistoryActionConfig = HistoryActionConfig()
     confirm: ConfirmActionConfig = ConfirmActionConfig()
     abort: AbortActionConfig = AbortActionConfig()
+
+    def requires_confirm(self, command: str) -> bool:
+        action: ActionConfig = getattr(self, command)
+        return action.require_confirm
 
 class CommandConfig(Serializable):
     permission: CommandPermissionConfig = CommandPermissionConfig()
