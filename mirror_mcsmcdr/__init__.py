@@ -6,4 +6,4 @@ def on_load(server, prev_module):
 
 def on_unload(server):
     if "manager" in globals():
-        manager.on_unload(server)
+        manager.on_unload()

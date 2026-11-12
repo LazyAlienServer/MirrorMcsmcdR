@@ -27,37 +27,37 @@ def operator_name(source: CommandSource) -> str:
     return source.player if isinstance(source, PlayerCommandSource) else CONSOLE_OPERATOR
 
 
-class MultiMirrorManager:  # The manager at large which manage multi single mirror server manager
+class MultiMirrorManager:
+    """Owns the plugin config and one :class:`MirrorManager` per command prefix."""
+
     def __init__(self, server: PluginServerInterface) -> None:
         self.server = server
         self.loader = MultiConfigLoader(server)
         self.loader.load()
+        self.managers: dict[str, MirrorManager] = {}
 
-        self.managers = {}
-
-        succeed, failed = [], []
+        failed: list[str] = []
         for command_prefix in self.loader.get_all_prefix():
             try:
-                single_manager = MirrorManager(
+                self.managers[command_prefix] = MirrorManager(
                     server,
                     self.loader.get_mirror_config(command_prefix),
                     command_prefix,
                     reload_method=self.reload_config,
                 )
-                server.register_event_listener("mcdr.general_info", single_manager.on_info)
-                server.register_event_listener("mcdr.user_info", single_manager.on_user_info)
-                self.managers[command_prefix] = single_manager
-                succeed.append(command_prefix)
             except Exception as e:
                 server.logger.error(rtr("multi_manager.init.error", prefix=command_prefix, e=e))
                 server.logger.error(e, exc_info=e)
                 failed.append(command_prefix)
-        success_info = rtr("multi_manager.init.success", prefix=", ".join(succeed))
+        server.register_event_listener("mcdr.general_info", self.on_info)
+        server.register_event_listener("mcdr.user_info", self.on_user_info)
+
+        success_info = rtr("multi_manager.init.success", prefix=", ".join(self.managers))
         fail_info = (rtr("multi_manager.init.fail",title=False,prefix=" §7/§c " + " ".join(failed)) if failed else "")
         server.broadcast(RTextList(success_info, " ", fail_info))
 
-    def reload_config(self, prefix):
-        manager: MirrorManager = self.managers[prefix]
+    def reload_config(self, prefix: str) -> bool:
+        manager = self.managers[prefix]
         try:
             self.loader.load()
         except Exception as e:
@@ -71,12 +71,22 @@ class MultiMirrorManager:  # The manager at large which manage multi single mirr
         manager.reload_config(self.loader.get_mirror_config(prefix))
         return True
 
-    def on_unload(self, _: PluginServerInterface):
+    def on_info(self, _: PluginServerInterface, info: Info) -> None:
         for manager in self.managers.values():
-            manager.on_unload(_)
+            manager.on_info(info)
+
+    def on_user_info(self, _: PluginServerInterface, info: Info) -> None:
+        for manager in self.managers.values():
+            manager.on_user_info(info)
+
+    def on_unload(self) -> None:
+        for manager in self.managers.values():
+            manager.on_unload()
 
 
-class MirrorManager:  # The single mirror server manager which manages a specific mirror server
+class MirrorManager:
+    """Controls one mirror server through the commands registered under its prefix."""
+
     def __init__(
         self,
         server: PluginServerInterface,
@@ -401,19 +411,19 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             return
         self.confirmations.confirm(operator)
 
-    def on_info(self, _: PluginServerInterface, info: Info) -> None:
+    def on_info(self, info: Info) -> None:
         if info.is_from_server and info.content:
             self._sync_workflow.on_server_output(info.content)
 
-    def on_user_info(self, server: PluginServerInterface, info: Info) -> None:
+    def on_user_info(self, info: Info) -> None:
         operator = info.player
         if operator is None or (info.content and info.content.startswith(self.command_prefix)):
             return
         task = self.confirmations.cancel(operator)
         if task is not None:
-            server.reply(info, self.rtr("command.confirm.cancel", action=task.action))
+            self.server.reply(info, self.rtr("command.confirm.cancel", action=task.action))
 
-    def on_unload(self, _: PluginServerInterface) -> None:
+    def on_unload(self) -> None:
         self.confirmations.clear()
         runtime = self._runtime
         if runtime is not None and runtime.subprocess_terminal is not None:
