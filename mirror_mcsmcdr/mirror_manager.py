@@ -1,4 +1,3 @@
-import re
 import time, datetime
 from contextlib import contextmanager
 from pathlib import Path
@@ -8,19 +7,21 @@ from typing import Any, Callable, Collection, Iterator, Optional
 from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PlayerCommandSource, PluginServerInterface, RAction, RColor, RText, RTextBase, RTextList, SimpleCommandBuilder, new_thread, Integer, GreedyText
 
 from mirror_mcsmcdr.constants import TITLE
-from mirror_mcsmcdr.config import MultiConfigLoader, MirrorConfig, CommandConfig, DisplayConfig, CommandPermissionConfig
+from mirror_mcsmcdr.config import MultiConfigLoader, MirrorConfig
+from mirror_mcsmcdr.mirror_runtime import MirrorRuntime
 from mirror_mcsmcdr.utils.display_utils import help_msg, rtr
-from mirror_mcsmcdr.utils.sync.classic_synchronizer import ClassicWorldSynchronizer
 from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxyError
-from mirror_mcsmcdr.utils.proxy.subprocess_proxy import SubprocessProxy
-from mirror_mcsmcdr.utils.server_utils import ProxyResult, ProxySettingException, ServerProxy, TerminalSettingException
+from mirror_mcsmcdr.utils.server_utils import ProxyResult
 from mirror_mcsmcdr.utils.status import ServerStatus
-from mirror_mcsmcdr.utils.history_utils import SyncHistory, SyncRecord, SyncStatus
+from mirror_mcsmcdr.utils.history_utils import SyncRecord, SyncStatus
 from mirror_mcsmcdr.utils.page_utils import Page
 from mirror_mcsmcdr.utils.confirmation_utils import ConfirmationTask, ConfirmationManager
 
 PAGE_SIZE = 5
 CONSOLE_OPERATOR = "[console]"
+
+# A command body; it receives the runtime that is current when it actually runs.
+CommandAction = Callable[[MirrorRuntime], object]
 
 
 def operator_name(source: CommandSource) -> str:
@@ -66,7 +67,7 @@ class MultiMirrorManager:  # The manager at large which manage multi single mirr
             return False
         if prefix not in self.loader.get_all_prefix():
             self.server.broadcast(rtr("multi_manager.init.prefix_notfound", prefix=prefix))
-            manager.manager_available = False
+            manager.disable()
             return False
         manager.reload_config(self.loader.get_mirror_config(prefix))
         return True
@@ -82,28 +83,25 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         server: PluginServerInterface,
         config: MirrorConfig,
         command_prefix: str,
-        reload_method: Callable,
+        reload_method: Callable[[str], bool],
     ) -> None:
-        self.manager_available: bool = False
         self.server = server
+        self.command_prefix = command_prefix
+        self.server_name = config.display.server_name
+        self.confirmations = ConfirmationManager(self._on_confirmation_timeout)
+        self._sync_lock = Lock()
+        self._save_world_wait = Event()
+        self._save_world_wait.set()
+        # the runtime is kept while disabled, so that its subprocess can still be cleaned up on unload
+        self._runtime: Optional[MirrorRuntime] = None
+        self._available = False
 
         server.logger.info(rtr("manager.load", prefix=command_prefix))
-        self.command_prefix = command_prefix
+        self._register_commands(reload_method)
+        self._apply_config(config)
 
-        # init state
-        self.sync_lock = Lock()
-        self.save_world_wait: Event = Event()
-        self.save_world_wait.set()
-        self.confirmations = ConfirmationManager(self._on_confirmation_timeout)
-        self.server_name: str
-
-        # config clarification
-        self.config: MirrorConfig
-        self.command_config: CommandConfig
-        self.display_config: DisplayConfig
-        self.permission: CommandPermissionConfig
-
-        # register mcdr command
+    def _register_commands(self, reload_method: Callable[[str], bool]) -> None:
+        command_prefix = self.command_prefix
         builder = SimpleCommandBuilder()
         builder.command(f"{command_prefix}", self.help)
         builder.command(f"{command_prefix} reload", lambda source, context: reload_method(command_prefix))
@@ -126,76 +124,61 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         builder.command(f"{command_prefix} log enable", lambda source, context: self.set_console_log(source, context, True))
         builder.command(f"{command_prefix} log disable", lambda source, context: self.set_console_log(source, context, False))
         builder.command(f"{command_prefix} execute <cmd>", self.mirror_execute)
-
-        builder.register(server)
-        if not self.set_config(config):
-            return
-        self.manager_available = True
+        builder.register(self.server)
 
     def rtr(self, key: str, title: bool = True, **kwargs: Any) -> RTextBase:
         return rtr(key, title, prefix=self.command_prefix, server_name=self.server_name, **kwargs)
 
-    def set_config(self, config: MirrorConfig):
-        self.server_name = config.display.server_name
+    def _apply_config(self, config: MirrorConfig) -> bool:
+        """Build a runtime from the config and make it current; on failure the previous state is left untouched."""
         try:
-            self.config = config
-            self.command_config = config.command
-            self.display_config = config.display
-            self.permission = config.command.permission
-            self.command_action = config.command.action
-            self.world_sync = ClassicWorldSynchronizer(
-                config.sync.world,
-                config.sync.source,
-                config.sync.target,
-                config.sync.ignore_inexistent_target_path,
-                config.sync.concurrency,
-                config.sync.ignore_files
-            )
-            self.save_world_regex = re.compile(self.command_action.sync.save_world.saved_world_regex)
-            data_path = Path(self.server.get_data_folder()) / self.command_prefix
-            self.sync_history = SyncHistory(data_path / 'history.json', self.command_action.history.max_history_count)
-            self.server_api = ServerProxy()
-            for proxy in self.server_api.proxies:
-                try:
-                    _obj = getattr(self.server_api, f'set_{proxy}')(**getattr(self.config, proxy).serialize())
-                except ProxySettingException as e:
-                    self.server.broadcast(self.rtr('manager.reload.fail.proxy', proxy=e.proxy, keys="', '".join(e.missing_keys)))
-                except TerminalSettingException:
-                    self.server.broadcast(self.rtr('manager.reload.fail.unavailable_system'))
-            return True
+            runtime = MirrorRuntime.build(config, Path(self.server.get_data_folder()) / self.command_prefix)
         except Exception as e:
             if self.server.is_server_startup():
-                self.server.say(self.rtr('manager.reload.fail'))
+                self.server.say(self.rtr("manager.reload.fail"))
             self.server.logger.error(e, exc_info=e)
+            return False
+        self.server_name = config.display.server_name
+        self._runtime = runtime
+        self._available = True
+        for error in runtime.proxy_errors:
+            self.server.broadcast(self.rtr("manager.reload.fail.proxy", proxy=error.proxy, keys="', '".join(error.missing_keys)))
+        return True
 
-    def reload_config(self, config):
-        old_terminal = getattr(self.server_api, "terminal", None)
-        self.manager_available = False
-        if not self.set_config(config):
+    def reload_config(self, config: MirrorConfig) -> None:
+        previous = self._runtime
+        if not self._apply_config(config):
             return
-        if isinstance(old_terminal, SubprocessProxy) and old_terminal is not self.server_api.terminal:
-            old_terminal.forcekill()
+        # the new runtime owns a fresh proxy that cannot reach the process started by the previous one
+        if previous is not None and previous.subprocess_terminal is not None:
+            previous.subprocess_terminal.forcekill()
         self.server.broadcast(self.rtr("manager.reload.success"))
-        self.manager_available = True
 
-    def help(self, source: CommandSource, _: CommandContext):
+    def disable(self) -> None:
+        self._available = False
+
+    def help(self, source: CommandSource, _: CommandContext) -> None:
         source.reply(help_msg(self.server_name, self.command_prefix))
-        source.reply(self.proxy_info())
+        if self._runtime is not None:
+            source.reply(self._proxy_info(self._runtime))
 
-    def proxy_info(self):
+    @staticmethod
+    def _proxy_info(runtime: MirrorRuntime) -> RTextList:
+        proxy = runtime.proxy
         info = RTextList(rtr("command.proxy.title", False))
-        for proxy in self.server_api.proxies:
-            if _proxy := getattr(self.server_api, proxy):
-                text = RText(proxy, RColor.green).h(rtr("command.proxy.enabled", False))
-            elif _proxy is None:
-                text = RText(proxy, RColor.gray).h(rtr("command.proxy.disabled", False))
+        # a proxy attribute is the proxy itself when enabled, None when disabled, False when misconfigured
+        for name, state in (("mcsm", proxy.mcsm), ("rcon", proxy.rcon), ("terminal", proxy.terminal)):
+            if state:
+                text = RText(name, RColor.green).h(rtr("command.proxy.enabled", False))
+            elif state is None:
+                text = RText(name, RColor.gray).h(rtr("command.proxy.disabled", False))
             else:
-                text = RText(proxy, RColor.red).h(rtr("command.proxy.error", False))
+                text = RText(name, RColor.red).h(rtr("command.proxy.error", False))
             info.append(" | ", text)
         return info
 
-    def _check_permission(self, source: CommandSource, command: str) -> bool:
-        required_permission = self.permission.requirement_of(command)
+    def _check_permission(self, runtime: MirrorRuntime, source: CommandSource, command: str) -> bool:
+        required_permission = runtime.config.command.permission.requirement_of(command)
         if required_permission == "console":
             if source.is_console:
                 return True
@@ -210,7 +193,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         self,
         command: str,
         source: CommandSource,
-        action: Callable[[], object],
+        action: CommandAction,
         confirmable: bool = True,
     ) -> None:
         """
@@ -219,7 +202,8 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         A confirmable command whose config requires confirmation is parked instead,
         and goes through the availability and permission checks again once confirmed.
         """
-        if not self.manager_available:
+        runtime = self._runtime
+        if not self._available or runtime is None:
             source.reply(self.rtr("manager.unavailable"))
             return
 
@@ -229,19 +213,20 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             if previous is not None:
                 source.reply(self.rtr("command.confirm.previous", action=previous.action))
 
-        if not self._check_permission(source, command):
+        if not self._check_permission(runtime, source, command):
             return
-        if confirmable and self.command_action.requires_confirm(command):
+        action_config = runtime.config.command.action
+        if confirmable and action_config.requires_confirm(command):
             self.confirmations.request(
                 operator,
                 command,
                 source,
                 lambda: self._run_command(command, source, action, confirmable=False),
-                self.command_action.confirm.timeout,
+                action_config.confirm.timeout,
             )
             source.reply(self.rtr("command.confirm.prompt").set_click_event(RAction.run_command, f"{self.command_prefix} confirm"))
             return
-        action()
+        action(runtime)
 
     @contextmanager
     def _report_api_error(self, source: CommandSource) -> Iterator[None]:
@@ -256,13 +241,14 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
 
     def _execute(
         self,
+        runtime: MirrorRuntime,
         source: CommandSource,
         command: str,
         available_status: Collection[ServerStatus],
         action: Callable[[], ProxyResult],
     ) -> bool:
         with self._report_api_error(source):
-            status_code = self.server_api.status()
+            status_code = runtime.proxy.status()
             if not ServerStatus.is_available(status_code):
                 source.reply(self.rtr(f"command.status.fail.{status_code}"))
                 return False
@@ -276,42 +262,45 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         return False
 
     def status(self, source: CommandSource, context: CommandContext) -> None:
-        self._run_command("status", source, lambda: self._status(source))
+        self._run_command("status", source, lambda runtime: self._status(runtime, source))
 
-    def _status(self, source: CommandSource) -> None:
+    def _status(self, runtime: MirrorRuntime, source: CommandSource) -> None:
         with self._report_api_error(source):
-            status_code = self.server_api.status()
+            status_code = runtime.proxy.status()
             flag = "success" if ServerStatus.is_available(status_code) else "fail"
             prompt = self.rtr(f"command.status.{flag}.{status_code}", title=False).to_legacy_text()
             self.server.broadcast(self.rtr(f"command._execute.{flag}", prompt=prompt))
 
-    def _start(self, source: CommandSource) -> bool:
-        return self._execute(source, "start", [ServerStatus.STOPPED], self.server_api.start)
-
     def start(self, source: CommandSource, context: CommandContext) -> None:
-        self._run_command("start", source, lambda: self._start(source))
+        self._run_command("start", source, lambda runtime: self._start(runtime, source))
+
+    def _start(self, runtime: MirrorRuntime, source: CommandSource) -> bool:
+        return self._execute(runtime, source, "start", [ServerStatus.STOPPED], runtime.proxy.start)
 
     def stop(self, source: CommandSource, context: CommandContext) -> None:
-        self._run_command("stop", source, lambda: self._execute(source, "stop", [ServerStatus.RUNNING], self.server_api.stop))
+        self._run_command("stop", source, lambda runtime: self._execute(
+            runtime, source, "stop", [ServerStatus.RUNNING], runtime.proxy.stop,
+        ))
 
     def kill(self, source: CommandSource, context: CommandContext, force: bool = False) -> None:
-        self._run_command("kill", source, lambda: self._execute(
+        self._run_command("kill", source, lambda runtime: self._execute(
+            runtime,
             source,
             "kill",
             [ServerStatus.STOPPING, ServerStatus.STARTING, ServerStatus.RUNNING, ServerStatus.DETACHED_JAVA, ServerStatus.DETACHED_SCREEN],
-            self.server_api.forcekill if force else self.server_api.kill,
+            runtime.proxy.forcekill if force else runtime.proxy.kill,
         ))
 
     def sync(self, source: CommandSource, context: CommandContext) -> None:
-        self._run_command("sync", source, lambda: self._sync(source))
+        self._run_command("sync", source, lambda runtime: self._sync(runtime, source))
 
     @new_thread(f"{TITLE}-sync")
-    def _sync(self, source: CommandSource) -> None:
+    def _sync(self, runtime: MirrorRuntime, source: CommandSource) -> None:
         with self._report_api_error(source):
-            self._sync_world(source)
+            self._sync_world(runtime, source)
 
-    def _sync_world(self, source: CommandSource) -> None:
-        if not self.sync_lock.acquire(blocking=False):
+    def _sync_world(self, runtime: MirrorRuntime, source: CommandSource) -> None:
+        if not self._sync_lock.acquire(blocking=False):
             source.reply(self.rtr("command.sync.fail.task_exist"))
             return
 
@@ -321,9 +310,9 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
 
         auto_restart_flag = False
         try:
-            sync_action_config = self.command_action.sync
+            sync_action_config = runtime.config.command.action.sync
             if sync_action_config.ensure_server_closed:
-                status_code = self.server_api.status()
+                status_code = runtime.proxy.status()
 
                 if status_code == ServerStatus.STOPPED:
                     pass
@@ -332,11 +321,11 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                     return
                 else:  # restart server
                     self.server.broadcast(self.rtr("command.sync.auto_restart.restarting"))
-                    self.server_api.stop()
+                    runtime.proxy.stop()
                     interval, times = sync_action_config.check_status_interval, sync_action_config.max_attempt_times
                     for _ in range(times):
                         time.sleep(interval)
-                        status_code = self.server_api.status()
+                        status_code = runtime.proxy.status()
                         if status_code == ServerStatus.STOPPED:
                             break
                         if not ServerStatus.is_available(status_code):
@@ -353,13 +342,13 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             turn_off_auto_save = save_world_config.turn_off_auto_save
             if turn_off_auto_save:
                 self.server.execute(save_world_config.commands.auto_save_off)
-            self.save_world_wait.clear()
+            self._save_world_wait.clear()
             self.server.execute(save_world_config.commands.save_all_worlds)
-            self.save_world_wait.wait(timeout=save_world_config.save_world_max_wait_sec)
+            self._save_world_wait.wait(timeout=save_world_config.save_world_max_wait_sec)
             if turn_off_auto_save:
                 self.server.execute(save_world_config.commands.auto_save_on)
 
-            changed_files_count, paths_notfound = self.world_sync.sync()
+            changed_files_count, paths_notfound = runtime.world_sync.sync()
             m, s = divmod(time.time() - started, 60)
             h, m = divmod(m, 60)
             duration = ("%02d:" % h if h else "") + ("%02d:" % m if m else "") + ("%02d" % s if m or h else ("%.02f" % s).zfill(5))
@@ -379,17 +368,17 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             self.server.logger.error(e, exc_info=e)
             record = SyncRecord(started_at, operator, SyncStatus.FAILED, exception=str(e))
         finally:
-            self.sync_lock.release()
+            self._sync_lock.release()
             if record is not None:
-                self.sync_history.append(record)
+                runtime.history.append(record)
             if auto_restart_flag:
-                self._run_command("start", source, lambda: self._start(source), confirmable=False)
+                self._run_command("start", source, lambda current: self._start(current, source), confirmable=False)
 
     def history(self, source: CommandSource, context: CommandContext) -> None:
-        self._run_command("history", source, lambda: self._history(source, context))
+        self._run_command("history", source, lambda runtime: self._history(runtime, source, context))
 
-    def _history(self, source: CommandSource, context: CommandContext) -> None:
-        page = Page(self.sync_history.read(), PAGE_SIZE, f"{self.command_prefix} history")
+    def _history(self, runtime: MirrorRuntime, source: CommandSource, context: CommandContext) -> None:
+        page = Page(runtime.history.read(), PAGE_SIZE, f"{self.command_prefix} history")
         page.set_page_index(context)
         for record in page.get_items_on_page():
             source.reply(self._get_history_rtext(record))
@@ -421,15 +410,11 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             exception=record.exception,
         )
 
-    def _get_subprocess_proxy(self) -> Optional[SubprocessProxy]:
-        terminal = getattr(getattr(self, "server_api", None), "terminal", None)
-        return terminal if isinstance(terminal, SubprocessProxy) else None
-
     def log_help(self, source: CommandSource, context: CommandContext) -> None:
-        self._run_command("log", source, lambda: self._log_help(source), confirmable=False)
+        self._run_command("log", source, lambda runtime: self._log_help(runtime, source), confirmable=False)
 
-    def _log_help(self, source: CommandSource) -> None:
-        terminal = self._get_subprocess_proxy()
+    def _log_help(self, runtime: MirrorRuntime, source: CommandSource) -> None:
+        terminal = runtime.subprocess_terminal
         if terminal is None:
             source.reply(self.rtr("command.log.not_available"))
             return
@@ -438,10 +423,10 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         source.reply(self.rtr("command.log.help"))
 
     def set_console_log(self, source: CommandSource, context: CommandContext, enabled) -> None:
-        self._run_command("log", source, lambda: self._set_console_log(source, enabled), confirmable=False)
+        self._run_command("log", source, lambda runtime: self._set_console_log(runtime, source, enabled), confirmable=False)
 
-    def _set_console_log(self, source: CommandSource, enabled) -> None:
-        terminal = self._get_subprocess_proxy()
+    def _set_console_log(self, runtime: MirrorRuntime, source: CommandSource, enabled) -> None:
+        terminal = runtime.subprocess_terminal
         if terminal is None:
             source.reply(self.rtr("command.log.not_available"))
             return
@@ -457,10 +442,10 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         source.reply(self.rtr("command.log.enabled_count", count=enabled))
 
     def mirror_execute(self, source: CommandSource, context: CommandContext) -> None:
-        self._run_command("execute", source, lambda: self._mirror_execute(source, context["cmd"]), confirmable=False)
+        self._run_command("execute", source, lambda runtime: self._mirror_execute(runtime, source, context["cmd"]), confirmable=False)
 
-    def _mirror_execute(self, source: CommandSource, command: str) -> None:
-        terminal = self._get_subprocess_proxy()
+    def _mirror_execute(self, runtime: MirrorRuntime, source: CommandSource, command: str) -> None:
+        terminal = runtime.subprocess_terminal
         if terminal is None:
             source.reply(self.rtr("command.execute.not_available"))
             return
@@ -485,17 +470,18 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
             return
         self.confirmations.confirm(operator)
 
-    def on_info(self, _: PluginServerInterface, info: Info):
+    def on_info(self, _: PluginServerInterface, info: Info) -> None:
+        runtime = self._runtime
         if (
-            self.config
-            and not self.save_world_wait.is_set()
+            runtime is not None
+            and not self._save_world_wait.is_set()
             and info.is_from_server
             and info.content
-            and re.match(self.save_world_regex, info.content)
+            and runtime.save_world_regex.match(info.content)
         ):
-            self.save_world_wait.set()  # stop waiting in sync function
+            self._save_world_wait.set()  # stop waiting in sync function
 
-    def on_user_info(self, server: PluginServerInterface, info: Info):
+    def on_user_info(self, server: PluginServerInterface, info: Info) -> None:
         operator = info.player
         if operator is None or (info.content and info.content.startswith(self.command_prefix)):
             return
@@ -503,8 +489,8 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         if task is not None:
             server.reply(info, self.rtr("command.confirm.cancel", action=task.action))
 
-    def on_unload(self, _: PluginServerInterface):
+    def on_unload(self, _: PluginServerInterface) -> None:
         self.confirmations.clear()
-        terminal = getattr(getattr(self, "server_api", None), "terminal", None)
-        if isinstance(terminal, SubprocessProxy):
-            terminal.forcekill()
+        runtime = self._runtime
+        if runtime is not None and runtime.subprocess_terminal is not None:
+            runtime.subprocess_terminal.forcekill()
