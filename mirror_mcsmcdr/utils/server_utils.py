@@ -21,17 +21,10 @@ class ProxySettingException(Exception):
         self.missing_keys = missing_keys
 
 
-class TerminalSettingException(Exception):
-
-    def __init__(self, system: Optional[str]) -> None:
-        super().__init__("Unavailable system '%s'" % system)
-        self.system = system
-
-
 class ServerProxy:
 
     def __init__(self) -> None:
-        self.proxies = ["mcsm", "rcon", "terminal"]
+        # each proxy is the proxy itself when enabled, None when disabled, False when misconfigured
         self.mcsm: Union[MCSManagerProxy, Literal[False, None]] = None
         self.rcon: Union[RConProxy, Literal[False, None]] = None
         self.terminal: Union[AbstractSystemProxy, Literal[False, None]] = None

@@ -25,7 +25,6 @@ mirror_mcsmcdr:
       success: §aConfig file reloaded successfully§7 ({prefix})
       fail: §cInvalid config file §7({prefix})§c, please check the console and address the error
       fail.proxy: §cInterface §7({prefix})§c config §4{proxy} §cmisses valid value(s) §4'{keys}'
-      fail.unavailable_system: "§cterminal disabled: system {system} unsupported§7 ({prefix})"
     permission_denied: §b{server_name}§c Permission denied
     console_only: §b{server_name}§c Console-only command
     mcsm_disabled: §cMCSM-API is disabled
