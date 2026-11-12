@@ -22,14 +22,13 @@ class ConfirmationTask:
 class ConfirmationManager:
     """Holds at most one pending confirmation per operator."""
 
-    def __init__(self, timeout: float, on_timeout: Callable[[ConfirmationTask], None]) -> None:
-        self.timeout = timeout
+    def __init__(self, on_timeout: Callable[[ConfirmationTask], None]) -> None:
         self.on_timeout = on_timeout
         self.tasks: Dict[str, ConfirmationTask] = {}
 
-    def request(self, operator: str, action: str, source: CommandSource, callback: Callable[[], object]) -> None:
+    def request(self, operator: str, action: str, source: CommandSource, callback: Callable[[], object], timeout: float) -> None:
         task = ConfirmationTask(action, source, callback)
-        task.timer = Timer(self.timeout, self._timeout, args=(operator,))
+        task.timer = Timer(timeout, self._timeout, args=(operator,))
         self.tasks[operator] = task
         task.timer.start()
 

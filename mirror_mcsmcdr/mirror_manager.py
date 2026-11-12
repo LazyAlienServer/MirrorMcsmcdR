@@ -94,7 +94,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         self.sync_lock = Lock()
         self.save_world_wait: Event = Event()
         self.save_world_wait.set()
-        self.confirmations: ConfirmationManager
+        self.confirmations = ConfirmationManager(self._on_confirmation_timeout)
         self.server_name: str
 
         # config clarification
@@ -162,7 +162,6 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                     self.server.broadcast(self.rtr('manager.reload.fail.proxy', proxy=e.proxy, keys="', '".join(e.missing_keys)))
                 except TerminalSettingException:
                     self.server.broadcast(self.rtr('manager.reload.fail.unavailable_system'))
-            self.confirmations = ConfirmationManager(self.command_action.confirm.timeout, self._on_confirmation_timeout)
             return True
         except Exception as e:
             if self.server.is_server_startup():
@@ -238,6 +237,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                 command,
                 source,
                 lambda: self._run_command(command, source, action, confirmable=False),
+                self.command_action.confirm.timeout,
             )
             source.reply(self.rtr("command.confirm.prompt").set_click_event(RAction.run_command, f"{self.command_prefix} confirm"))
             return
