@@ -406,7 +406,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                 }
         finally:
             self.sync_lock.release()
-            if record:
+            if record and "status" in record:
                 self.sync_history.append(record)
             if auto_restart_flag:
                 self.start(source, context, _confirmed=True)
@@ -414,7 +414,8 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
     @command_call("history")
     def history(self, source: CommandSource, context: CommandContext):
         page_size = PAGE_SIZE
-        page = Page(self.sync_history.read(), page_size, f"{self.command_prefix} history")
+        records = [record for record in self.sync_history.read() if record.get("status") in ("success", "identical", "failed")]
+        page = Page(records, page_size, f"{self.command_prefix} history")
         page.set_page_index(context)
         for record in page.get_items_on_page():
             source.reply(self._get_history_rtext(record))
@@ -441,17 +442,13 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
                 operator=operator,
                 duration=detail.get("duration"),
             )
-        if status == "failed":
-            exception = detail.get("exception")
-            return self.rtr(
-                "command.history.record.failed",
-                title=False,
-                time=sync_time,
-                operator=operator,
-                exception=exception,
-            )
-        self.server.broadcast(self.rtr("command.history.record.error"))
-        raise ValueError(f"Invalid history record status: {status}")
+        return self.rtr(
+            "command.history.record.failed",
+            title=False,
+            time=sync_time,
+            operator=operator,
+            exception=detail.get("exception"),
+        )
 
     def _get_subprocess_proxy(self) -> Optional[SubprocessProxy]:
         terminal = getattr(getattr(self, "server_api", None), "terminal", None)

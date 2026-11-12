@@ -156,7 +156,6 @@ mirror_mcsmcdr:
         success: "§e[{time}] §b{operator} §a成功 §7| §f变化文件: §b{change_file_count} §f个 §f耗时: §b{duration}s"
         identical: "§e[{time}] §b{operator} §a无变化 §7| §f耗时: §b{duration}s"
         failed: "§e[{time}] §b{operator} §c失败 §7| §f异常: §c{exception}"
-        error: "§c读取同步历史时发生错误, 请前往终端查看错误信息"
   
   mcsm:
     disabled: §cMCSM-API未启用
