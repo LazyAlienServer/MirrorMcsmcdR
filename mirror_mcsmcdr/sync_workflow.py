@@ -2,7 +2,7 @@ import datetime
 import time
 from contextlib import contextmanager
 from threading import Event, Lock
-from typing import Any, Iterator, Optional, Pattern, Protocol
+from typing import Any, Callable, Iterator, Optional, Pattern, Protocol
 
 from mcdreforged.api.all import CommandSource, PluginServerInterface, RTextBase
 
@@ -75,20 +75,18 @@ class SyncWorkflow:
             if acquired:
                 self._lock.release()
 
-    def run(self, runtime: MirrorRuntime, source: CommandSource, operator: str) -> bool:
+    def run(self, runtime: MirrorRuntime, source: CommandSource, operator: str, on_server_stopped: Callable[[], None]) -> None:
         """
         Run a sync and record its result in the history; the caller must :meth:`hold` the workflow.
 
-        :return: True if the mirror server was stopped for this sync and has to be started again
+        :param on_server_stopped: called once the mirror server has been stopped for this sync.
+            The caller then has to start it again, whatever happens to the sync afterwards
         """
         started_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         record: Optional[SyncRecord] = None
-        needs_restart = False
         try:
-            stopped_here = self._ensure_server_closed(runtime, source)
-            if stopped_here is None:
-                return False
-            needs_restart = stopped_here
+            if not self._ensure_server_closed(runtime, source, on_server_stopped):
+                return
             record = self._sync_world(runtime, started_at, operator)
         except Exception as e:
             self._server.broadcast(self._tr("command.sync.error"))
@@ -97,21 +95,20 @@ class SyncWorkflow:
         finally:
             if record is not None:
                 runtime.history.append(record)
-        return needs_restart
 
-    def _ensure_server_closed(self, runtime: MirrorRuntime, source: CommandSource) -> Optional[bool]:
+    def _ensure_server_closed(self, runtime: MirrorRuntime, source: CommandSource, on_server_stopped: Callable[[], None]) -> bool:
         """
-        :return: whether the mirror server was stopped here, or None if the sync must not proceed
+        :return: whether the sync may proceed
         """
         config = runtime.config.command.action.sync
         if not config.ensure_server_closed:
-            return False
+            return True
         status = runtime.proxy.status()
         if status == ServerStatus.STOPPED:
-            return False
+            return True
         if status != ServerStatus.RUNNING or not config.auto_server_restart:
             source.reply(self._tr(f"command.sync.fail.{status}"))
-            return None
+            return False
 
         self._server.broadcast(self._tr("command.sync.auto_restart.restarting"))
         runtime.proxy.stop()
@@ -119,12 +116,13 @@ class SyncWorkflow:
             time.sleep(config.check_status_interval)
             status = runtime.proxy.status()
             if status == ServerStatus.STOPPED:
+                on_server_stopped()
                 return True
             if not ServerStatus.is_available(status):
                 self._server.broadcast(self._tr("command.sync.auto_restart.fail", status=self._tr(f"command.status.fail.{status}", title=False)))
-                return None
+                return False
         self._server.broadcast(self._tr("command.sync.auto_restart.fail", status=self._tr(f"command.status.success.{status}", title=False)))
-        return None
+        return False
 
     def _sync_world(self, runtime: MirrorRuntime, started_at: str, operator: str) -> SyncRecord:
         self._server.broadcast(self._tr("command.sync.success"))

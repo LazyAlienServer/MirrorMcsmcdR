@@ -312,19 +312,27 @@ class MirrorManager:
 
     @new_thread(f"{TITLE}-sync")
     def _sync(self, source: CommandSource) -> None:
+        server_stopped = False
+
+        def on_server_stopped() -> None:
+            nonlocal server_stopped
+            server_stopped = True
+
         with self._report_api_error(source):
-            with self._sync_workflow.hold() as held:
-                if not held:
-                    source.reply(self.rtr("command.sync.fail.task_exist"))
-                    return
-                # resolved under the hold, so it cannot be replaced before the sync is done
-                runtime = self._active_runtime()
-                if runtime is None:
-                    source.reply(self.rtr("manager.unavailable"))
-                    return
-                needs_restart = self._sync_workflow.run(runtime, source, operator_name(source))
-            if needs_restart:
-                self._run_command("start", source, lambda current: self._start(current, source), confirmable=False)
+            try:
+                with self._sync_workflow.hold() as held:
+                    if not held:
+                        source.reply(self.rtr("command.sync.fail.task_exist"))
+                        return
+                    # resolved under the hold, so it cannot be replaced before the sync is done
+                    runtime = self._active_runtime()
+                    if runtime is None:
+                        source.reply(self.rtr("manager.unavailable"))
+                        return
+                    self._sync_workflow.run(runtime, source, operator_name(source), on_server_stopped)
+            finally:
+                if server_stopped:
+                    self._run_command("start", source, lambda current: self._start(current, source), confirmable=False)
 
     def history(self, source: CommandSource, context: CommandContext) -> None:
         self._run_command("history", source, lambda runtime: self._history(runtime, source, context))
