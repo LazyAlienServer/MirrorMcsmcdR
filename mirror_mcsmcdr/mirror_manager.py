@@ -124,7 +124,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         self.save_world_wait: Event = Event()
         self.save_world_wait.set()
         self.confirmations: ConfirmationManager
-        self.server_name: str = config.display.server_name
+        self.server_name: str
 
         # config clarification
         self.config: MirrorConfig
@@ -165,6 +165,7 @@ class MirrorManager:  # The single mirror server manager which manages a specifi
         return rtr(key, title, prefix=self.command_prefix, server_name=self.server_name, *args, **kwargs)
 
     def set_config(self, config: MirrorConfig):
+        self.server_name = config.display.server_name
         try:
             self.config = config
             self.command_config = config.command
