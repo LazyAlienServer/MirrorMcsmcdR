@@ -308,10 +308,10 @@ class MirrorManager:
         ))
 
     def sync(self, source: CommandSource, context: CommandContext) -> None:
-        self._run_command("sync", source, lambda _: self._sync(source))
+        self._run_command("sync", source, lambda runtime: self._sync(runtime, source))
 
     @new_thread(f"{TITLE}-sync")
-    def _sync(self, source: CommandSource) -> None:
+    def _sync(self, checked: MirrorRuntime, source: CommandSource) -> None:
         server_stopped = False
 
         def on_server_stopped() -> None:
@@ -328,6 +328,9 @@ class MirrorManager:
                     runtime = self._active_runtime()
                     if runtime is None:
                         source.reply(self.rtr("manager.unavailable"))
+                        return
+                    # a reload slipped in after the command was checked; the new config decides
+                    if runtime is not checked and not self._check_permission(runtime, source, "sync"):
                         return
                     self._sync_workflow.run(runtime, source, operator_name(source), on_server_stopped)
             finally:
