@@ -40,27 +40,6 @@ class SubprocessProxy(TerminalProxy):
             port_listening=bool(self.listener.pids()) if self.listener is not None else None,
         )
 
-    def perform(self, result: ActionResult) -> ActionResult:
-        action = result.action
-        if action is Action.START:
-            return self._start(result)
-        if action is Action.STOP:
-            if not self.send_command(self.stop_command):
-                self.reset_log_limit()
-                return result.reject(ActionResult.Outcome.WRONG_STATE)
-        elif action is Action.KILL:
-            process = self.process
-            if process is not None:
-                self._signal_tree(process, force=False)
-                try:
-                    process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    return result.reject(ActionResult.Outcome.TIMEOUT)
-                self._cleanup_process()
-        else:
-            self.forcekill()
-        return result
-
     def _start(self, result: ActionResult) -> ActionResult:
         if self.alive:
             return result.reject(ActionResult.Outcome.WRONG_STATE)
@@ -94,6 +73,27 @@ class SubprocessProxy(TerminalProxy):
             daemon=True,
         )
         self._output_thread.start()
+        return result
+
+    def _stop(self, result: ActionResult) -> ActionResult:
+        if not self.send_command(self.stop_command):
+            self.reset_log_limit()
+            return result.reject(ActionResult.Outcome.WRONG_STATE)
+        return result
+
+    def _kill(self, result: ActionResult) -> ActionResult:
+        process = self.process
+        if process is not None:
+            self._signal_tree(process, force=False)
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                return result.reject(ActionResult.Outcome.TIMEOUT)
+            self._cleanup_process()
+        return result
+
+    def _forcekill(self, result: ActionResult) -> ActionResult:
+        self.forcekill()
         return result
 
     def forcekill(self) -> None:

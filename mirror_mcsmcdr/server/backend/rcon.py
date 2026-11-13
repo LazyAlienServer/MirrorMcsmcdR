@@ -21,7 +21,7 @@ class RConProxy(ServerBackend):
             self.rcon.disconnect()
         return Evidence(rcon_reachable=True)
 
-    def perform(self, result: ActionResult) -> ActionResult:
+    def _stop(self, result: ActionResult) -> ActionResult:
         self.rcon.connect()
         try:
             self.rcon.send_command("stop")

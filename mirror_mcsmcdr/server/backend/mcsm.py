@@ -31,11 +31,6 @@ class MCSManagerProxy(ServerBackend):
         2: ServerState.STARTING,
         3: ServerState.RUNNING,
     }
-    _ENDPOINTS = {
-        Action.START: "/api/protected_instance/open",
-        Action.STOP: "/api/protected_instance/stop",
-        Action.KILL: "/api/protected_instance/kill",
-    }
 
     def __init__(self, config: MCSMConfig) -> None:
         self.url = config.url.rstrip("/")
@@ -50,6 +45,14 @@ class MCSManagerProxy(ServerBackend):
     def observe(self) -> Evidence:
         return Evidence(panel_state=self._PANEL_STATES[self._request("/api/instance")["data"]["status"]])
 
-    def perform(self, result: ActionResult) -> ActionResult:
-        self._request(self._ENDPOINTS[result.action])
+    def _start(self, result: ActionResult) -> ActionResult:
+        self._request("/api/protected_instance/open")
+        return result
+
+    def _stop(self, result: ActionResult) -> ActionResult:
+        self._request("/api/protected_instance/stop")
+        return result
+
+    def _kill(self, result: ActionResult) -> ActionResult:
+        self._request("/api/protected_instance/kill")
         return result

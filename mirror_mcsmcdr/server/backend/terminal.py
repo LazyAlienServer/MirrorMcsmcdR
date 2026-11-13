@@ -36,31 +36,34 @@ class LinuxProxy(TerminalProxy):
     def observe(self) -> Evidence:
         return Evidence(port_listening=bool(self.listener.pids()), screen_exists=self.screen.check_existence())
 
-    def perform(self, result: ActionResult) -> ActionResult:
-        action = result.action
-        if action is Action.START:
-            if not os.path.exists(self.path):
-                return result.reject(ActionResult.Outcome.PATH_NOT_FOUND)
-            self.screen.create(self.command)
-        elif action is Action.STOP:
-            self.screen.stop(self.stop_command)
-        elif action is Action.KILL and self.is_mcdr:
-            evidence = result.snapshot.evidence
-            if evidence.screen_exists is None:
-                # a backend ahead of this one settled the status, so the terminal was not looked at
-                evidence = self.observe()
-            if not evidence.screen_exists:
-                # without the screen there is no console to send the kill command to
-                return result.reject(ActionResult.Outcome.FORCE_REQUIRED)
-            if evidence.port_listening:
-                self.screen.kill("!!MCDR server kill")
-            else:
-                self.screen.forcekill()
-        else:
-            self._forcekill()
+    def _start(self, result: ActionResult) -> ActionResult:
+        if not os.path.exists(self.path):
+            return result.reject(ActionResult.Outcome.PATH_NOT_FOUND)
+        self.screen.create(self.command)
         return result
 
-    def _forcekill(self) -> None:
+    def _stop(self, result: ActionResult) -> ActionResult:
+        self.screen.stop(self.stop_command)
+        return result
+
+    def _kill(self, result: ActionResult) -> ActionResult:
+        if not self.is_mcdr:
+            # a plain server has no kill command to be asked with
+            return self._forcekill(result)
+        evidence = result.snapshot.evidence
+        if evidence.screen_exists is None:
+            # a backend ahead of this one settled the status, so the terminal was not looked at
+            evidence = self.observe()
+        if not evidence.screen_exists:
+            # without the screen there is no console to send the kill command to
+            return result.reject(ActionResult.Outcome.FORCE_REQUIRED)
+        if evidence.port_listening:
+            self.screen.kill("!!MCDR server kill")
+        else:
+            self.screen.forcekill()
+        return result
+
+    def _forcekill(self, result: ActionResult) -> ActionResult:
         try:
             for pid in self.listener.pids():
                 try:
@@ -70,6 +73,7 @@ class LinuxProxy(TerminalProxy):
         finally:
             if self.screen.check_existence():
                 self.screen.forcekill()
+        return result
 
 
 class WindowsProxy(TerminalProxy):
@@ -84,19 +88,21 @@ class WindowsProxy(TerminalProxy):
     def observe(self) -> Evidence:
         return Evidence(port_listening=bool(self.listener.pids()))
 
-    def perform(self, result: ActionResult) -> ActionResult:
-        action = result.action
-        if action is Action.START:
-            if not os.path.exists(self.path):
-                return result.reject(ActionResult.Outcome.PATH_NOT_FOUND)
-            run_shell_command(f'''start cmd.exe cmd /C "title {self.terminal_name}&&{self.command}"''', cwd=self.path)
-        elif action is Action.STOP:
-            for pid in self.listener.pids():
-                try:
-                    os.kill(pid, signal.SIGINT)
-                except (ProcessLookupError, PermissionError):
-                    pass
-        else:
-            for pid in self.listener.pids():
-                run_shell_command(["taskkill", "/PID", str(pid), "/F"])
+    def _start(self, result: ActionResult) -> ActionResult:
+        if not os.path.exists(self.path):
+            return result.reject(ActionResult.Outcome.PATH_NOT_FOUND)
+        run_shell_command(f'''start cmd.exe cmd /C "title {self.terminal_name}&&{self.command}"''', cwd=self.path)
+        return result
+
+    def _stop(self, result: ActionResult) -> ActionResult:
+        for pid in self.listener.pids():
+            try:
+                os.kill(pid, signal.SIGINT)
+            except (ProcessLookupError, PermissionError):
+                pass
+        return result
+
+    def _kill(self, result: ActionResult) -> ActionResult:
+        for pid in self.listener.pids():
+            run_shell_command(["taskkill", "/PID", str(pid), "/F"])
         return result
