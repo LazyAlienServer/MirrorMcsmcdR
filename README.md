@@ -155,7 +155,7 @@ terminal:
 >   - Linux `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
 >   - Windows `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{launch_command}')"`
 
-其中，`linux`代理通过screen控制镜像服；`windows`代理的`stop`会向监听镜像服端口的进程发送`SIGINT`（即`Ctrl+C`命令），`kill`会使用`taskkill`强制终止该进程；`subprocess`代理通过子进程标准输入输出进行控制。Linux/Windows代理需要正确配置`port`，subprocess代理无需配置`port`。MCSM或RCON仍可作为替代控制方式。
+其中，`linux`代理通过screen控制镜像服；`windows`代理的`stop`会向监听镜像服端口的进程所在的命令提示符窗口输入停止命令，`kill`会使用`taskkill`强制终止该进程；`subprocess`代理通过子进程标准输入输出进行控制。Linux/Windows代理需要正确配置`port`，subprocess代理无需配置`port`。MCSM或RCON仍可作为替代控制方式。
 
 > [!WARNING]
 > Windows代理下的 stop 命令为实验性功能，请自行承担使用风险。请尽可能配置 RCON，避免产生不必要的运维成本。
@@ -179,7 +179,7 @@ terminal:
 - Linux/Windows代理在通过端口检查镜像服运行状态时，是否在找到端口后继续验证进程名必须为`java.exe`。一般情况下无需开启。
 
 **is_mcdr** `bool`
-- 是否通过MCDReforged启动镜像服，默认为`true`。Linux代理设置为`true`时，`stop`和`kill`会向screen输入MCDR指令；设置为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。subprocess代理设置为`true`时，`stop`会发送`!!MCDR server stop_exit`，设置为`false`时会发送Minecraft的`stop`命令，`kill`会直接终止子进程。Windows代理的`stop`使用`SIGINT`，`kill`使用`taskkill`强制终止监听端口的进程。
+- 是否通过MCDReforged启动镜像服，默认为`true`。Linux代理设置为`true`时，`stop`和`kill`会向screen输入MCDR指令；设置为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。Windows代理设置为`true`时，`stop`会向命令提示符窗口输入`!!MCDR server stop_exit`，设置为`false`时会输入Minecraft的`stop`命令，`kill`始终使用`taskkill`强制终止监听端口的进程。subprocess代理设置为`true`时，`stop`会发送`!!MCDR server stop_exit`，设置为`false`时会发送Minecraft的`stop`命令，`kill`会直接终止子进程。
 
 > [!IMPORTANT]
 > `!!mirror kill -f`和`!!mirror kill --force`仅适用于Linux terminal或Windows/Linux+MCDR。它们会杀死配置端口的所有监听进程，再关闭screen；请确认`port`配置正确，避免终止其他服务。

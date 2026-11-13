@@ -3,10 +3,11 @@ import signal
 from abc import ABC
 
 from mirror_mcsmcdr.config.proxy_config import TerminalConfig
-from mirror_mcsmcdr.server.backend.shell import run_shell_command
-from mirror_mcsmcdr.server.backend.port import PortListener
 from mirror_mcsmcdr.server.backend.base import ServerBackend
+from mirror_mcsmcdr.server.backend.console import send_console_command
+from mirror_mcsmcdr.server.backend.port import PortListener
 from mirror_mcsmcdr.server.backend.screen import Screen
+from mirror_mcsmcdr.server.backend.shell import run_shell_command
 from mirror_mcsmcdr.server.status import Action, ActionResult, Evidence
 
 
@@ -95,11 +96,9 @@ class WindowsProxy(TerminalProxy):
         return result
 
     def _stop(self, result: ActionResult) -> ActionResult:
-        for pid in self.listener.pids():
-            try:
-                os.kill(pid, signal.SIGINT)
-            except (ProcessLookupError, PermissionError):
-                pass
+        # the listening processes normally share one console, so the first one that takes the command is enough
+        if not any(send_console_command(pid, self.stop_command) for pid in self.listener.pids()):
+            return result.reject(ActionResult.Outcome.WRONG_STATE)
         return result
 
     def _kill(self, result: ActionResult) -> ActionResult:

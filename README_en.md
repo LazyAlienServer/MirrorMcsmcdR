@@ -159,7 +159,7 @@ When `proxy_type` is `linux`, the plugin creates a new screen; when it is `windo
 >    - Linux: `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
 >    - Windows: `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{launch_command}')"`
 
-Note: The `linux` proxy controls the mirror server through screen. With the `windows` proxy, `stop` sends `SIGINT` to the process listening on the configured mirror port and `kill` forcefully terminates it with `taskkill`. The `subprocess` proxy controls the mirror server through the child process's standard input and output. The Linux/Windows proxies require a correctly configured `port`; the subprocess proxy does not require `port`. MCSM or RCON can still be used as alternative control methods.
+Note: The `linux` proxy controls the mirror server through screen. With the `windows` proxy, `stop` types the stop command into the command prompt window of the process listening on the configured mirror port and `kill` forcefully terminates that process with `taskkill`. The `subprocess` proxy controls the mirror server through the child process's standard input and output. The Linux/Windows proxies require a correctly configured `port`; the subprocess proxy does not require `port`. MCSM or RCON can still be used as alternative control methods.
 
 > [!WARNING]
 > The `stop` command under the Windows proxy is experimental; use it at your own risk. Configure RCON whenever possible to avoid unnecessary operational overhead.
@@ -183,7 +183,7 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 - Whether the Linux or Windows proxies should continue to verify that the process name is `java.exe` after finding the configured port. Generally, there is no need to enable it.
 
 **is_mcdr** `bool`
-- Whether the mirror server is started by MCDReforged. Defaults to `true`. For the Linux proxy, `true` makes `stop` and `kill` send MCDR commands to screen; `false` makes `stop` send Minecraft's `stop` command and `kill` perform a force kill. For the subprocess proxy, `true` makes `stop` send `!!MCDR server stop_exit`, while `false` sends Minecraft's `stop` command; `kill` terminates the child process directly. The Windows proxy uses `SIGINT` for `stop` and `taskkill` for `kill`.
+- Whether the mirror server is started by MCDReforged. Defaults to `true`. For the Linux proxy, `true` makes `stop` and `kill` send MCDR commands to screen; `false` makes `stop` send Minecraft's `stop` command and `kill` perform a force kill. For the Windows proxy, `true` makes `stop` type `!!MCDR server stop_exit` into the command prompt window, while `false` types Minecraft's `stop` command; `kill` always terminates the process listening on the port with `taskkill`. For the subprocess proxy, `true` makes `stop` send `!!MCDR server stop_exit`, while `false` sends Minecraft's `stop` command; `kill` terminates the child process directly.
 
 > [!IMPORTANT]
 > `!!mirror kill -f` and `!!mirror kill --force` are only available for the Linux proxy or Linux/Windows+MCDR. They kill every process listening on the configured port, then close screen; confirm that `port` is correct before using them.
