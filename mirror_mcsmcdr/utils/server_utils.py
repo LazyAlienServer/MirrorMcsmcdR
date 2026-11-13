@@ -85,6 +85,8 @@ class ServerController:
         self._timeouts = {Action.START: start_timeout, Action.STOP: stop_timeout}
         self._intent: Optional[Intent] = None
         self._lock = Lock()
+        # one action at a time, so that an older action cannot record its intent over a newer one
+        self._action_lock = Lock()
 
     def _set_intent(self, intent: Optional[Intent]) -> None:
         with self._lock:
@@ -106,25 +108,29 @@ class ServerController:
         evidence = Evidence()
         for backend in self.backends:
             evidence = evidence.merge(backend.observe())
+            # these settle the status on their own; the remaining backends need not be reachable
+            if evidence.panel_state is not None or evidence.rcon_reachable:
+                break
         snapshot = StatusResolver.resolve(evidence, intent.action if intent is not None else None)
         if intent is not None and snapshot.state is not self._PENDING_STATES[intent.action]:
             self._settle(intent)
         return snapshot
 
     def execute(self, action: Action) -> ActionResult:
-        if action in TERMINATIONS:
-            # whatever becomes of it, nobody is waiting for the last start or stop any more
-            self._set_intent(None)
-        result = ActionResult.check(action, self.status())
-        backend = next((backend for backend in self.backends if action in backend.supports), None)
-        if backend is None:
-            return result.reject(ActionResult.Outcome.UNSUPPORTED)
-        if not result.accepted:
+        with self._action_lock:
+            if action in TERMINATIONS:
+                # whatever becomes of it, nobody is waiting for the last start or stop any more
+                self._set_intent(None)
+            result = ActionResult.check(action, self.status())
+            backend = next((backend for backend in self.backends if action in backend.supports), None)
+            if backend is None:
+                return result.reject(ActionResult.Outcome.UNSUPPORTED)
+            if not result.accepted:
+                return result
+            result = backend.perform(result)
+            if result.accepted and action in self._timeouts:
+                self._set_intent(Intent(action, time.monotonic() + self._timeouts[action]))
             return result
-        result = backend.perform(result)
-        if result.accepted and action in self._timeouts:
-            self._set_intent(Intent(action, time.monotonic() + self._timeouts[action]))
-        return result
 
     def wait_for(self, state: ServerState, timeout: float, interval: float) -> StatusSnapshot:
         """

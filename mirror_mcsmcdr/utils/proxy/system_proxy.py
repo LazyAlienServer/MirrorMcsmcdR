@@ -46,6 +46,9 @@ class LinuxProxy(TerminalProxy):
             self.screen.stop(self.stop_command)
         elif action is Action.KILL and self.is_mcdr:
             evidence = result.snapshot.evidence
+            if evidence.screen_exists is None:
+                # a backend ahead of this one settled the status, so the terminal was not looked at
+                evidence = self.observe()
             if not evidence.screen_exists:
                 # without the screen there is no console to send the kill command to
                 return result.reject(ActionResult.Outcome.FORCE_REQUIRED)
