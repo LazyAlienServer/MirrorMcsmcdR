@@ -26,6 +26,7 @@ mirror_mcsmcdr:
       fail: §c无效的配置文件§7({prefix})§c, 请查看控制台并处理报错
       fail.proxy: §c配置文件§7({prefix})§c的接口 §4{proxy} §c缺少有效值 §4'{keys}'
       fail.syncing: §c同步进行中, 无法重载配置文件§7({prefix})
+      fail.starting: §b{server_name}§c正在启动, 无法重载配置文件§7({prefix})§c, 请等待启动完成或先执行{prefix} kill
     permission_denied: §b{server_name}§c操作权限不足
     console_only: §b{server_name}§c此命令仅可通过终端执行
     mcsm_disabled: §cMCSM-API未启用

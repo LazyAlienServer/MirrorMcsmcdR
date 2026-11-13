@@ -26,6 +26,7 @@ mirror_mcsmcdr:
       fail: §cInvalid config file §7({prefix})§c, please check the console and address the error
       fail.proxy: §cInterface §7({prefix})§c config §4{proxy} §cmisses valid value(s) §4'{keys}'
       fail.syncing: §cCannot reload config §7({prefix})§c while a synchronization is in progress
+      fail.starting: §cCannot reload config §7({prefix})§c while §b{server_name}§c is starting. Wait for it, or run {prefix} kill first
     permission_denied: §b{server_name}§c Permission denied
     console_only: §b{server_name}§c Console-only command
     mcsm_disabled: §cMCSM-API is disabled

@@ -152,6 +152,10 @@ class MirrorManager:
                 self.server.broadcast(self.rtr("manager.reload.fail.syncing"))
                 return False
             previous = self._runtime
+            # a new runtime would no longer know that it has to wait for this start
+            if previous is not None and previous.controller.is_starting():
+                self.server.broadcast(self.rtr("manager.reload.fail.starting"))
+                return False
             if not self._apply_config(config):
                 return False
             # the new runtime owns a fresh proxy that cannot reach the process started by the previous one
@@ -298,22 +302,22 @@ class MirrorManager:
             nonlocal server_stopped
             server_stopped = True
 
-        with self._report_api_error(source):
+        with self._report_api_error(source), self._sync_workflow.hold() as held:
+            if not held:
+                source.reply(self.rtr("command.sync.fail.task_exist"))
+                return
             try:
-                with self._sync_workflow.hold() as held:
-                    if not held:
-                        source.reply(self.rtr("command.sync.fail.task_exist"))
-                        return
-                    # resolved under the hold, so it cannot be replaced before the sync is done
-                    runtime = self._active_runtime()
-                    if runtime is None:
-                        source.reply(self.rtr("manager.unavailable"))
-                        return
-                    # a reload slipped in after the command was checked; the new config decides
-                    if runtime is not checked and not self._check_permission(runtime, source, "sync"):
-                        return
-                    self._sync_workflow.run(runtime, source, operator_name(source), on_server_stopped)
+                # resolved under the hold, so it cannot be replaced before the sync is done
+                runtime = self._active_runtime()
+                if runtime is None:
+                    source.reply(self.rtr("manager.unavailable"))
+                    return
+                # a reload slipped in after the command was checked; the new config decides
+                if runtime is not checked and not self._check_permission(runtime, source, "sync"):
+                    return
+                self._sync_workflow.run(runtime, source, operator_name(source), on_server_stopped)
             finally:
+                # still under the hold: a reload in between would leave the start to a runtime that is being replaced
                 if server_stopped:
                     self._run_command("start", source, lambda current: self._start(current, source), confirmable=False)
 
