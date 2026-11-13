@@ -76,10 +76,8 @@ class MultiConfigLoader:
             raise RuntimeError("Config not loaded. Call load() first.")
         if command_prefix not in self.user_config:
             raise RuntimeError("Command prefix not found in user config.")
-        config = deepcopy(self.parent_config)
-
-        config.merge_from(MirrorConfig().deserialize(self.user_config[command_prefix]))
-        return config
+        # merged as plain data: a deserialized entry would bring its defaults along and override the parent with them
+        return MirrorConfig.deserialize(self._inherit(self.parent_config.serialize(), self.user_config[command_prefix]))
 
     def _load_template(self, yaml: YAML) -> CommentedMap:
         lang = self.server.get_mcdr_language()
@@ -118,6 +116,17 @@ class MultiConfigLoader:
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         with self.config_path.open('w', encoding='utf8', newline='\n') as file:
             yaml.dump(data, file)
+
+    @classmethod
+    def _inherit(cls, parent: dict, child: dict) -> dict:
+        """Return ``parent`` with the values of ``child`` on top; only mappings are merged, anything else is replaced."""
+        merged = dict(parent)
+        for key, value in child.items():
+            if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                merged[key] = cls._inherit(merged[key], value)
+            else:
+                merged[key] = value
+        return merged
 
     @classmethod
     def _apply_values(cls, target: dict, values: dict) -> None:
