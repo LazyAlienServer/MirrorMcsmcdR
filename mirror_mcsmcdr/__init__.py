@@ -1,4 +1,4 @@
-from mirror_mcsmcdr.mirror_manager import MultiMirrorManager
+from mirror_mcsmcdr.manager import MultiMirrorManager
 
 def on_load(server, prev_module):
     global manager

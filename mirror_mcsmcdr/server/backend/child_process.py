@@ -9,9 +9,9 @@ from mcdreforged.api.all import RText, ServerInterface
 
 
 from mirror_mcsmcdr.config.proxy_config import TerminalConfig
-from mirror_mcsmcdr.utils.port_utils import PortListener
-from mirror_mcsmcdr.utils.proxy.system_proxy import TerminalProxy
-from mirror_mcsmcdr.utils.status import Action, ActionResult, Evidence
+from mirror_mcsmcdr.server.backend.port import PortListener
+from mirror_mcsmcdr.server.backend.terminal import TerminalProxy
+from mirror_mcsmcdr.server.status import Action, ActionResult, Evidence
 
 
 class SubprocessProxy(TerminalProxy):

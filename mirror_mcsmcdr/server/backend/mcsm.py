@@ -5,9 +5,9 @@ import requests
 from requests import Response
 
 from mirror_mcsmcdr.config.proxy_config import MCSMConfig
-from mirror_mcsmcdr.utils.display_utils import rtr
-from mirror_mcsmcdr.utils.proxy.backend import ServerBackend
-from mirror_mcsmcdr.utils.status import Action, ActionResult, Evidence, ServerState
+from mirror_mcsmcdr.text import rtr
+from mirror_mcsmcdr.server.backend.base import ServerBackend
+from mirror_mcsmcdr.server.status import Action, ActionResult, Evidence, ServerState
 
 
 class MCSManagerProxyError(Exception):

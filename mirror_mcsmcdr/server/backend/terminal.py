@@ -3,11 +3,11 @@ import signal
 from abc import ABC
 
 from mirror_mcsmcdr.config.proxy_config import TerminalConfig
-from mirror_mcsmcdr.utils.command_utils import run_shell_command
-from mirror_mcsmcdr.utils.port_utils import PortListener
-from mirror_mcsmcdr.utils.proxy.backend import ServerBackend
-from mirror_mcsmcdr.utils.screen_utils import Screen
-from mirror_mcsmcdr.utils.status import Action, ActionResult, Evidence
+from mirror_mcsmcdr.server.backend.shell import run_shell_command
+from mirror_mcsmcdr.server.backend.port import PortListener
+from mirror_mcsmcdr.server.backend.base import ServerBackend
+from mirror_mcsmcdr.server.backend.screen import Screen
+from mirror_mcsmcdr.server.status import Action, ActionResult, Evidence
 
 
 class TerminalProxy(ServerBackend, ABC):

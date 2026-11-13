@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import ClassVar
 
-from mirror_mcsmcdr.utils.status import Action, ActionResult, Evidence
+from mirror_mcsmcdr.server.status import Action, ActionResult, Evidence
 
 
 class ServerBackend(ABC):

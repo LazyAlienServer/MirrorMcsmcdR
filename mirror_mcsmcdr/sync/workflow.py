@@ -7,10 +7,10 @@ from typing import Any, Callable, Iterator, Optional, Pattern, Protocol
 from mcdreforged.api.all import CommandSource, PluginServerInterface, RTextBase
 
 from mirror_mcsmcdr.config.command_config import SaveWorldConfig
-from mirror_mcsmcdr.mirror_runtime import MirrorRuntime
-from mirror_mcsmcdr.utils.history_utils import SyncRecord, SyncStatus
-from mirror_mcsmcdr.utils.display_utils import status_key
-from mirror_mcsmcdr.utils.status import Action, ServerState
+from mirror_mcsmcdr.runtime import MirrorRuntime
+from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
+from mirror_mcsmcdr.text import status_key
+from mirror_mcsmcdr.server.status import Action, ServerState
 
 
 class Translator(Protocol):

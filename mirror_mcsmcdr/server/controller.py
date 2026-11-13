@@ -6,13 +6,13 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 from mcdreforged.api.all import Serializable
 
 from mirror_mcsmcdr.config import MirrorConfig, TerminalConfig
-from mirror_mcsmcdr.utils.proxy.backend import ServerBackend
-from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxy
-from mirror_mcsmcdr.utils.proxy.rcon_proxy import RConProxy
-from mirror_mcsmcdr.utils.proxy.subprocess_proxy import SubprocessProxy
-from mirror_mcsmcdr.utils.proxy.system_proxy import LinuxProxy, TerminalProxy, WindowsProxy
-from mirror_mcsmcdr.utils.status import TERMINATIONS, Action, ActionResult, Evidence, Intent, ServerState, StatusSnapshot
-from mirror_mcsmcdr.utils.status_resolver import StatusResolver
+from mirror_mcsmcdr.server.backend.base import ServerBackend
+from mirror_mcsmcdr.server.backend.mcsm import MCSManagerProxy
+from mirror_mcsmcdr.server.backend.rcon import RConProxy
+from mirror_mcsmcdr.server.backend.child_process import SubprocessProxy
+from mirror_mcsmcdr.server.backend.terminal import LinuxProxy, TerminalProxy, WindowsProxy
+from mirror_mcsmcdr.server.status import TERMINATIONS, Action, ActionResult, Evidence, Intent, ServerState, StatusSnapshot
+from mirror_mcsmcdr.server.resolver import StatusResolver
 
 
 class ProxySettingException(Exception):

@@ -6,14 +6,14 @@ from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, Pl
 
 from mirror_mcsmcdr.constants import TITLE
 from mirror_mcsmcdr.config import MultiConfigLoader, MirrorConfig
-from mirror_mcsmcdr.mirror_runtime import MirrorRuntime
-from mirror_mcsmcdr.sync_workflow import SyncWorkflow
-from mirror_mcsmcdr.utils.display_utils import help_msg, rejection_key, rtr, status_key
-from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxyError
-from mirror_mcsmcdr.utils.status import Action
-from mirror_mcsmcdr.utils.history_utils import SyncRecord, SyncStatus
-from mirror_mcsmcdr.utils.page_utils import Page
-from mirror_mcsmcdr.utils.confirmation_utils import ConfirmationTask, ConfirmationManager
+from mirror_mcsmcdr.runtime import MirrorRuntime
+from mirror_mcsmcdr.sync.workflow import SyncWorkflow
+from mirror_mcsmcdr.text import help_msg, rejection_key, rtr, status_key
+from mirror_mcsmcdr.server.backend.mcsm import MCSManagerProxyError
+from mirror_mcsmcdr.server.status import Action
+from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
+from mirror_mcsmcdr.command.page import Page
+from mirror_mcsmcdr.command.confirmation import ConfirmationTask, ConfirmationManager
 
 PAGE_SIZE = 5
 CONSOLE_OPERATOR = "[console]"

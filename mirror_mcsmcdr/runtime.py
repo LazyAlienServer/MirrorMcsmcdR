@@ -4,10 +4,10 @@ from pathlib import Path
 from typing import Optional, Pattern
 
 from mirror_mcsmcdr.config import MirrorConfig
-from mirror_mcsmcdr.utils.history_utils import SyncHistory
-from mirror_mcsmcdr.utils.proxy.subprocess_proxy import SubprocessProxy
-from mirror_mcsmcdr.utils.server_utils import ProxySettingException, ServerController, build_backends
-from mirror_mcsmcdr.utils.sync.classic_synchronizer import ClassicWorldSynchronizer
+from mirror_mcsmcdr.sync.history import SyncHistory
+from mirror_mcsmcdr.server.backend.child_process import SubprocessProxy
+from mirror_mcsmcdr.server.controller import ProxySettingException, ServerController, build_backends
+from mirror_mcsmcdr.sync.synchronizer import ClassicWorldSynchronizer
 
 
 @dataclass(frozen=True)

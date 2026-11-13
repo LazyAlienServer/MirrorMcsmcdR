@@ -1,6 +1,6 @@
 from typing import Tuple, List
 from abc import ABC, abstractmethod
-from mirror_mcsmcdr.utils.sync.types import ChunkIndex, RegionIndex
+from mirror_mcsmcdr.sync.types import ChunkIndex, RegionIndex
 
 class AbstractChunkPredicate(ABC):
 

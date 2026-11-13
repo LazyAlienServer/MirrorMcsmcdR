@@ -3,7 +3,7 @@ import os
 import re
 import time
 from typing import Optional
-from mirror_mcsmcdr.utils.command_utils import get_command_output, run_shell_command
+from mirror_mcsmcdr.server.backend.shell import get_command_output, run_shell_command
 
 
 class ScreenNotExistError(RuntimeError):

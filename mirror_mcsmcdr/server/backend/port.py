@@ -1,6 +1,6 @@
 import os
 
-from mirror_mcsmcdr.utils.command_utils import get_command_output
+from mirror_mcsmcdr.server.backend.shell import get_command_output
 
 
 class PortListener:
