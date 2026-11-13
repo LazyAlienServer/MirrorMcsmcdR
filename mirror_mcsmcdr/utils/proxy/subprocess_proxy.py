@@ -1,5 +1,7 @@
 import os
+import signal
 import subprocess
+import sys
 from threading import Event, Thread
 from typing import Optional
 
@@ -49,7 +51,7 @@ class SubprocessProxy(TerminalProxy):
         elif action is Action.KILL:
             process = self.process
             if process is not None:
-                process.terminate()
+                self._signal_tree(process, force=False)
                 try:
                     process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
@@ -83,6 +85,8 @@ class SubprocessProxy(TerminalProxy):
             encoding=encoding,
             errors="replace",
             bufsize=1,
+            # its own process group, so that the shell can be signalled together with the server it launched
+            start_new_session=sys.platform != "win32",
         )
         self._output_thread = Thread(
             target=self._read_output_loop,
@@ -97,9 +101,21 @@ class SubprocessProxy(TerminalProxy):
         process = self.process
         if process is None:
             return
-        process.kill()
+        self._signal_tree(process, force=True)
         process.wait()
         self._cleanup_process()
+
+    @staticmethod
+    def _signal_tree(process: subprocess.Popen, force: bool) -> None:
+        """Signal the launching shell and everything below it; the server is a child of that shell."""
+        if sys.platform == "win32":
+            # Windows has no graceful signal for a process tree
+            subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True)
+            return
+        try:
+            os.killpg(process.pid, signal.SIGKILL if force else signal.SIGTERM)
+        except ProcessLookupError:
+            pass
 
     def _read_output_loop(self) -> None:
         process = self.process
