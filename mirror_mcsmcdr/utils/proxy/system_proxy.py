@@ -1,147 +1,65 @@
 import os
-import re
 import signal
-from abc import ABC, abstractmethod
-from typing import Union
+from abc import ABC
 
+from mirror_mcsmcdr.config.proxy_config import TerminalConfig
+from mirror_mcsmcdr.utils.command_utils import run_shell_command
+from mirror_mcsmcdr.utils.port_utils import PortListener
+from mirror_mcsmcdr.utils.proxy.backend import ServerBackend
 from mirror_mcsmcdr.utils.screen_utils import Screen
-from mirror_mcsmcdr.utils.command_utils import get_command_output, run_shell_command
-from mirror_mcsmcdr.utils.status import ServerStatus
+from mirror_mcsmcdr.utils.status import Action, ActionResult, Evidence
 
 
-class AbstractSystemProxy(ABC):
-    """Base interface shared by all terminal proxy implementations."""
+class TerminalProxy(ServerBackend, ABC):
+    """A backend that launches the server from a command line on this machine."""
 
-    def __init__(
-        self,
-        terminal_name: str,
-        path: str,
-        command: str,
-        port: int,
-        regex_strict: bool,
-        is_mcdr: bool = True
-    ) -> None:
-        self.terminal_name, self.path, self.command = terminal_name, path, command
-        self.port, self.regex_strict =  port, regex_strict
-        self.is_mcdr = is_mcdr
+    def __init__(self, config: TerminalConfig) -> None:
+        self.terminal_name = config.terminal_name or "Mirror"
+        self.path = config.launch_path
+        self.command = config.launch_command
+        self.is_mcdr = config.is_mcdr
 
-    @abstractmethod
-    def start(self) -> str:
-        ...
-
-    @abstractmethod
-    def status(self) -> ServerStatus:
-        ...
-
-    @abstractmethod
-    def stop(self) -> str:
-        ...
-
-    @abstractmethod
-    def kill(self) -> str:
-        ...
-
-    @abstractmethod
-    def forcekill(self) -> str:
-        ...
+    @property
+    def stop_command(self) -> str:
+        return "!!MCDR server stop_exit" if self.is_mcdr else "stop"
 
 
-class SystemProxy(AbstractSystemProxy):
+class LinuxProxy(TerminalProxy):
+    supports = frozenset(Action)
 
-    def __init__(
-        self, terminal_name: str,
-        launch_path: str,
-        launch_command: str,
-        port: int,
-        regex_strict: bool,
-        system: str,
-        is_mcdr: bool = True
-    ) -> None:
-        super().__init__(terminal_name, launch_path, launch_command, port, regex_strict, is_mcdr)
-        self.system_api: Union[LinuxProxy, WindowsProxy]
-        if system == "linux":
-            self.system_api = LinuxProxy(terminal_name, launch_path, launch_command, port, regex_strict, is_mcdr)
-        elif system == "windows":
-            self.system_api = WindowsProxy(terminal_name, launch_path, launch_command, port, regex_strict, is_mcdr)
+    def __init__(self, config: TerminalConfig) -> None:
+        super().__init__(config)
+        assert config.port is not None
+        self.listener = PortListener(config.port, config.regex_strict)
+        self.screen = Screen(self.terminal_name, self.path)
 
-    def start(self):
-        return self.system_api.start()
+    def observe(self) -> Evidence:
+        return Evidence(port_listening=bool(self.listener.pids()), screen_exists=self.screen.check_existence())
 
-    def status(self) -> ServerStatus:
-        return self.system_api.status()
-
-    def stop(self):
-        return self.system_api.stop()
-
-    def kill(self):
-        return self.system_api.kill()
-
-    def forcekill(self):
-        return self.system_api.forcekill()
-
-
-class LinuxProxy(AbstractSystemProxy):
-
-    def __init__(
-        self,
-        terminal_name: str,
-        launch_path: str,
-        launch_command: str,
-        port: int,
-        regex_strict: bool,
-        is_mcdr: bool = True
-    ) -> None:
-        super().__init__(terminal_name, launch_path, launch_command, port, regex_strict, is_mcdr)
-        self.screen = Screen(terminal_name, launch_path)
-
-
-    def start(self):
-        if not os.path.exists(self.path):
-            return "path_not_found"
-        self.screen.create(self.command)
-        return "success"
-
-    def status(self) -> ServerStatus:
-        terminal_open = self.screen.check_existence()
-        port = self.port
-        text = get_command_output(f"lsof -i:{port}")
-        if not text:
-            java_running = False
+    def perform(self, result: ActionResult) -> ActionResult:
+        action = result.action
+        if action is Action.START:
+            if not os.path.exists(self.path):
+                return result.reject(ActionResult.Outcome.PATH_NOT_FOUND)
+            self.screen.create(self.command)
+        elif action is Action.STOP:
+            self.screen.stop(self.stop_command)
+        elif action is Action.KILL and self.is_mcdr:
+            evidence = result.snapshot.evidence
+            if not evidence.screen_exists:
+                # without the screen there is no console to send the kill command to
+                return result.reject(ActionResult.Outcome.FORCE_REQUIRED)
+            if evidence.port_listening:
+                self.screen.kill("!!MCDR server kill")
+            else:
+                self.screen.forcekill()
         else:
-            java_running = not self.regex_strict or re.search(r"\njava.+:%s" % port, text)
+            self._forcekill()
+        return result
 
-        if terminal_open and java_running:
-            return ServerStatus.RUNNING
-        elif terminal_open and not java_running:
-            return ServerStatus.DETACHED_JAVA
-        elif not terminal_open and java_running:
-            return ServerStatus.DETACHED_SCREEN
-        else:
-            return ServerStatus.STOPPED
-
-    def stop(self):
-        command = "!!MCDR server stop_exit" if self.is_mcdr else "stop"
-        self.screen.stop(command)
-        return "success"
-
-    def kill(self):
-        if not self.is_mcdr:
-            return self.forcekill()
-        status = self.status()
-        if status == ServerStatus.DETACHED_SCREEN:
-            return "force_required"
-        if status == ServerStatus.DETACHED_JAVA:
-            self.screen.forcekill()
-            return "success"
-        if status == ServerStatus.STOPPED:
-            return ServerStatus.STOPPED
-        self.screen.kill("!!MCDR server kill")
-        return "success"
-
-    def forcekill(self):
-        text = get_command_output(f"lsof -t -iTCP:{self.port} -sTCP:LISTEN")
+    def _forcekill(self) -> None:
         try:
-            for pid in {int(pid) for pid in text.split() if pid.isdigit()}:
+            for pid in self.listener.pids():
                 try:
                     os.kill(pid, signal.SIGKILL)
                 except ProcessLookupError:
@@ -149,64 +67,33 @@ class LinuxProxy(AbstractSystemProxy):
         finally:
             if self.screen.check_existence():
                 self.screen.forcekill()
-        return "success"
 
 
-class WindowsProxy(AbstractSystemProxy):
+class WindowsProxy(TerminalProxy):
+    # killing is already forceful here
+    supports = frozenset({Action.START, Action.STOP, Action.KILL})
 
-    def _get_listening_pids(self) -> set[int]:
-        port = str(self.port)
-        pids = set()
-        for line in get_command_output(f"netstat -ano | findstr :{port}").splitlines():
-            fields = line.split()
-            if len(fields) < 5 or fields[0].upper() not in ("TCP", "TCPv6"):
-                continue
-            if fields[-2].upper() != "LISTENING" or not fields[-1].isdigit():
-                continue
-            if fields[1].rsplit(":", 1)[-1] == port:
-                pids.add(int(fields[-1]))
-        return pids
+    def __init__(self, config: TerminalConfig) -> None:
+        super().__init__(config)
+        assert config.port is not None
+        self.listener = PortListener(config.port, config.regex_strict)
 
-    def start(self):
-        if not os.path.exists(self.path):
-            return "path_not_found"
-        terminal_name = self.terminal_name
-        run_shell_command(f'''start cmd.exe cmd /C "title {terminal_name}&&{self.command}"''', cwd=self.path)
-        return "success"
+    def observe(self) -> Evidence:
+        return Evidence(port_listening=bool(self.listener.pids()))
 
-    def status(self) -> ServerStatus:
-        pids = self._get_listening_pids()
-        if not pids:
-            return ServerStatus.STOPPED
-        if not self.regex_strict:
-            return ServerStatus.RUNNING
-
-        tasklist_lines = get_command_output(["tasklist"]).splitlines()
-        for line in tasklist_lines:
-            fields = line.split()
-            if len(fields) >= 2 and fields[0].lower() == "java.exe" and fields[1].isdigit():
-                if int(fields[1]) in pids:
-                    return ServerStatus.RUNNING
-        return ServerStatus.STOPPED
-
-    def stop(self):
-        pids = self._get_listening_pids()
-        if not pids:
-            return ServerStatus.STOPPED
-        for pid in pids:
-            try:
-                os.kill(pid, signal.SIGINT)
-            except (ProcessLookupError, PermissionError):
-                pass
-        return "success"
-
-    def kill(self):
-        pids = self._get_listening_pids()
-        if not pids:
-            return ServerStatus.STOPPED
-        for pid in pids:
-            run_shell_command(["taskkill", "/PID", str(pid), "/F"])
-        return "success"
-
-    def forcekill(self):
-        return ServerStatus.UNAVAILABLE
+    def perform(self, result: ActionResult) -> ActionResult:
+        action = result.action
+        if action is Action.START:
+            if not os.path.exists(self.path):
+                return result.reject(ActionResult.Outcome.PATH_NOT_FOUND)
+            run_shell_command(f'''start cmd.exe cmd /C "title {self.terminal_name}&&{self.command}"''', cwd=self.path)
+        elif action is Action.STOP:
+            for pid in self.listener.pids():
+                try:
+                    os.kill(pid, signal.SIGINT)
+                except (ProcessLookupError, PermissionError):
+                    pass
+        else:
+            for pid in self.listener.pids():
+                run_shell_command(["taskkill", "/PID", str(pid), "/F"])
+        return result

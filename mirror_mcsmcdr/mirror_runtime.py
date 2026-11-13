@@ -1,12 +1,12 @@
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional, Pattern
+from typing import Optional, Pattern
 
 from mirror_mcsmcdr.config import MirrorConfig
 from mirror_mcsmcdr.utils.history_utils import SyncHistory
 from mirror_mcsmcdr.utils.proxy.subprocess_proxy import SubprocessProxy
-from mirror_mcsmcdr.utils.server_utils import ProxySettingException, ServerProxy
+from mirror_mcsmcdr.utils.server_utils import ProxySettingException, ServerController, build_backends
 from mirror_mcsmcdr.utils.sync.classic_synchronizer import ClassicWorldSynchronizer
 
 
@@ -20,7 +20,7 @@ class MirrorRuntime:
     """
 
     config: MirrorConfig
-    proxy: ServerProxy
+    controller: ServerController
     world_sync: ClassicWorldSynchronizer
     history: SyncHistory
     save_world_regex: Pattern[str]
@@ -42,21 +42,10 @@ class MirrorRuntime:
         save_world_regex = re.compile(action.sync.save_world.saved_world_regex)
         history = SyncHistory(data_path / "history.json", action.history.max_history_count)
 
-        proxy = ServerProxy()
-        setups: tuple[Callable[[], object], ...] = (
-            lambda: proxy.set_mcsm(**config.mcsm.serialize()),
-            lambda: proxy.set_rcon(**config.rcon.serialize()),
-            lambda: proxy.set_terminal(**config.terminal.serialize()),
-        )
-        proxy_errors = []
-        for setup in setups:
-            try:
-                setup()
-            except ProxySettingException as e:
-                proxy_errors.append(e)
-        return cls(config, proxy, world_sync, history, save_world_regex, tuple(proxy_errors))
+        backends, proxy_errors = build_backends(config)
+        controller = ServerController(backends, action.start.timeout, action.stop.timeout)
+        return cls(config, controller, world_sync, history, save_world_regex, tuple(proxy_errors))
 
     @property
     def subprocess_terminal(self) -> Optional[SubprocessProxy]:
-        terminal = self.proxy.terminal
-        return terminal if isinstance(terminal, SubprocessProxy) else None
+        return next((backend for backend in self.controller.backends if isinstance(backend, SubprocessProxy)), None)

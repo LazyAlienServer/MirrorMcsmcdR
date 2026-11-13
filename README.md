@@ -170,7 +170,7 @@ terminal:
 - 需要执行的启动命令，若简单的启动命令无法满足需求，你可以创建一个`.bat`（或`.sh`）文件，并将启动命令写在该文件中，然后执行该文件。
 
 **port** `int | null`
-- 镜像服运行的端口。Linux/Windows代理通过此端口检查状态并控制进程；subprocess代理无需配置此项。
+- 镜像服运行的端口。Linux/Windows代理通过此端口检查状态并控制进程；subprocess代理可不配置此项, 但配置后插件才能区分`正在启动`与`正在运行`。
 
 **terminal_name** `str`
 - 新命令行终端的标题、新screen的名称，或subprocess代理日志输出使用的前缀。
@@ -296,8 +296,10 @@ action:
     require_confirm: false
   start:
     require_confirm: false
+    timeout: 120
   stop:
     require_confirm: true
+    timeout: 60
   kill:
     require_confirm: true
   sync:
@@ -324,6 +326,12 @@ action:
 
 **require_confirm** `bool`
 - 当此选项为`true`时, 执行该指令后需要输入`!!mirror confirm`以确认操作
+
+### start / stop配置
+**timeout** `int`
+- 启动(停止)指令发出后, 镜像服最多需要多少秒完成启动(停止)。在此期间状态显示为`正在启动`(`正在停止`), 超过此时间后插件将重新只根据端口、进程等实际情况判断状态。镜像服启动较慢时请调大`start.timeout`
+- 镜像服`正在启动`时无法重载配置文件, 可等待启动完成, 或先执行`!!mirror kill`
+- 启用MCSM时状态由MCSM提供, 此选项不影响状态显示
 
 ### sync配置
 **ensure_server_closed** `bool`

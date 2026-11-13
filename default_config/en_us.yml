@@ -85,8 +85,12 @@
         require_confirm: false
       start:
         require_confirm: false
+        # Seconds a start may take; meanwhile the status is "starting" and the config cannot be reloaded.
+        timeout: 120
       stop:
         require_confirm: true
+        # Seconds a stop may take; meanwhile the status is "stopping".
+        timeout: 60
       kill:
         require_confirm: true
       sync:

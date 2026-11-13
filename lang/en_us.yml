@@ -80,57 +80,51 @@ mirror_mcsmcdr:
       failed: "§cFailed to send command"
       not_running: "§cThe mirror server is not running; cannot send command"
       not_available: "§cThis command is only available with the subprocess proxy"
+    state:
+      unknown: status unknown
+      stopped: stopped
+      stopping: stopping
+      starting: starting
+      running: running
+
+    anomaly:
+      orphan_screen: "§cDetached (Java: not running; Screen: running)"
+      orphan_process: "§cDetached (Java: running; Screen: not running)"
+      probe_conflict: "§cStatus error. The RCON status does not match the port(terminal) status"
+
+    outcome:
+      path_not_found: Cannot find available launch path, please check if {server_name} server is created and plugins' config is configured correctly
+      force_required: Screen is unavailable. Use {prefix} kill -f to forcefully terminate the remaining process
+      timeout: The process did not exit in time. Use {prefix} kill -f to forcefully terminate it
+
     status:
-      fail:
-        unavailable: Current config does not support status command. You need to configure MCSM, terminal or RCON
-        rcon_status_mismatch: Status error. The RCON status does not match the port(terminal) status
-      success:
-        unknown: status unknown
-        stopped: stopped
-        stopping: stopping
-        starting: starting
-        running: running
-        detached_java: "§cDetached (Java: not running; Screen: running)"
-        detached_screen: "§cDetached (Java: running; Screen: not running)"
+      unsupported: Current config does not support status command. You need to configure MCSM, terminal or RCON
 
     start:
+      success: starting command sent
       fail:
         unknown: status unknown, please report this problem to operators
         stopping: stopping, please restart after {server_name} stopped
         starting: starting, please wait for a moment
-        running: running
-        unavailable: Current config does not support start command. You need to configure MCSM or terminal
-        path_not_found: Cannot find available launch path, please check if {server_name} server is created and plugins' config is configured correctly
-        detached_java: "Screen process is running but Java is not, please use the kill command to terminate the Screen process"
-        detached_screen: "Java process is running but Screen is not, please terminate the Java process first"
-      success:
-        stopped: starting command sent
+        unsupported: Current config does not support start command. You need to configure MCSM or terminal
+        orphan_screen: "Screen process is running but Java is not, please use the kill command to terminate the Screen process"
+        orphan_process: "Java process is running but Screen is not, please terminate the Java process first"
 
     stop:
+      success: stopping command sent
       fail:
         unknown: status unknown, please report this problem to operators
-        stopped: stopped
         stopping: stopping, please wait for a moment
         starting: starting, please stop after §b{server_name}§c started
-        unavailable: " Current config does not support stop command. You need to configure MCSM, RCON, or terminal"
-        detached_java: " Cannot stop, Screen is running without Java; please try the kill command"
-        detached_screen: " Cannot stop, Java is running without Screen; please close the Java process in the console first"
-      success:
-        running: stopping command sent
+        unsupported: Current config does not support stop command. You need to configure MCSM, RCON, or terminal
+        orphan_screen: Cannot stop, Screen is running without Java; please try the kill command
+        orphan_process: Cannot stop, Java is running without Screen; please close the Java process in the console first
 
     kill:
+      success: forced termination in progress...
       fail:
         unknown: status unknown, please report this problem to operators
-        stopped: stopped
-        unavailable: Current config does not support kill command. You need to configure MCSM or Linux terminal
-        force_required: Screen is unavailable. Use {prefix} kill -f to forcefully terminate the remaining process
-        timeout: The process did not exit in time. Use {prefix} kill -f to forcefully terminate it
-      success:
-        stopping: forced termination in progress...
-        starting: forced termination in progress...
-        running: forced termination in progress...
-        detached_java: forced termination in progress...
-        detached_screen: forcefully terminating the remaining process...
+        unsupported: Current config does not support kill command. You need to configure MCSM or terminal
 
     sync:
       fail:
@@ -139,10 +133,10 @@ mirror_mcsmcdr:
         stopping: §cOperation failed / §b{server_name}§c stopping, please sync after {server_name} stopped
         starting: §cOperation failed / §b{server_name}§c starting, please stop {server_name} first then sync
         running: §cOperation failed / §b{server_name}§c running, please stop {server_name} first then sync
-        rcon_status_mismatch: §cOperation failed / §b{server_name}§c status error. The RCON status does not match the port(terminal) status
-        unavailable: §cOperation failed / §b{server_name}§c current config does not support detecting status. You need to configure MCSM, terminal or RCON
-        detached_java: "§cOperation failed / §b{server_name}§c Screen and Java processes detached (Java not running). Please terminate the Screen process first"
-        detached_screen: "§cOperation failed / §b{server_name}§c Screen and Java processes detached (Screen not running). Please terminate the Java process first"
+        probe_conflict: §cOperation failed / §b{server_name}§c status error. The RCON status does not match the port(terminal) status
+        unsupported: §cOperation failed / §b{server_name}§c current config does not support detecting status. You need to configure MCSM, terminal or RCON
+        orphan_screen: "§cOperation failed / §b{server_name}§c Screen and Java processes detached (Java not running). Please terminate the Screen process first"
+        orphan_process: "§cOperation failed / §b{server_name}§c Screen and Java processes detached (Screen not running). Please terminate the Java process first"
       auto_restart:
         restarting: §b{server_name}§f running, auto-stopping {server_name} and syncing...
         fail: §cAuto-stopping failed, §b{server_name}§c§f{status}

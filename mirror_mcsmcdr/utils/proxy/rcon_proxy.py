@@ -1,21 +1,30 @@
 from mcdreforged.api.all import RconConnection
-from mirror_mcsmcdr.utils.status import ServerStatus
 
-class RConProxy:
+from mirror_mcsmcdr.config.proxy_config import RConConfig
+from mirror_mcsmcdr.utils.proxy.backend import ServerBackend
+from mirror_mcsmcdr.utils.status import Action, ActionResult, Evidence
 
-    def __init__(self, address: str, port: int, password: str) -> None:
-        self.rcon = RconConnection(address, port, password)
-    
-    def status(self) -> ServerStatus:
+
+class RConProxy(ServerBackend):
+    supports = frozenset({Action.STOP})
+
+    def __init__(self, config: RConConfig) -> None:
+        assert config.address is not None and config.port is not None and config.password is not None
+        self.rcon = RconConnection(config.address, config.port, config.password)
+
+    def observe(self) -> Evidence:
         try:
             self.rcon.connect()
-            return ServerStatus.RUNNING
-        except:
-            return ServerStatus.STOPPED
-    
-    def stop(self):
-        if self.status() == ServerStatus.STOPPED:
-            return ServerStatus.STOPPED
-        self.rcon.send_command("stop")
-        return "success"
-        
+        except Exception:
+            return Evidence(rcon_reachable=False)
+        finally:
+            self.rcon.disconnect()
+        return Evidence(rcon_reachable=True)
+
+    def perform(self, result: ActionResult) -> ActionResult:
+        self.rcon.connect()
+        try:
+            self.rcon.send_command("stop")
+        finally:
+            self.rcon.disconnect()
+        return result

@@ -3,33 +3,6 @@ from enum import Enum
 from typing import ClassVar, Optional
 
 
-class ServerStatus(str, Enum):
-    UNKNOWN = "unknown"
-    STOPPED = "stopped"
-    STOPPING = "stopping"
-    STARTING = "starting"
-    RUNNING = "running"
-    DETACHED_JAVA = "detached_java"
-    DETACHED_SCREEN = "detached_screen"
-    RCON_STATUS_MISMATCH = "rcon_status_mismatch"
-    UNAVAILABLE = "unavailable"
-
-    def __str__(self) -> str:
-        return self.value
-
-    @classmethod
-    def is_available(cls, status: "ServerStatus") -> bool:
-        return type(status) is cls and status in {
-            cls.UNKNOWN,
-            cls.STOPPED,
-            cls.STOPPING,
-            cls.STARTING,
-            cls.RUNNING,
-            cls.DETACHED_JAVA,
-            cls.DETACHED_SCREEN,
-        }
-
-
 class ServerState(Enum):
     """Where the server is in its lifecycle; anything odd about it is an :class:`Anomaly` instead."""
 
@@ -99,6 +72,14 @@ class StatusSnapshot:
     def is_exactly(self, state: ServerState) -> bool:
         """Whether the server is in ``state`` with nothing odd about it."""
         return self.state is state and not self.anomalies
+
+    @property
+    def label(self) -> str:
+        """The name of what matters most about this status: an anomaly if there is one, otherwise the state."""
+        for anomaly in Anomaly:
+            if anomaly in self.anomalies:
+                return anomaly.value
+        return self.state.value
 
 
 @dataclass(frozen=True)

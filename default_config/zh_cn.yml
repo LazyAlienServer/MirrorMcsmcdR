@@ -85,8 +85,12 @@
         require_confirm: false
       start:
         require_confirm: false
+        # 启动最多需要的秒数; 在此期间状态显示为“正在启动”, 且无法重载配置文件。
+        timeout: 120
       stop:
         require_confirm: true
+        # 停止最多需要的秒数; 在此期间状态显示为“正在停止”。
+        timeout: 60
       kill:
         require_confirm: true
       sync:

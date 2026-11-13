@@ -174,7 +174,7 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 - The startup command that needs to be executed. If a simple startup command cannot meet your requirements, you can create a `.bat` (or `.sh`) file and write the startup command in it, then execute the file.
 
 **port** `int | null`
-- The mirror server port. The Linux and Windows proxies use it to check the server status and control the process; it is not required by the `subprocess` proxy.
+- The mirror server port. The Linux and Windows proxies use it to check the server status and control the process; it is optional for the `subprocess` proxy, which needs it to tell `starting` from `running`.
 
 **terminal_name** `str`
 - The title of the new command prompt, the name of the new screen, or the prefix used for subprocess proxy log output.
@@ -303,8 +303,10 @@ action:
         require_confirm: false
     start:
         require_confirm: false
+        timeout: 120
     stop:
         require_confirm: true
+        timeout: 60
     kill:
         require_confirm: true
     sync:
@@ -328,6 +330,12 @@ action:
 
 **require_confirm** `bool`
 - When this option is `true`, the command `!!mirror confirm` needs to be entered to confirm the operation after executing the command
+
+### start / stop Configuration
+**timeout** `int`
+- How many seconds the mirror server may take to start (stop) after the command was sent. Meanwhile its status is shown as `starting` (`stopping`); after that the plugin judges the status only by what it observes, such as the port and the process. Increase `start.timeout` if the mirror server starts slowly
+- The config cannot be reloaded while the mirror server is `starting`. Wait for it, or run `!!mirror kill` first
+- When MCSM is enabled the status comes from MCSM, and this option does not affect it
 
 ### sync Configuration
 **ensure_server_closed** `bool`

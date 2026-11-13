@@ -9,7 +9,8 @@ from mcdreforged.api.all import CommandSource, PluginServerInterface, RTextBase
 from mirror_mcsmcdr.config.command_config import SaveWorldConfig
 from mirror_mcsmcdr.mirror_runtime import MirrorRuntime
 from mirror_mcsmcdr.utils.history_utils import SyncRecord, SyncStatus
-from mirror_mcsmcdr.utils.status import ServerStatus
+from mirror_mcsmcdr.utils.display_utils import status_key
+from mirror_mcsmcdr.utils.status import Action, ServerState
 
 
 class Translator(Protocol):
@@ -103,25 +104,28 @@ class SyncWorkflow:
         config = runtime.config.command.action.sync
         if not config.ensure_server_closed:
             return True
-        status = runtime.proxy.status()
-        if status == ServerStatus.STOPPED:
+        controller = runtime.controller
+        snapshot = controller.status()
+        if snapshot.is_exactly(ServerState.STOPPED):
             return True
-        if status != ServerStatus.RUNNING or not config.auto_server_restart:
-            source.reply(self._tr(f"command.sync.fail.{status}"))
+        if not snapshot.is_exactly(ServerState.RUNNING) or not config.auto_server_restart:
+            reason = "unsupported" if snapshot.evidence.empty else snapshot.label
+            source.reply(self._tr(f"command.sync.fail.{reason}"))
             return False
 
         self._server.broadcast(self._tr("command.sync.auto_restart.restarting"))
-        runtime.proxy.stop()
-        for _ in range(config.max_attempt_times):
-            time.sleep(config.check_status_interval)
-            status = runtime.proxy.status()
-            if status == ServerStatus.STOPPED:
+        result = controller.execute(Action.STOP)
+        snapshot = result.snapshot
+        if result.accepted:
+            snapshot = controller.wait_for(
+                ServerState.STOPPED,
+                timeout=config.check_status_interval * config.max_attempt_times,
+                interval=config.check_status_interval,
+            )
+            if snapshot.is_exactly(ServerState.STOPPED):
                 on_server_stopped()
                 return True
-            if not ServerStatus.is_available(status):
-                self._server.broadcast(self._tr("command.sync.auto_restart.fail", status=self._tr(f"command.status.fail.{status}", title=False)))
-                return False
-        self._server.broadcast(self._tr("command.sync.auto_restart.fail", status=self._tr(f"command.status.success.{status}", title=False)))
+        self._server.broadcast(self._tr("command.sync.auto_restart.fail", status=self._tr(status_key(snapshot), title=False)))
         return False
 
     def _sync_world(self, runtime: MirrorRuntime, started_at: str, operator: str) -> SyncRecord:

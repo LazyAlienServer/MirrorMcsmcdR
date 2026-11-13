@@ -21,6 +21,12 @@ class CommandPermissionConfig(Serializable):
 class ActionConfig(Serializable):
     require_confirm: bool = False
 
+class StartActionConfig(ActionConfig):
+    timeout: int = 120
+
+class StopActionConfig(ActionConfig):
+    timeout: int = 60
+
 class SaveWorldCommandsConfig(Serializable):
     save_all_worlds: str = "save-all flush"
     auto_save_off: str = "save-off"
@@ -51,8 +57,8 @@ class AbortActionConfig(Serializable):
 
 class CommandActionConfig(Serializable):
     status: ActionConfig = ActionConfig()
-    start: ActionConfig = ActionConfig()
-    stop: ActionConfig = ActionConfig(require_confirm=True)
+    start: StartActionConfig = StartActionConfig()
+    stop: StopActionConfig = StopActionConfig(require_confirm=True)
     kill: ActionConfig = ActionConfig(require_confirm=True)
     sync: SyncActionConfig = SyncActionConfig(require_confirm=True)
     history: HistoryActionConfig = HistoryActionConfig()

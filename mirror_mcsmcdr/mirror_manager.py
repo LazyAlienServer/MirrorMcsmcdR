@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable, Collection, Iterator, Optional
+from typing import Any, Callable, Iterator, Optional
 
 from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PlayerCommandSource, PluginServerInterface, RAction, RColor, RText, RTextBase, RTextList, SimpleCommandBuilder, new_thread, Integer, GreedyText
 
@@ -8,10 +8,9 @@ from mirror_mcsmcdr.constants import TITLE
 from mirror_mcsmcdr.config import MultiConfigLoader, MirrorConfig
 from mirror_mcsmcdr.mirror_runtime import MirrorRuntime
 from mirror_mcsmcdr.sync_workflow import SyncWorkflow
-from mirror_mcsmcdr.utils.display_utils import help_msg, rtr
+from mirror_mcsmcdr.utils.display_utils import help_msg, rejection_key, rtr, status_key
 from mirror_mcsmcdr.utils.proxy.mcsm_proxy import MCSManagerProxyError
-from mirror_mcsmcdr.utils.server_utils import ProxyResult
-from mirror_mcsmcdr.utils.status import ServerStatus
+from mirror_mcsmcdr.utils.status import Action
 from mirror_mcsmcdr.utils.history_utils import SyncRecord, SyncStatus
 from mirror_mcsmcdr.utils.page_utils import Page
 from mirror_mcsmcdr.utils.confirmation_utils import ConfirmationTask, ConfirmationManager
@@ -174,16 +173,16 @@ class MirrorManager:
 
     @staticmethod
     def _proxy_info(runtime: MirrorRuntime) -> RTextList:
-        proxy = runtime.proxy
+        config = runtime.config
+        misconfigured = {error.proxy for error in runtime.proxy_errors}
         info = RTextList(rtr("command.proxy.title", False))
-        # a proxy attribute is the proxy itself when enabled, None when disabled, False when misconfigured
-        for name, state in (("mcsm", proxy.mcsm), ("rcon", proxy.rcon), ("terminal", proxy.terminal)):
-            if state:
-                text = RText(name, RColor.green).h(rtr("command.proxy.enabled", False))
-            elif state is None:
-                text = RText(name, RColor.gray).h(rtr("command.proxy.disabled", False))
-            else:
+        for name, proxy_config in (("mcsm", config.mcsm), ("rcon", config.rcon), ("terminal", config.terminal)):
+            if name in misconfigured:
                 text = RText(name, RColor.red).h(rtr("command.proxy.error", False))
+            elif proxy_config.enable:
+                text = RText(name, RColor.green).h(rtr("command.proxy.enabled", False))
+            else:
+                text = RText(name, RColor.gray).h(rtr("command.proxy.disabled", False))
             info.append(" | ", text)
         return info
 
@@ -249,26 +248,15 @@ class MirrorManager:
             source.reply(rtr("error.unknown"))
             raise
 
-    def _execute(
-        self,
-        runtime: MirrorRuntime,
-        source: CommandSource,
-        command: str,
-        available_status: Collection[ServerStatus],
-        action: Callable[[], ProxyResult],
-    ) -> bool:
+    def _execute(self, runtime: MirrorRuntime, source: CommandSource, action: Action) -> bool:
+        # forcing is a flag of the kill command, not a command of its own
+        command = "kill" if action is Action.FORCEKILL else action.value
         with self._report_api_error(source):
-            status_code = runtime.proxy.status()
-            if not ServerStatus.is_available(status_code):
-                source.reply(self.rtr(f"command.status.fail.{status_code}"))
-                return False
-            result: ProxyResult = status_code
-            if status_code in available_status:
-                result = action()
-                if result == "success":
-                    self.server.broadcast(self.rtr("command._execute.success", prompt=self.rtr(f"command.{command}.success.{status_code}", title=False).to_legacy_text()))
-                    return True
-            source.reply(self.rtr("command._execute.fail", prompt=self.rtr(f"command.{command}.fail.{result}", title=False).to_legacy_text()))
+            result = runtime.controller.execute(action)
+            if result.accepted:
+                self.server.broadcast(self.rtr("command._execute.success", prompt=self.rtr(f"command.{command}.success", title=False).to_legacy_text()))
+                return True
+            source.reply(self.rtr("command._execute.fail", prompt=self.rtr(rejection_key(command, result), title=False).to_legacy_text()))
         return False
 
     def status(self, source: CommandSource, context: CommandContext) -> None:
@@ -276,30 +264,28 @@ class MirrorManager:
 
     def _status(self, runtime: MirrorRuntime, source: CommandSource) -> None:
         with self._report_api_error(source):
-            status_code = runtime.proxy.status()
-            flag = "success" if ServerStatus.is_available(status_code) else "fail"
-            prompt = self.rtr(f"command.status.{flag}.{status_code}", title=False).to_legacy_text()
-            self.server.broadcast(self.rtr(f"command._execute.{flag}", prompt=prompt))
+            snapshot = runtime.controller.status()
+            if snapshot.evidence.empty:
+                prompt = self.rtr("command.status.unsupported", title=False).to_legacy_text()
+                self.server.broadcast(self.rtr("command._execute.fail", prompt=prompt))
+                return
+            prompt = self.rtr(f"command.state.{snapshot.state.value}", title=False).to_legacy_text()
+            if snapshot.anomalies:
+                prompt += " §7/ " + self.rtr(status_key(snapshot), title=False).to_legacy_text()
+            self.server.broadcast(self.rtr("command._execute.success", prompt=prompt))
 
     def start(self, source: CommandSource, context: CommandContext) -> None:
         self._run_command("start", source, lambda runtime: self._start(runtime, source))
 
     def _start(self, runtime: MirrorRuntime, source: CommandSource) -> bool:
-        return self._execute(runtime, source, "start", [ServerStatus.STOPPED], runtime.proxy.start)
+        return self._execute(runtime, source, Action.START)
 
     def stop(self, source: CommandSource, context: CommandContext) -> None:
-        self._run_command("stop", source, lambda runtime: self._execute(
-            runtime, source, "stop", [ServerStatus.RUNNING], runtime.proxy.stop,
-        ))
+        self._run_command("stop", source, lambda runtime: self._execute(runtime, source, Action.STOP))
 
     def kill(self, source: CommandSource, context: CommandContext, force: bool = False) -> None:
-        self._run_command("kill", source, lambda runtime: self._execute(
-            runtime,
-            source,
-            "kill",
-            [ServerStatus.STOPPING, ServerStatus.STARTING, ServerStatus.RUNNING, ServerStatus.DETACHED_JAVA, ServerStatus.DETACHED_SCREEN],
-            runtime.proxy.forcekill if force else runtime.proxy.kill,
-        ))
+        action = Action.FORCEKILL if force else Action.KILL
+        self._run_command("kill", source, lambda runtime: self._execute(runtime, source, action))
 
     def sync(self, source: CommandSource, context: CommandContext) -> None:
         self._run_command("sync", source, lambda runtime: self._sync(runtime, source))
@@ -414,7 +400,7 @@ class MirrorManager:
         if terminal is None:
             source.reply(self.rtr("command.execute.not_available"))
             return
-        if terminal.status() != ServerStatus.RUNNING:
+        if not terminal.alive:
             source.reply(self.rtr("command.execute.not_running"))
             return
         if not terminal.send_command(command):

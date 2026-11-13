@@ -1,50 +1,14 @@
-import requests, json
+import json
+from typing import Any
+
+import requests
 from requests import Response
+
+from mirror_mcsmcdr.config.proxy_config import MCSMConfig
 from mirror_mcsmcdr.utils.display_utils import rtr
-from abc import ABC, abstractmethod
-from mirror_mcsmcdr.utils.status import ServerStatus
+from mirror_mcsmcdr.utils.proxy.backend import ServerBackend
+from mirror_mcsmcdr.utils.status import Action, ActionResult, Evidence, ServerState
 
-class HTTPProxyError(Exception):
-
-    def __init__(self, req: Response) -> None:
-        super().__init__("HTTPProxyError")
-
-class AbstractHTTPProxy(ABC):
-
-    def __init__(self, enable: bool, url: str, *args, **kwargs) -> None:
-        self.enable = enable
-        self.url = url if url[-1] != "/" else url[:-1]
-        self.params = kwargs
-        self.status_to_text = {
-            -1: ServerStatus.UNKNOWN,
-            0: ServerStatus.STOPPED,
-            1: ServerStatus.STOPPING,
-            2: ServerStatus.STARTING,
-            3: ServerStatus.RUNNING,
-        }
-    
-    def _request(self, path: str, exception: type = HTTPProxyError):
-        req : Response = requests.get(url=self.url+path, params=self.params)
-        if req.status_code == 200:
-            return json.loads(req.text)
-        else:
-            raise exception(req)
-    
-    @abstractmethod
-    def status(self) -> ServerStatus:
-        ...
-    
-    @abstractmethod
-    def start(self) -> str:
-        return "success"
-    
-    @abstractmethod
-    def stop(self) -> str:
-        return "success"
-    
-    @abstractmethod
-    def kill(self) -> str:
-        return "success"
 
 class MCSManagerProxyError(Exception):
 
@@ -57,25 +21,35 @@ class MCSManagerProxyError(Exception):
         super().__init__(rtr(f"mcsm.error.{req.status_code}", title=False, error=error).to_plain_text())
 
 
-class MCSManagerProxy(AbstractHTTPProxy):
+class MCSManagerProxy(ServerBackend):
+    supports = frozenset({Action.START, Action.STOP, Action.KILL})
 
-    def __init__(self, enable: bool, url: str, uuid: str, remote_uuid: str, apikey: str) -> None:
-        super().__init__(enable, url, uuid = uuid, remote_uuid = remote_uuid, apikey = apikey)
-    
-    def _request(self, path: str, exception: type = MCSManagerProxyError):
-        return super()._request(path, exception)
-    
-    def status(self) -> ServerStatus:
-        return self.status_to_text[self._request("/api/instance")["data"]["status"]]
-    
-    def start(self):
-        self._request("/api/protected_instance/open")
-        return "success"
-    
-    def stop(self):
-        self._request("/api/protected_instance/stop")
-        return "success"
-    
-    def kill(self):
-        self._request("/api/protected_instance/kill")
-        return "success"
+    _PANEL_STATES = {
+        -1: ServerState.UNKNOWN,
+        0: ServerState.STOPPED,
+        1: ServerState.STOPPING,
+        2: ServerState.STARTING,
+        3: ServerState.RUNNING,
+    }
+    _ENDPOINTS = {
+        Action.START: "/api/protected_instance/open",
+        Action.STOP: "/api/protected_instance/stop",
+        Action.KILL: "/api/protected_instance/kill",
+    }
+
+    def __init__(self, config: MCSMConfig) -> None:
+        self.url = config.url.rstrip("/")
+        self.params = {"uuid": config.uuid, "remote_uuid": config.remote_uuid, "apikey": config.apikey}
+
+    def _request(self, path: str) -> Any:
+        req: Response = requests.get(url=self.url + path, params=self.params)
+        if req.status_code != 200:
+            raise MCSManagerProxyError(req)
+        return json.loads(req.text)
+
+    def observe(self) -> Evidence:
+        return Evidence(panel_state=self._PANEL_STATES[self._request("/api/instance")["data"]["status"]])
+
+    def perform(self, result: ActionResult) -> ActionResult:
+        self._request(self._ENDPOINTS[result.action])
+        return result

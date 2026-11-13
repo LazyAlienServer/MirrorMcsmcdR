@@ -6,34 +6,62 @@ from typing import Optional
 from mcdreforged.api.all import RText, ServerInterface
 
 
-from mirror_mcsmcdr.utils.proxy.system_proxy import AbstractSystemProxy
-from mirror_mcsmcdr.utils.status import ServerStatus
+from mirror_mcsmcdr.config.proxy_config import TerminalConfig
+from mirror_mcsmcdr.utils.port_utils import PortListener
+from mirror_mcsmcdr.utils.proxy.system_proxy import TerminalProxy
+from mirror_mcsmcdr.utils.status import Action, ActionResult, Evidence
 
 
-class SubprocessProxy(AbstractSystemProxy):
+class SubprocessProxy(TerminalProxy):
     """Run the mirror server as a child process with piped console I/O."""
 
-    def __init__(
-        self,
-        terminal_name: str,
-        path: str,
-        command: str,
-        port: int,
-        regex_strict: bool,
-        is_mcdr: bool = True,
-        console_log: bool = False,
-    ) -> None:
-        super().__init__(terminal_name, path, command, port, regex_strict, is_mcdr)
+    supports = frozenset(Action)
+
+    def __init__(self, config: TerminalConfig) -> None:
+        super().__init__(config)
+        # without a port the server cannot be told apart from one that is still starting
+        self.listener = PortListener(config.port, config.regex_strict) if config.port else None
         self.process: Optional[subprocess.Popen] = None
-        self.console_log_enabled = console_log
+        self.console_log_enabled = config.console_log
         self.console_log_limit: Optional[int] = None
         self._output_count = 0
         self._output_thread: Optional[Thread] = None
         self._stop_event = Event()
 
-    def start(self) -> str:
-        if self.process is not None and self.process.poll() is None:
-            return ServerStatus.RUNNING
+    @property
+    def alive(self) -> bool:
+        return self.process is not None and self.process.poll() is None
+
+    def observe(self) -> Evidence:
+        return Evidence(
+            process_alive=self.alive,
+            port_listening=bool(self.listener.pids()) if self.listener is not None else None,
+        )
+
+    def perform(self, result: ActionResult) -> ActionResult:
+        action = result.action
+        if action is Action.START:
+            return self._start(result)
+        if action is Action.STOP:
+            if not self.send_command(self.stop_command):
+                self.reset_log_limit()
+                return result.reject(ActionResult.Outcome.WRONG_STATE)
+        elif action is Action.KILL:
+            process = self.process
+            if process is not None:
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    return result.reject(ActionResult.Outcome.TIMEOUT)
+                self._cleanup_process()
+        else:
+            self.forcekill()
+        return result
+
+    def _start(self, result: ActionResult) -> ActionResult:
+        if self.alive:
+            return result.reject(ActionResult.Outcome.WRONG_STATE)
 
         if self._output_thread is not None:
             self._output_thread.join(timeout=3)
@@ -41,7 +69,7 @@ class SubprocessProxy(AbstractSystemProxy):
         self._output_count = 0
 
         if not os.path.isdir(self.path):
-            return "path_not_found"
+            return result.reject(ActionResult.Outcome.PATH_NOT_FOUND)
 
         encoding = "oem" if os.name == "nt" else "utf-8"
         self.process = subprocess.Popen(
@@ -62,49 +90,16 @@ class SubprocessProxy(AbstractSystemProxy):
             daemon=True,
         )
         self._output_thread.start()
-        return "success"
+        return result
 
-    def status(self) -> ServerStatus:
-        if self.process is None or self.process.poll() is not None:
-            return ServerStatus.STOPPED
-        return ServerStatus.RUNNING
-
-    def stop(self) -> str:
-        if self.status() == ServerStatus.STOPPED:
-            return ServerStatus.STOPPED
-
-        stop_command = "!!MCDR server stop_exit" if self.is_mcdr else "stop"
-        sent = self.send_command(stop_command)
-        if not sent:
-            self.reset_log_limit()
-            return ServerStatus.STOPPING
-        return "success"
-    def kill(self) -> str:
-        if self.status() == ServerStatus.STOPPED:
-            self.reset_log_limit()
-            return ServerStatus.STOPPED
-
+    def forcekill(self) -> None:
+        """Kill the child process, if there is one, and wait until it is gone."""
         process = self.process
-        assert process is not None
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            return "timeout"
-        self._cleanup_process()
-        return "success"
-
-    def forcekill(self) -> str:
-        if self.status() == ServerStatus.STOPPED:
-            self.reset_log_limit()
-            return ServerStatus.STOPPED
-
-        process = self.process
-        assert process is not None
+        if process is None:
+            return
         process.kill()
         process.wait()
         self._cleanup_process()
-        return "success"
 
     def _read_output_loop(self) -> None:
         process = self.process
