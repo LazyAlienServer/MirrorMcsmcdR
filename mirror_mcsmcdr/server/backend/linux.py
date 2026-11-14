@@ -1,29 +1,13 @@
 import os
-from abc import ABC
 
 import psutil
 
 from mirror_mcsmcdr.config.proxy_config import TerminalConfig
-from mirror_mcsmcdr.server.backend.base import ServerBackend
-from mirror_mcsmcdr.server.backend.console import send_console_command
-from mirror_mcsmcdr.server.backend.port import PortListener
-from mirror_mcsmcdr.server.backend.screen import Screen, ScreenError
-from mirror_mcsmcdr.server.backend.shell import run_shell_command
-from mirror_mcsmcdr.server.status import Action, ActionResult, Evidence
-
-
-class TerminalProxy(ServerBackend, ABC):
-    """A backend that launches the server from a command line on this machine."""
-
-    def __init__(self, config: TerminalConfig) -> None:
-        self.terminal_name = config.terminal_name or "Mirror"
-        self.path = config.launch_path
-        self.command = config.launch_command
-        self.is_mcdr = config.is_mcdr
-
-    @property
-    def stop_command(self) -> str:
-        return "!!MCDR server stop_exit" if self.is_mcdr else "stop"
+from mirror_mcsmcdr.server.action import Action, ActionResult
+from mirror_mcsmcdr.server.backend.base import TerminalProxy
+from mirror_mcsmcdr.server.status import Evidence
+from mirror_mcsmcdr.server.system_utils.port_utils import PortListener
+from mirror_mcsmcdr.server.system_utils.screen_utils import Screen, ScreenError
 
 
 class LinuxProxy(TerminalProxy):
@@ -89,34 +73,4 @@ class LinuxProxy(TerminalProxy):
             errors.append(error)
         if errors:
             raise errors[0] from (errors[1] if len(errors) > 1 else None)
-        return result
-
-
-class WindowsProxy(TerminalProxy):
-    # killing is already forceful here
-    supports = frozenset({Action.START, Action.STOP, Action.KILL})
-
-    def __init__(self, config: TerminalConfig) -> None:
-        super().__init__(config)
-        assert config.port is not None
-        self.listener = PortListener(config.port, config.regex_strict)
-
-    def observe(self) -> Evidence:
-        return Evidence(port_listening=self.listener.is_listening())
-
-    def _start(self, result: ActionResult) -> ActionResult:
-        if not os.path.exists(self.path):
-            return result.reject(ActionResult.Outcome.PATH_NOT_FOUND)
-        run_shell_command(f'''start cmd.exe cmd /C "title {self.terminal_name}&&{self.command}"''', cwd=self.path)
-        return result
-
-    def _stop(self, result: ActionResult) -> ActionResult:
-        # the listening processes normally share one console, so the first one that takes the command is enough
-        if not any(send_console_command(pid, self.stop_command) for pid in self.listener.pids()):
-            return result.reject(ActionResult.Outcome.WRONG_STATE)
-        return result
-
-    def _kill(self, result: ActionResult) -> ActionResult:
-        for pid in self.listener.pids():
-            run_shell_command(["taskkill", "/PID", str(pid), "/F"])
         return result

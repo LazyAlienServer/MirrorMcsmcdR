@@ -7,11 +7,11 @@ from typing import Optional
 
 from mcdreforged.api.all import RText, ServerInterface
 
-
 from mirror_mcsmcdr.config.proxy_config import TerminalConfig
-from mirror_mcsmcdr.server.backend.port import PortListener
-from mirror_mcsmcdr.server.backend.terminal import TerminalProxy
-from mirror_mcsmcdr.server.status import Action, ActionResult, Evidence
+from mirror_mcsmcdr.server.action import Action, ActionResult
+from mirror_mcsmcdr.server.backend.base import TerminalProxy
+from mirror_mcsmcdr.server.status import Evidence
+from mirror_mcsmcdr.server.system_utils.port_utils import PortListener
 
 
 class SubprocessProxy(TerminalProxy):

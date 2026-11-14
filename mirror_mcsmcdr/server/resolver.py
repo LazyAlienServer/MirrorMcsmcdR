@@ -1,6 +1,7 @@
 from typing import Optional
 
-from mirror_mcsmcdr.server.status import Action, Anomaly, Evidence, ServerState, StatusSnapshot
+from mirror_mcsmcdr.server.action import Action
+from mirror_mcsmcdr.server.status import Anomaly, Evidence, ServerState, StatusSnapshot
 
 
 class StatusResolver:

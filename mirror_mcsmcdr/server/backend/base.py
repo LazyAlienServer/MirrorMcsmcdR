@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import ClassVar
 
-from mirror_mcsmcdr.server.status import Action, ActionResult, Evidence
+from mirror_mcsmcdr.config.proxy_config import TerminalConfig
+from mirror_mcsmcdr.server.action import Action, ActionResult
+from mirror_mcsmcdr.server.status import Evidence
 
 
 class ServerBackend(ABC):
@@ -45,3 +47,17 @@ class ServerBackend(ABC):
 
     def _unsupported(self, result: ActionResult) -> NotImplementedError:
         return NotImplementedError(f"{type(self).__name__} does not support {result.action}")
+
+
+class TerminalProxy(ServerBackend, ABC):
+    """A backend that launches the server from a command line on this machine."""
+
+    def __init__(self, config: TerminalConfig) -> None:
+        self.terminal_name = config.terminal_name or "Mirror"
+        self.path = config.launch_path
+        self.command = config.launch_command
+        self.is_mcdr = config.is_mcdr
+
+    @property
+    def stop_command(self) -> str:
+        return "!!MCDR server stop_exit" if self.is_mcdr else "stop"

@@ -2,12 +2,13 @@ import json
 from typing import Any
 
 import requests
+from mcdreforged.api.all import ServerInterface
 from requests import Response
 
 from mirror_mcsmcdr.config.proxy_config import MCSMConfig
-from mirror_mcsmcdr.text import rtr
+from mirror_mcsmcdr.server.action import Action, ActionResult
 from mirror_mcsmcdr.server.backend.base import ServerBackend
-from mirror_mcsmcdr.server.status import Action, ActionResult, Evidence, ServerState
+from mirror_mcsmcdr.server.status import Evidence, ServerState
 
 
 class MCSManagerProxyError(Exception):
@@ -18,7 +19,7 @@ class MCSManagerProxyError(Exception):
             error = error["error"]
         elif "data" in error.keys():
             error = error["data"]
-        super().__init__(rtr(f"mcsm.error.{req.status_code}", title=False, error=error).to_plain_text())
+        super().__init__(ServerInterface.si().rtr(f"mirror_mcsmcdr.mcsm.error.{req.status_code}", error=error).to_plain_text())
 
 
 class MCSManagerProxy(ServerBackend):

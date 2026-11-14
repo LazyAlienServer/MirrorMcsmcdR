@@ -2,7 +2,7 @@ from typing import Any
 
 from mcdreforged.api.all import RTextBase, RTextList, ServerInterface, RAction
 from mirror_mcsmcdr.constants import PLUGIN_ID, REPLY_TITLE, TITLE
-from mirror_mcsmcdr.server.status import ActionResult, StatusSnapshot
+from mirror_mcsmcdr.server import ActionResult, StatusSnapshot
 
 
 def rtr(key: str, title: bool = True, **kwargs: Any) -> RTextBase:

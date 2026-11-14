@@ -1,8 +1,9 @@
 from mcdreforged.api.all import RconConnection
 
 from mirror_mcsmcdr.config.proxy_config import RConConfig
+from mirror_mcsmcdr.server.action import Action, ActionResult
 from mirror_mcsmcdr.server.backend.base import ServerBackend
-from mirror_mcsmcdr.server.status import Action, ActionResult, Evidence
+from mirror_mcsmcdr.server.status import Evidence
 
 
 class RConProxy(ServerBackend):
