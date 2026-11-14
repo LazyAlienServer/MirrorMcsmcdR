@@ -9,7 +9,7 @@ from mcdreforged.api.all import CommandSource, PluginServerInterface, RTextBase
 from mirror_mcsmcdr.config.command_config import SaveWorldConfig
 from mirror_mcsmcdr.runtime import MirrorRuntime
 from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
-from mirror_mcsmcdr.text import status_key
+from mirror_mcsmcdr.text_utils import status_key
 from mirror_mcsmcdr.server import Action, ServerState
 
 

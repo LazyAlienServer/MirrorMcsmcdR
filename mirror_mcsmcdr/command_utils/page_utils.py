@@ -3,7 +3,7 @@ from typing import Any, List, Union
 
 from mcdreforged.api.all import CommandContext, RAction, RTextList
 
-from mirror_mcsmcdr.text import rtr
+from mirror_mcsmcdr.text_utils import rtr
 
 
 class PageValidationError(Enum):

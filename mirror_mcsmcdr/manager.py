@@ -8,11 +8,11 @@ from mirror_mcsmcdr.constants import TITLE
 from mirror_mcsmcdr.config import MultiConfigLoader, MirrorConfig
 from mirror_mcsmcdr.runtime import MirrorRuntime
 from mirror_mcsmcdr.sync.workflow import SyncWorkflow
-from mirror_mcsmcdr.text import help_msg, rejection_key, rtr, status_key
+from mirror_mcsmcdr.text_utils import help_msg, rejection_key, rtr, status_key
 from mirror_mcsmcdr.server import Action, MCSManagerProxyError, ScreenError
 from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
-from mirror_mcsmcdr.command.page import Page
-from mirror_mcsmcdr.command.confirmation import ConfirmationTask, ConfirmationManager
+from mirror_mcsmcdr.command_utils.page_utils import Page
+from mirror_mcsmcdr.command_utils.confirmation_utils import ConfirmationTask, ConfirmationManager
 
 PAGE_SIZE = 5
 CONSOLE_OPERATOR = "[console]"
