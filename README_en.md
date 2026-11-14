@@ -171,22 +171,24 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 - The path where the startup command is executed, usually the directory where the mirror server is located.
 
 **launch_command** `str`
-- The startup command that needs to be executed. If a simple startup command cannot meet your requirements, you can create a `.bat` (or `.sh`) file and write the startup command in it, then execute the file.
+- The startup command that needs to be executed. If a simple startup command cannot meet your requirements, you can create a `.bat` (or `.sh`) file and write the startup command in it, then execute the file. The Linux proxy rejects a command that is too long (above roughly 700 bytes); use a script file in that case as well.
 
 **port** `int | null`
 - The mirror server port. The Linux and Windows proxies use it to check the server status and control the process; it is optional for the `subprocess` proxy, which needs it to tell `starting` from `running`.
 
 **terminal_name** `str`
-- The title of the new command prompt, the name of the new screen, or the prefix used for subprocess proxy log output.
+- The title of the new command prompt, the name of the new screen, or the prefix used for subprocess proxy log output. As a screen name it must not exceed 64 bytes or contain control characters.
 
 **regex_strict** `bool`
-- Whether the Linux or Windows proxies should continue to verify that the process name is `java.exe` after finding the configured port. Generally, there is no need to enable it.
+- Whether the Linux or Windows proxies should continue to verify that the process name starts with `java` (such as `java`, `java.exe` or `javaw.exe`) after finding the configured port. Generally, there is no need to enable it.
 
 **is_mcdr** `bool`
 - Whether the mirror server is started by MCDReforged. Defaults to `true`. For the Linux proxy, `true` makes `stop` and `kill` send MCDR commands to screen; `false` makes `stop` send Minecraft's `stop` command and `kill` perform a force kill. For the Windows proxy, `true` makes `stop` type `!!MCDR server stop_exit` into the command prompt window, while `false` types Minecraft's `stop` command; `kill` always terminates the process listening on the port with `taskkill`. For the subprocess proxy, `true` makes `stop` send `!!MCDR server stop_exit`, while `false` sends Minecraft's `stop` command; `kill` terminates the child process directly.
 
 > [!IMPORTANT]
-> `!!mirror kill -f` and `!!mirror kill --force` are only available for the Linux proxy or Linux/Windows+MCDR. They kill every process listening on the configured port, then close screen; confirm that `port` is correct before using them.
+> `!!mirror kill -f` and `!!mirror kill --force` are only available for the Linux proxy or Linux/Windows+MCDR. The Linux proxy kills every process inside the screen session (including anything you started in that screen by hand) and every process listening on the configured port, then closes the screen; confirm that `port` is correct before using them.
+>
+> The Linux and Windows proxies only recognize processes the current user is allowed to inspect. When the mirror server is started by another user, the port status is still detected, but `kill` may be unable to terminate it.
 
 **proxy_type** `str | null`
 - The terminal proxy type, replacing the legacy `system` option. Valid values are `linux`, `windows`, and `subprocess`. When set to `null`, the plugin automatically selects `linux` or `windows` based on the current operating system. `subprocess` starts the mirror server as a child process inside MCDR, does not require `port`, and supports sending commands through `!!mirror execute`.

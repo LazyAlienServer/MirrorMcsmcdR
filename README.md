@@ -167,22 +167,24 @@ terminal:
 - 执行启动命令的路径，通常为镜像服所在的目录。
 
 **launch_command** `str`
-- 需要执行的启动命令，若简单的启动命令无法满足需求，你可以创建一个`.bat`（或`.sh`）文件，并将启动命令写在该文件中，然后执行该文件。
+- 需要执行的启动命令，若简单的启动命令无法满足需求，你可以创建一个`.bat`（或`.sh`）文件，并将启动命令写在该文件中，然后执行该文件。Linux代理下命令过长（约700字节以上）时会被拒绝，同样请改用脚本文件。
 
 **port** `int | null`
 - 镜像服运行的端口。Linux/Windows代理通过此端口检查状态并控制进程；subprocess代理可不配置此项, 但配置后插件才能区分`正在启动`与`正在运行`。
 
 **terminal_name** `str`
-- 新命令行终端的标题、新screen的名称，或subprocess代理日志输出使用的前缀。
+- 新命令行终端的标题、新screen的名称，或subprocess代理日志输出使用的前缀。作为screen名称时不能超过64字节，也不能包含控制字符。
 
 **regex_strict** `bool`
-- Linux/Windows代理在通过端口检查镜像服运行状态时，是否在找到端口后继续验证进程名必须为`java.exe`。一般情况下无需开启。
+- Linux/Windows代理在通过端口检查镜像服运行状态时，是否在找到端口后继续验证进程名必须以`java`开头（如`java`、`java.exe`、`javaw.exe`）。一般情况下无需开启。
 
 **is_mcdr** `bool`
 - 是否通过MCDReforged启动镜像服，默认为`true`。Linux代理设置为`true`时，`stop`和`kill`会向screen输入MCDR指令；设置为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。Windows代理设置为`true`时，`stop`会向命令提示符窗口输入`!!MCDR server stop_exit`，设置为`false`时会输入Minecraft的`stop`命令，`kill`始终使用`taskkill`强制终止监听端口的进程。subprocess代理设置为`true`时，`stop`会发送`!!MCDR server stop_exit`，设置为`false`时会发送Minecraft的`stop`命令，`kill`会直接终止子进程。
 
 > [!IMPORTANT]
-> `!!mirror kill -f`和`!!mirror kill --force`仅适用于Linux terminal或Windows/Linux+MCDR。它们会杀死配置端口的所有监听进程，再关闭screen；请确认`port`配置正确，避免终止其他服务。
+> `!!mirror kill -f`和`!!mirror kill --force`仅适用于Linux terminal或Windows/Linux+MCDR。Linux代理会杀死screen会话内的全部进程（包括你手动在该screen里启动的程序）以及配置端口的所有监听进程，再关闭screen；请确认`port`配置正确，避免终止其他服务。
+>
+> Linux/Windows代理只能识别当前用户有权查看的进程。镜像服由其他用户启动时，端口状态仍可检测，但`kill`可能无法终止它。
 
 **proxy_type** `str | null`
 - 终端代理类型，替代旧版的`system`配置项。可选值为`linux`、`windows`和`subprocess`。设置为`null`时，将根据当前操作系统自动选择`linux`或`windows`。`subprocess`会在MCDR进程内启动镜像服子进程，不需要配置`port`，并支持通过`!!mirror execute`发送指令。

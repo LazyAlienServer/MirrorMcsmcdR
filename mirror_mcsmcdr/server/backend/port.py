@@ -1,51 +1,62 @@
-import os
+from typing import Optional
 
-from mirror_mcsmcdr.server.backend.shell import get_command_output
+import psutil
 
 
 class PortListener:
-    """Finds the processes that listen on a local TCP port."""
+    """Finds what listens on a local TCP port."""
 
     def __init__(self, port: int, java_only: bool) -> None:
         """
-        :param java_only: ignore listeners that are not java processes
+        :param java_only: ignore listeners that are not known to be java processes
         """
         self.port = port
         self.java_only = java_only
 
+    def is_listening(self) -> bool:
+        """Whether the port is taken, which includes a listener whose process cannot be told."""
+        owners = self._owners()
+        if self.java_only:
+            return any(pid is not None and self._is_java(pid) for pid in owners)
+        return bool(owners)
+
     def pids(self) -> set[int]:
-        return self._windows_pids() if os.name == "nt" else self._posix_pids()
+        """
+        The listening processes that can be told.
 
-    def _posix_pids(self) -> set[int]:
-        # -F prints one field per line: "p<pid>" opens a process, "c<command>" names it
-        text = get_command_output(f"lsof -nP -iTCP:{self.port} -sTCP:LISTEN -Fpc")
-        pids = set()
-        pid = None
-        for line in text.splitlines():
-            if line.startswith("p") and line[1:].isdigit():
-                pid = int(line[1:])
-            elif line.startswith("c") and pid is not None:
-                if not self.java_only or line[1:].startswith("java"):
-                    pids.add(pid)
-        return pids
+        A listener of another user usually cannot, so an empty set does not mean that the port is free;
+        that is what :meth:`is_listening` is for.
+        """
+        return {pid for pid in self._owners() if pid is not None and (not self.java_only or self._is_java(pid))}
 
-    def _windows_pids(self) -> set[int]:
-        port = str(self.port)
-        pids = set()
-        for line in get_command_output(f"netstat -ano | findstr :{port}").splitlines():
-            fields = line.split()
-            if len(fields) < 5 or fields[0].upper() not in ("TCP", "TCPv6"):
-                continue
-            if fields[-2].upper() != "LISTENING" or not fields[-1].isdigit():
-                continue
-            if fields[1].rsplit(":", 1)[-1] == port:
-                pids.add(int(fields[-1]))
-        if not pids or not self.java_only:
-            return pids
+    def processes(self) -> list[psutil.Process]:
+        """Same as :meth:`pids`, as handles that stay bound to these very processes when a pid gets reused."""
+        processes = []
+        for pid in self.pids():
+            try:
+                processes.append(psutil.Process(pid))
+            except psutil.NoSuchProcess:
+                pass
+        return processes
 
-        java_pids = set()
-        for line in get_command_output(["tasklist"]).splitlines():
-            fields = line.split()
-            if len(fields) >= 2 and fields[0].lower() == "java.exe" and fields[1].isdigit():
-                java_pids.add(int(fields[1]))
-        return pids & java_pids
+    def _owners(self) -> set[Optional[int]]:
+        try:
+            found = [(connection, connection.pid) for connection in psutil.net_connections(kind="tcp")]
+        except psutil.AccessDenied:
+            # macOS shows the sockets of the whole system to root only; those of the processes of this user remain
+            found = []
+            for process in psutil.process_iter():
+                try:
+                    # named connections() before psutil 6
+                    list_connections = getattr(process, "net_connections", None) or process.connections
+                    found += [(connection, process.pid) for connection in list_connections(kind="tcp")]
+                except psutil.Error:
+                    pass
+        return {pid for connection, pid in found if connection.status == psutil.CONN_LISTEN and connection.laddr and connection.laddr.port == self.port}
+
+    @staticmethod
+    def _is_java(pid: int) -> bool:
+        try:
+            return psutil.Process(pid).name().lower().startswith("java")
+        except psutil.Error:
+            return False

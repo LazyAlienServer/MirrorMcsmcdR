@@ -37,7 +37,7 @@ class SubprocessProxy(TerminalProxy):
     def observe(self) -> Evidence:
         return Evidence(
             process_alive=self.alive,
-            port_listening=bool(self.listener.pids()) if self.listener is not None else None,
+            port_listening=self.listener.is_listening() if self.listener is not None else None,
         )
 
     def _start(self, result: ActionResult) -> ActionResult:

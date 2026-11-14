@@ -10,6 +10,7 @@ from mirror_mcsmcdr.server.backend.base import ServerBackend
 from mirror_mcsmcdr.server.backend.mcsm import MCSManagerProxy
 from mirror_mcsmcdr.server.backend.rcon import RConProxy
 from mirror_mcsmcdr.server.backend.child_process import SubprocessProxy
+from mirror_mcsmcdr.server.backend.screen import ScreenError
 from mirror_mcsmcdr.server.backend.terminal import LinuxProxy, TerminalProxy, WindowsProxy
 from mirror_mcsmcdr.server.status import TERMINATIONS, Action, ActionResult, Evidence, Intent, ServerState, StatusSnapshot
 from mirror_mcsmcdr.server.resolver import StatusResolver
@@ -35,7 +36,11 @@ def _build_terminal(config: TerminalConfig) -> TerminalProxy:
     if terminal_type is None:
         raise ProxySettingException("terminal", ["proxy_type"])
     _require("terminal", config, ["launch_path", "launch_command"] + ([] if terminal_type is SubprocessProxy else ["port"]))
-    return terminal_type(config)
+    try:
+        return terminal_type(config)
+    except ScreenError as e:
+        # the only thing a screen can refuse before it is used is its name
+        raise ProxySettingException("terminal", ["terminal_name"]) from e
 
 
 def build_backends(config: MirrorConfig) -> Tuple[List[ServerBackend], List[ProxySettingException]]:
