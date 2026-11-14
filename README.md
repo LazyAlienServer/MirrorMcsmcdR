@@ -30,7 +30,7 @@
 
 | 依赖                | 说明                                                                                      |
 |---------------------|-------------------------------------------------------------------------------------------|
-| Python              | `>=3.9`                                                                                   |
+| Python              | `>=3.10`                                                                                  |
 | Python 包           | `xxhash>=3`                                                                               |
 | Linux terminal 代理 | `proxy_type` 为 `linux` 或 `null` 时需要 [`screen`](https://www.gnu.org/software/screen/) |
 

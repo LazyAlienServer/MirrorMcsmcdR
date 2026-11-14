@@ -30,7 +30,7 @@
 
 | Dependency           | Description                                                                             |
 |----------------------|-----------------------------------------------------------------------------------------|
-| Python               | `>=3.9`                                                                                 |
+| Python               | `>=3.10`                                                                                |
 | Python package       | `xxhash>=3`                                                                             |
 | Linux terminal proxy | [`screen`](https://www.gnu.org/software/screen/) when `proxy_type` is `linux` or `null` |
 
