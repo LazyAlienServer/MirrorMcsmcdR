@@ -90,7 +90,7 @@ class MultiConfigLoader:
             with self.server.open_bundled_file(fallback_name) as file:
                 return yaml.load(file.read().decode('utf8'))
 
-    def _load_user_config(self) -> Tuple[Dict[str, dict] | {}, Optional[Path]]:
+    def _load_user_config(self) -> Tuple[Dict[str, dict], Optional[Path]]:
         path = self.config_path
         if not path.is_file():
             if self.legacy_config_path.is_file():
