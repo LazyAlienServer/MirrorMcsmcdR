@@ -54,8 +54,8 @@ class ClassicWorldSynchronizer:
             if not os.path.exists(target_path):
                 if not self.ignore_inexistent_target_path:
                     paths_notfound.append(target_path)
-                else:
-                    os.makedirs(target_path)
+                    continue
+                os.makedirs(target_path)
 
             for single_world in self.world:
 
@@ -68,6 +68,8 @@ class ClassicWorldSynchronizer:
                 for filename in set(dst_files) - set(src_files):
                     os.remove(os.path.join(dst_path, filename))
                 
+                # a target that never held this world has no directory for it yet
+                os.makedirs(dst_path, exist_ok=True)
                 self.copy_tree(src_path, dst_path)
 
                 with ThreadPoolExecutor(max_workers=self.concurrency) as t:
