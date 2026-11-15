@@ -3,7 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 from mirror_mcsmcdr.config.mirror_config import MirrorConfig, MultiMirrorConfig
 from ruamel.yaml import YAML
-from ruamel.yaml.comments import CommentedMap
+from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from typing import Dict, Optional, Tuple
 import os
 
@@ -143,5 +143,12 @@ class MultiConfigLoader:
                 continue
             if isinstance(target[key], dict) and isinstance(value, dict):
                 cls._apply_values(target[key], value)
+            elif isinstance(target[key], CommentedSeq) and isinstance(value, list) and value:
+                # the comment of the next key hangs on the last item of this list, so the list is refilled, not replaced
+                sequence = target[key]
+                trailing = sequence.ca.items.pop(len(sequence) - 1, None)
+                sequence[:] = value
+                if trailing is not None:
+                    sequence.ca.items[len(sequence) - 1] = trailing
             else:
                 target[key] = value
