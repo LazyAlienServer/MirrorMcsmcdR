@@ -57,9 +57,7 @@ class ServerController:
 
     def execute(self, action: Action) -> ActionResult:
         with self._action_lock:
-            if action in TERMINATIONS:
-                # whatever becomes of it, nobody is waiting for the last start or stop any more
-                self._set_intent(None)
+            # judged with the pending start or stop still in view: while starting, that is all some backends have
             result = ActionResult.check(action, self.status())
             backend = next((backend for backend in self.backends if action in backend.supports), None)
             if backend is None:
@@ -67,8 +65,12 @@ class ServerController:
             if not result.accepted:
                 return result
             result = backend.perform(result)
-            if result.accepted and action in self._timeouts:
-                self._set_intent(Intent(action, time.monotonic() + self._timeouts[action]))
+            if result.accepted:
+                if action in TERMINATIONS:
+                    # nobody is waiting for the last start or stop any more
+                    self._set_intent(None)
+                else:
+                    self._set_intent(Intent(action, time.monotonic() + self._timeouts[action]))
             return result
 
     def wait_for(self, state: ServerState, timeout: float, interval: float) -> StatusSnapshot:

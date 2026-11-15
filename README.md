@@ -179,7 +179,7 @@ terminal:
 - Linux/Windows代理在通过端口检查镜像服运行状态时，是否在找到端口后继续验证进程名必须以`java`开头（如`java`、`java.exe`、`javaw.exe`）。一般情况下无需开启。
 
 **is_mcdr** `bool`
-- 是否通过MCDReforged启动镜像服，默认为`true`。Linux代理设置为`true`时，`stop`和`kill`会向screen输入MCDR指令；设置为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。Windows代理设置为`true`时，`stop`会向命令提示符窗口输入`!!MCDR server stop_exit`，设置为`false`时会输入Minecraft的`stop`命令，`kill`始终使用`taskkill`强制终止监听端口的进程。subprocess代理设置为`true`时，`stop`会发送`!!MCDR server stop_exit`，设置为`false`时会发送Minecraft的`stop`命令，`kill`会直接终止子进程。
+- 是否通过MCDReforged启动镜像服，默认为`true`。Linux代理设置为`true`时，`stop`和`kill`会向screen输入MCDR指令；设置为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。Windows代理设置为`true`时，`stop`会向命令提示符窗口输入`!!MCDR server stop_exit`，设置为`false`时会输入Minecraft的`stop`命令，`kill`始终使用`taskkill`强制终止监听端口的进程；镜像服仍在启动、端口尚未开放时，则终止启动它的命令提示符窗口及其中的全部进程。subprocess代理设置为`true`时，`stop`会发送`!!MCDR server stop_exit`，设置为`false`时会发送Minecraft的`stop`命令，`kill`会直接终止子进程。
 
 > [!IMPORTANT]
 > `!!mirror kill -f`和`!!mirror kill --force`仅适用于Linux terminal或Windows/Linux+MCDR。Linux代理会杀死screen会话内的全部进程（包括你手动在该screen里启动的程序）以及配置端口的所有监听进程，再关闭screen；请确认`port`配置正确，避免终止其他服务。
