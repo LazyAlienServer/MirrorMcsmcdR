@@ -9,6 +9,7 @@ from mcdreforged.api.all import CommandSource, PluginServerInterface, RTextBase
 from mirror_mcsmcdr.config.command_config import SaveWorldConfig
 from mirror_mcsmcdr.runtime import MirrorRuntime
 from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
+from mirror_mcsmcdr.sync.backup import BackupError, BackupFailed, BackupUnavailable, MirrorBackup
 from mirror_mcsmcdr.text_utils import status_key
 from mirror_mcsmcdr.server import Action, ServerState
 
@@ -16,6 +17,25 @@ from mirror_mcsmcdr.server import Action, ServerState
 class Translator(Protocol):
     def __call__(self, key: str, title: bool = True, **kwargs: Any) -> RTextBase:
         ...
+
+
+class _SyncRefused(Exception):
+    """The sync stopped for a reason that has been reported already; it is recorded as failed."""
+
+
+def describe_backup_error(tr: Translator, error: BackupError) -> RTextBase:
+    """Why there is no backup, in words that may be shown in game."""
+    return tr(f"command.sync.backup.reason.{error.reason}", title=False, **error.kwargs)
+
+
+def backup_error_console_lines(tr: Translator, error: BackupError) -> list[RTextBase]:
+    """What only the console may see of ``error``: the paths it is about, and what the command line tool printed."""
+    lines = []
+    if error.detail:
+        lines.append(tr("command.sync.backup.detail", title=False, detail=error.detail))
+    if error.output:
+        lines.append(tr("command.sync.backup.output", title=False, output=error.output_tail))
+    return lines
 
 
 def format_duration(seconds: float) -> str:
@@ -85,14 +105,22 @@ class SyncWorkflow:
         """
         started_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         record: Optional[SyncRecord] = None
+        # set as soon as the backup exists, so that every record of this sync carries it
+        backup_id: Optional[int] = None
         try:
             if not self._ensure_server_closed(runtime, source, on_server_stopped):
                 return
-            record = self._sync_world(runtime, started_at, operator)
+            if runtime.backup is not None:
+                backup_id = self._back_up(runtime.backup, operator)
+                if backup_id is not None:
+                    self._server.broadcast(self._tr("command.sync.backup.done", backup_id=backup_id))
+            record = self._sync_world(runtime, started_at, operator, backup_id)
+        except _SyncRefused as e:
+            record = SyncRecord(started_at, operator, SyncStatus.FAILED, exception=str(e), backup_id=backup_id)
         except Exception as e:
             self._server.broadcast(self._tr("command.sync.error"))
             self._server.logger.error(e, exc_info=e)
-            record = SyncRecord(started_at, operator, SyncStatus.FAILED, exception=str(e))
+            record = SyncRecord(started_at, operator, SyncStatus.FAILED, exception=str(e), backup_id=backup_id)
         finally:
             if record is not None:
                 runtime.history.append(record)
@@ -128,10 +156,47 @@ class SyncWorkflow:
         self._server.broadcast(self._tr("command.sync.auto_restart.fail", status=self._tr(status_key(snapshot), title=False)))
         return False
 
-    def _sync_world(self, runtime: MirrorRuntime, started_at: str, operator: str) -> SyncRecord:
+    def _back_up(self, backup: MirrorBackup, operator: str) -> Optional[int]:
+        """
+        Back the mirror up with its PrimeBackup, located from scratch: nothing found earlier is trusted.
+
+        :return: the id of the backup, None if no target holds any of the worlds yet
+        :raise _SyncRefused: there is no backup, so there must be no sync
+        """
+        try:
+            resolved = backup.resolve()
+            if not backup.has_existing_world():
+                self._server.broadcast(self._tr("command.sync.backup.skipped"))
+                return None
+            self._server.broadcast(self._tr("command.sync.backup.start"))
+            return backup.make(resolved, operator)
+        except BackupError as e:
+            raise self._refuse("failed" if isinstance(e, BackupFailed) else "unavailable", e) from e
+
+    def _ensure_stopped(self, runtime: MirrorRuntime) -> None:
+        snapshot = runtime.controller.status()
+        if not snapshot.is_exactly(ServerState.STOPPED):
+            raise BackupUnavailable("mirror_not_stopped", status=self._tr(status_key(snapshot), title=False).to_legacy_text())
+
+    def _refuse(self, kind: str, error: BackupError) -> "_SyncRefused":
+        """Report why the sync stops at the backup and return what to raise for it."""
+        reason = describe_backup_error(self._tr, error)
+        self._server.broadcast(self._tr(f"command.sync.backup.{kind}", reason=reason.to_legacy_text()))
+        for line in backup_error_console_lines(self._tr, error):
+            self._server.logger.warning(line)
+        return _SyncRefused(reason.to_plain_text())
+
+    def _sync_world(self, runtime: MirrorRuntime, started_at: str, operator: str, backup_id: Optional[int]) -> SyncRecord:
         self._server.broadcast(self._tr("command.sync.success"))
         started = time.time()
-        self._save_world(runtime.config.command.action.sync.save_world, runtime.save_world_regex)
+        sync_config = runtime.config.command.action.sync
+        self._save_world(sync_config.save_world, runtime.save_world_regex)
+        # the backup and the save took a while; a mirror started meanwhile holds newer data than the backup
+        if runtime.backup is not None and sync_config.ensure_server_closed:
+            try:
+                self._ensure_stopped(runtime)
+            except BackupUnavailable as e:
+                raise self._refuse("stale", e) from e
         changed_files_count, paths_notfound = runtime.world_sync.sync()
         duration = format_duration(time.time() - started)
 
@@ -148,6 +213,7 @@ class SyncWorkflow:
             duration=duration,
             changed_files_count=changed_files_count,
             paths_notfound=paths_notfound,
+            backup_id=backup_id,
         )
 
     def _save_world(self, config: SaveWorldConfig, saved_pattern: Pattern[str]) -> None:

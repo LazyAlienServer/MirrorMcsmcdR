@@ -31,6 +31,9 @@ mirror_mcsmcdr:
     console_only: §b{server_name}§c此命令仅可通过终端执行
     mcsm_disabled: §cMCSM-API未启用
     unavailable: §c配置文件错误, §4{prefix}§c实例已禁用
+    backup:
+      ready: "{prefix}: 同步前备份已就绪, PrimeBackup v{version} 位于 {path}"
+      unavailable: "{prefix}: 同步前备份不可用, 修复之前所有同步都会被拒绝: {reason}"
   
   command:
 
@@ -146,12 +149,51 @@ mirror_mcsmcdr:
       completed: §a同步完成! §f用时 §b{time}s §7/ §f更新了§b{changed_files_count}§f个文件
       identical: §a文件完全相同, 无需同步
       error: "§c同步时发生错误, 请前往终端查看错误信息"
+      backup:
+        start: "§b{server_name}§f: 正在用其PrimeBackup备份..."
+        done: "§a已创建§b{server_name}§a的备份 §b#{backup_id}"
+        skipped: "§7{server_name}中还没有要同步的世界, 无需备份"
+        unavailable: "§c同步已取消, 无法进行备份: §f{reason}§c. 详情见控制台"
+        failed: "§c同步已取消, 备份失败: §f{reason}§c. 详情见控制台"
+        stale: "§c同步已在复制前取消: §f{reason}§c. 备份已不是最新的"
+        warnings: "§b{server_name}§e的PrimeBackup有§b{count}§e项设置与同步设置不一致, 备份可能不包含同步将覆盖的全部内容. 详情见控制台"
+        detail: "{server_name}的同步前备份: {detail}"
+        output: "PrimeBackup输出的最后几行:\n{output}"
+        reason:
+          mcdr_path_required: "terminal未启用时必须填写sync.backup.mcdr_path"
+          mcdr_path_not_found: "镜像服的MCDR目录不存在"
+          mcdr_config_unreadable: "无法读取镜像服的MCDR配置文件"
+          mcdr_config_invalid: "镜像服的MCDR配置文件中'{option}'的值无效"
+          plugin_not_found: "镜像服MCDR的插件目录中没有PrimeBackup插件"
+          plugin_duplicated: "镜像服MCDR中有多个PrimeBackup插件"
+          plugin_too_old: "镜像服的PrimeBackup版本为{version}, 至少需要1.13.0"
+          pb_config_unreadable: "无法读取镜像服的PrimeBackup配置文件"
+          pb_config_invalid: "镜像服的PrimeBackup配置文件中'{option}'的值无效"
+          database_not_found: "镜像服的PrimeBackup数据库不存在"
+          pathspec_missing: "未安装PrimeBackup所需的Python包pathspec"
+          mirror_not_stopped: "{server_name}当前状态为{status}, 而不是已停止"
+          probe_failed: "PrimeBackup命令行工具退出码为{code}, 请检查其Python依赖是否已安装"
+          launch: "无法启动PrimeBackup命令行工具"
+          timeout: "PrimeBackup未在{timeout}秒内完成"
+          exit_code: "PrimeBackup退出码为{code}"
+          no_backup_id: "PrimeBackup没有报告备份编号"
+          backup_id_mismatch: "PrimeBackup报告了不同的备份编号: {ids}"
+        warning:
+          source_mismatch: "{server_name}的同步前备份: 其PrimeBackup备份的目录{source}不是任何一个同步目标({targets}), 同步覆盖的内容不会被备份"
+          targets_not_backed_up: "{server_name}的同步前备份: 以下同步目标不是其PrimeBackup备份的目录, 会在没有备份的情况下被覆盖: {targets}"
+          worlds_not_targeted: "{server_name}的同步前备份: 其PrimeBackup的backup.targets [{targets}] 不包含以下被同步的世界: {worlds}"
+          ignored: "{server_name}的同步前备份: 其PrimeBackup忽略了同步不忽略的内容 (ignore_patterns / ignored_files): {patterns}"
+          retained: "{server_name}的同步前备份: 其PrimeBackup的retain_patterns会让以下内容不进入备份: {patterns}"
+          reuse_stat_unchanged_file: "{server_name}的同步前备份: 其PrimeBackup开启了reuse_stat_unchanged_file, 大小和修改时间未变的文件不会被读取, 备份中可能是旧内容"
+          creation_skip_missing_file: "{server_name}的同步前备份: 其PrimeBackup开启了creation_skip_missing_file, 备份过程中消失的文件会被直接跳过"
+          storage_in_world: "{server_name}的同步前备份: PrimeBackup的存储目录{storage}位于被同步的世界{world}中, 同步会删除备份"
     
     history:
       record:
         success: "§e[{time}] §b{operator} §a成功 §7| §f变化文件: §b{change_file_count} §f个 §f耗时: §b{duration}s"
         identical: "§e[{time}] §b{operator} §a无变化 §7| §f耗时: §b{duration}s"
         failed: "§e[{time}] §b{operator} §c失败 §7| §f异常: §c{exception}"
+        backup: " §7| §f备份: §b#{backup_id}"
   
   mcsm:
     disabled: §cMCSM-API未启用

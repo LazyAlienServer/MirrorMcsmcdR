@@ -65,6 +65,17 @@
     # File names excluded from synchronization.
     ignore_files:
       - session.lock
+    # Back up the mirror with the mirror's own PrimeBackup (>= 1.13.0) before every sync.
+    # When enabled, nothing is copied unless the backup succeeded. The backup is made with the mirror's PrimeBackup settings as they are.
+    backup:
+      # Whether every sync is preceded by a backup; set to false and reload to sync without one.
+      enable: false
+      # Directory of the mirror's MCDR (where its config.yml is), relative to this MCDR. Empty uses terminal.launch_path while the terminal is enabled.
+      mcdr_path: ''
+      # Seconds a backup may take; a backup that takes longer is cancelled and the sync refused.
+      timeout: 600
+      # Whether a sync must be confirmed when the mirror's PrimeBackup settings differ from the sync settings, so that the backup may be incomplete.
+      confirm_on_warning: true
 
   # Command permissions and command behavior.
   command:
