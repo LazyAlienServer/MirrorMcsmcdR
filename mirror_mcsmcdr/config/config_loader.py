@@ -34,7 +34,7 @@ class MultiConfigLoader:
         if user_config:
             first_prefix = next(iter(user_config))
             first_data = user_config[first_prefix]
-            parent_config = MirrorConfig().deserialize(first_data)
+            parent_config = MirrorConfig.deserialize(self._inherit(MirrorConfig().serialize(), first_data))
             needs_save = parent_config.serialize() != first_data
             if needs_save:
                 self.server.logger.info("Merge missing keys for mirror config.")
@@ -118,10 +118,17 @@ class MultiConfigLoader:
             yaml.dump(data, file)
 
     @classmethod
-    def _inherit(cls, parent: dict, child: dict) -> dict:
-        """Return ``parent`` with the values of ``child`` on top; only mappings are merged, anything else is replaced."""
+    def _inherit(cls, parent: dict, child: Optional[dict]) -> dict:
+        """
+        Return ``parent`` with the values of ``child`` on top; only mappings are merged, anything else is replaced.
+
+        A key of ``child`` may be a dotted path: ``display.server_name: x`` is ``display: {server_name: x}``.
+        """
         merged = dict(parent)
-        for key, value in child.items():
+        for key, value in (child or {}).items():
+            head, _, rest = str(key).partition(".")
+            if rest:
+                key, value = head, {rest: value}
             if isinstance(value, dict) and isinstance(merged.get(key), dict):
                 merged[key] = cls._inherit(merged[key], value)
             else:
