@@ -24,7 +24,7 @@
     launch_path: ./Mirror
     # Command used to start the mirror server.
     launch_command: python -m mcdreforged
-    # Mirror server port; not required for the subprocess proxy.
+    # Mirror server port; required for every proxy.
     port:
     # Terminal title, screen name, or subprocess log prefix.
     terminal_name: Mirror

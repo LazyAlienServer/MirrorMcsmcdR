@@ -154,7 +154,7 @@ terminal:
 >   - Linux `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
 >   - Windows `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{launch_command}')"`
 
-其中，`linux`代理通过screen控制镜像服；`windows`代理的`stop`会向监听镜像服端口的进程所在的命令提示符窗口输入停止命令，`kill`会使用`taskkill`强制终止该进程；`subprocess`代理通过子进程标准输入输出进行控制。Linux/Windows代理需要正确配置`port`，subprocess代理无需配置`port`。MCSM仍可作为替代控制方式。
+其中，`linux`代理通过screen控制镜像服；`windows`代理的`stop`会向监听镜像服端口的进程所在的命令提示符窗口输入停止命令，`kill`会使用`taskkill`强制终止该进程；`subprocess`代理通过子进程标准输入输出进行控制。所有代理都需要正确配置`port`。MCSM仍可作为替代控制方式。
 
 > [!WARNING]
 > Windows代理下的 stop 命令为实验性功能，请自行承担使用风险。
@@ -168,8 +168,8 @@ terminal:
 **launch_command** `str`
 - 需要执行的启动命令，若简单的启动命令无法满足需求，你可以创建一个`.bat`（或`.sh`）文件，并将启动命令写在该文件中，然后执行该文件。Linux代理下命令过长（约700字节以上）时会被拒绝，同样请改用脚本文件。
 
-**port** `int | null`
-- 镜像服运行的端口。Linux/Windows代理通过此端口检查状态并控制进程；subprocess代理可不配置此项, 但配置后插件才能区分`正在启动`与`正在运行`。
+**port** `int`
+- 镜像服运行的端口，所有代理都必须配置。插件通过此端口检查镜像服状态；Linux/Windows代理还通过它控制进程。未配置时终端代理不可用，帮助信息中的`terminal`会显示为配置错误。
 
 **terminal_name** `str`
 - 新命令行终端的标题、新screen的名称，或subprocess代理日志输出使用的前缀。作为screen名称时不能超过64字节，也不能包含控制字符。
@@ -186,7 +186,7 @@ terminal:
 > Linux/Windows代理只能识别当前用户有权查看的进程。镜像服由其他用户启动时，端口状态仍可检测，但`kill`可能无法终止它。
 
 **proxy_type** `str | null`
-- 终端代理类型，替代旧版的`system`配置项。可选值为`linux`、`windows`和`subprocess`。设置为`null`时，将根据当前操作系统自动选择`linux`或`windows`。`subprocess`会在MCDR进程内启动镜像服子进程，不需要配置`port`，并支持通过`!!mirror execute`发送指令。
+- 终端代理类型，替代旧版的`system`配置项。可选值为`linux`、`windows`和`subprocess`。设置为`null`时，将根据当前操作系统自动选择`linux`或`windows`。`subprocess`会在MCDR进程内启动镜像服子进程，并支持通过`!!mirror execute`发送指令。
 
 > [!NOTE]
 > 使用 `subprocess` 代理启动镜像服 MCDR 实例时，请在镜像服 MCDR 的配置文件中将 `advanced_console` 设置为 `false`。

@@ -21,8 +21,8 @@ class SubprocessProxy(TerminalProxy):
 
     def __init__(self, config: TerminalConfig) -> None:
         super().__init__(config)
-        # without a port the server cannot be told apart from one that is still starting
-        self.listener = PortListener(config.port, config.regex_strict) if config.port else None
+        assert config.port is not None
+        self.listener = PortListener(config.port, config.regex_strict)
         self.process: Optional[subprocess.Popen] = None
         self.console_log_enabled = config.console_log
         self.console_log_limit: Optional[int] = None
@@ -35,10 +35,7 @@ class SubprocessProxy(TerminalProxy):
         return self.process is not None and self.process.poll() is None
 
     def observe(self) -> Evidence:
-        return Evidence(
-            process_alive=self.alive,
-            port_listening=self.listener.is_listening() if self.listener is not None else None,
-        )
+        return Evidence(process_alive=self.alive, port_listening=self.listener.is_listening())
 
     def _start(self, result: ActionResult) -> ActionResult:
         if self.alive:

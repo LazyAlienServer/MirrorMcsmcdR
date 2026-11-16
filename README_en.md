@@ -158,7 +158,7 @@ When `proxy_type` is `linux`, the plugin creates a new screen; when it is `windo
 >    - Linux: `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
 >    - Windows: `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{launch_command}')"`
 
-Note: The `linux` proxy controls the mirror server through screen. With the `windows` proxy, `stop` types the stop command into the command prompt window of the process listening on the configured mirror port and `kill` forcefully terminates that process with `taskkill`. The `subprocess` proxy controls the mirror server through the child process's standard input and output. The Linux/Windows proxies require a correctly configured `port`; the subprocess proxy does not require `port`. MCSM can still be used as an alternative control method.
+Note: The `linux` proxy controls the mirror server through screen. With the `windows` proxy, `stop` types the stop command into the command prompt window of the process listening on the configured mirror port and `kill` forcefully terminates that process with `taskkill`. The `subprocess` proxy controls the mirror server through the child process's standard input and output. Every proxy requires a correctly configured `port`. MCSM can still be used as an alternative control method.
 
 > [!WARNING]
 > The `stop` command under the Windows proxy is experimental; use it at your own risk.
@@ -172,8 +172,8 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 **launch_command** `str`
 - The startup command that needs to be executed. If a simple startup command cannot meet your requirements, you can create a `.bat` (or `.sh`) file and write the startup command in it, then execute the file. The Linux proxy rejects a command that is too long (above roughly 700 bytes); use a script file in that case as well.
 
-**port** `int | null`
-- The mirror server port. The Linux and Windows proxies use it to check the server status and control the process; it is optional for the `subprocess` proxy, which needs it to tell `starting` from `running`.
+**port** `int`
+- The mirror server port, required for every proxy. The plugin checks the mirror status through it; the Linux and Windows proxies also use it to control the process. Without it the terminal proxy is unavailable and the help message shows `terminal` as misconfigured.
 
 **terminal_name** `str`
 - The title of the new command prompt, the name of the new screen, or the prefix used for subprocess proxy log output. As a screen name it must not exceed 64 bytes or contain control characters.
@@ -190,7 +190,7 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 > The Linux and Windows proxies only recognize processes the current user is allowed to inspect. When the mirror server is started by another user, the port status is still detected, but `kill` may be unable to terminate it.
 
 **proxy_type** `str | null`
-- The terminal proxy type, replacing the legacy `system` option. Valid values are `linux`, `windows`, and `subprocess`. When set to `null`, the plugin automatically selects `linux` or `windows` based on the current operating system. `subprocess` starts the mirror server as a child process inside MCDR, does not require `port`, and supports sending commands through `!!mirror execute`.
+- The terminal proxy type, replacing the legacy `system` option. Valid values are `linux`, `windows`, and `subprocess`. When set to `null`, the plugin automatically selects `linux` or `windows` based on the current operating system. `subprocess` starts the mirror server as a child process inside MCDR and supports sending commands through `!!mirror execute`.
 
 > [!NOTE]
 > When using the `subprocess` proxy to start another MCDR instance, set `advanced_console` to `false` in the mirror server MCDR's configuration file.
