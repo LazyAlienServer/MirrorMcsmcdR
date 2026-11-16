@@ -1,10 +1,12 @@
 import os
 import re
 import sys
+from pathlib import Path
 from typing import Optional
 
 import psutil
 
+from mirror_mcsmcdr.mcdr_config import CONFIG_FILE, MCDRConfigError, read_mcdr_config
 from mirror_mcsmcdr.server.status import ProcessInfo
 
 # python, python3, python3.12, pythonw, pypy3 and their .exe forms
@@ -83,6 +85,62 @@ def is_mcdr(process: psutil.Process) -> bool:
 def is_shell(process: psutil.Process) -> bool:
     """:raise psutil.Error: if the name cannot be read"""
     return process.name().lower() in _SHELLS
+
+
+def is_server_of(process: psutil.Process, mcdr: psutil.Process) -> bool:
+    """
+    Whether ``process``, a child of ``mcdr``, is the server as the config of that MCDR describes it now.
+
+    MCDR runs a ``start_command`` string through the shell and a list directly, in ``working_directory``.
+    False whenever something cannot be read, or the config was changed after the server started.
+    """
+    try:
+        mcdr_cwd = Path(mcdr.cwd())
+        config = read_mcdr_config(mcdr_cwd / _config_argument(mcdr.cmdline()))
+        cmdline = process.cmdline()
+    except (psutil.Error, MCDRConfigError):
+        return False
+    command = config.get("start_command")
+    if isinstance(command, str):
+        matches = _shell_runs(cmdline, command)
+    elif isinstance(command, list) and all(isinstance(arg, str) for arg in command):
+        matches = cmdline == command
+    else:
+        matches = False
+    working_directory = config.get("working_directory", "server")
+    if not matches or not isinstance(working_directory, str):
+        return matches
+    try:
+        cwd = process.cwd()
+    except psutil.Error:
+        # the command alone has to do
+        return True
+    return _same_path(cwd, str(mcdr_cwd / working_directory))
+
+
+def _config_argument(mcdr_cmdline: list[str]) -> str:
+    """The value of ``--config`` that MCDR was started with, which is relative to its working directory."""
+    for index, arg in enumerate(mcdr_cmdline):
+        if arg == "--config" and index + 1 < len(mcdr_cmdline):
+            return mcdr_cmdline[index + 1]
+        if arg.startswith("--config="):
+            return arg[len("--config="):]
+    return CONFIG_FILE
+
+
+def _shell_runs(cmdline: list[str], command: str) -> bool:
+    """Whether ``cmdline`` is the shell that ``subprocess`` starts for ``command`` with ``shell=True``."""
+    if sys.platform == "win32":
+        # "cmd.exe /c <command>": its arguments are read back split at spaces and without their quotes
+        return (
+            len(cmdline) > 2 and os.path.basename(cmdline[0]).lower() == "cmd.exe" and cmdline[1].lower() == "/c"
+            and " ".join(cmdline[2:]).replace('"', "").split() == command.replace('"', "").split()
+        )
+    return cmdline == ["/bin/sh", "-c", command]
+
+
+def _same_path(a: str, b: str) -> bool:
+    return os.path.normcase(os.path.realpath(a)) == os.path.normcase(os.path.realpath(b))
 
 
 def describe(process: psutil.Process, in_record: bool) -> ProcessInfo:
