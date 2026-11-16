@@ -204,7 +204,7 @@ class MirrorManager:
         config = runtime.config
         misconfigured = {error.proxy for error in runtime.proxy_errors}
         info = RTextList(rtr("command.proxy.title", False))
-        for name, proxy_config in (("mcsm", config.mcsm), ("rcon", config.rcon), ("terminal", config.terminal)):
+        for name, proxy_config in (("mcsm", config.mcsm), ("terminal", config.terminal)):
             if name in misconfigured:
                 text = RText(name, RColor.red).h(rtr("command.proxy.error", False))
             elif proxy_config.enable:

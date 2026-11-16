@@ -3,7 +3,7 @@
 # Add another prefix such as "!!mirror2" to configure another mirror server.
 
 "!!mirror":
-  # MCSManager connection settings. When enabled, terminal and RCON are not used.
+  # MCSManager connection settings. When enabled, terminal is not used.
   mcsm:
     # Whether to control the mirror server through MCSManager.
     enable: false
@@ -36,17 +36,6 @@
     proxy_type:
     # Whether subprocess console output is shown by default.
     console_log: false
-
-  # RCON connection settings.
-  rcon:
-    # Whether RCON is enabled.
-    enable: false
-    # RCON server address.
-    address:
-    # RCON server port.
-    port:
-    # RCON server password.
-    password:
 
   # File synchronization settings.
   sync:

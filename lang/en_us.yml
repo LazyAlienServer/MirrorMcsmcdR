@@ -94,7 +94,6 @@ mirror_mcsmcdr:
     anomaly:
       orphan_screen: "§cDetached (Java: not running; Screen: running)"
       orphan_process: "§cDetached (Java: running; Screen: not running)"
-      probe_conflict: "§cStatus error. The RCON status does not match the port(terminal) status"
 
     outcome:
       path_not_found: Cannot find available launch path, please check if {server_name} server is created and plugins' config is configured correctly
@@ -102,7 +101,7 @@ mirror_mcsmcdr:
       timeout: The process did not exit in time. Use {prefix} kill -f to forcefully terminate it
 
     status:
-      unsupported: Current config does not support status command. You need to configure MCSM, terminal or RCON
+      unsupported: Current config does not support status command. You need to configure MCSM or terminal
 
     start:
       success: starting command sent
@@ -120,7 +119,7 @@ mirror_mcsmcdr:
         unknown: status unknown, please report this problem to operators
         stopping: stopping, please wait for a moment
         starting: starting, please stop after §b{server_name}§c started
-        unsupported: Current config does not support stop command. You need to configure MCSM, RCON, or terminal
+        unsupported: Current config does not support stop command. You need to configure MCSM or terminal
         orphan_screen: Cannot stop, Screen is running without Java; please try the kill command
         orphan_process: Cannot stop, Java is running without Screen; please close the Java process in the console first
 
@@ -137,8 +136,7 @@ mirror_mcsmcdr:
         stopping: §cOperation failed / §b{server_name}§c stopping, please sync after {server_name} stopped
         starting: §cOperation failed / §b{server_name}§c starting, please stop {server_name} first then sync
         running: §cOperation failed / §b{server_name}§c running, please stop {server_name} first then sync
-        probe_conflict: §cOperation failed / §b{server_name}§c status error. The RCON status does not match the port(terminal) status
-        unsupported: §cOperation failed / §b{server_name}§c current config does not support detecting status. You need to configure MCSM, terminal or RCON
+        unsupported: §cOperation failed / §b{server_name}§c current config does not support detecting status. You need to configure MCSM or terminal
         orphan_screen: "§cOperation failed / §b{server_name}§c Screen and Java processes detached (Java not running). Please terminate the Screen process first"
         orphan_process: "§cOperation failed / §b{server_name}§c Screen and Java processes detached (Screen not running). Please terminate the Java process first"
       auto_restart:
