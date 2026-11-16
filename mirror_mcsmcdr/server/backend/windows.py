@@ -26,7 +26,9 @@ class WindowsProxy(TerminalProxy):
     def _start(self, result: ActionResult) -> ActionResult:
         if not os.path.exists(self.path):
             return result.reject(ActionResult.Outcome.PATH_NOT_FOUND)
-        subprocess.Popen(f'''start cmd.exe cmd /C "title {self.terminal_name}&&{self.command}"''', shell=True, cwd=self.path)
+        # One string: an argument list would escape the quotes of the launch command, and cmd.exe would pass on the escapes.
+        # /S makes cmd.exe strip only the outer pair of quotes, whatever the launch command contains.
+        subprocess.Popen(f'cmd.exe /S /C "title {self.terminal_name}&&{self.command}"', cwd=self.path, creationflags=subprocess.CREATE_NEW_CONSOLE)
         return result
 
     def _stop(self, result: ActionResult) -> ActionResult:

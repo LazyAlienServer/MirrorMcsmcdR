@@ -156,7 +156,7 @@ When `proxy_type` is `linux`, the plugin creates a new screen; when it is `windo
 > 2. Linux users should check whether `screen` is installed. Windows users should check whether the `python` command works in the terminal.
 > 3. If neither suggestion resolves the problem, execute the complete command for the Linux or Windows proxy in the current MCDR server's root directory and inspect the output.
 >    - Linux: `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
->    - Windows: `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{launch_command}')"`
+>    - Windows: `cd /d "{launch_path}"&&start cmd.exe /S /C "title {terminal_name}&&{launch_command}"`
 
 Note: The `linux` proxy controls the mirror server through screen. With the `windows` proxy, `stop` types the stop command into the command prompt window of the process listening on the configured mirror port and `kill` forcefully terminates that process with `taskkill`. The `subprocess` proxy controls the mirror server through the child process's standard input and output. Every proxy requires a correctly configured `port`. MCSM can still be used as an alternative control method.
 
