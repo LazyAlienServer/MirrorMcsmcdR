@@ -10,7 +10,7 @@
 
 `!!mirror help` 显示指令帮助
 
-`!!mirror status` 获取镜像服实例运行状态，状态未知/已停止/正在停止/正在启动/正在运行
+`!!mirror status` 获取镜像服实例运行状态，状态未知/已停止/正在停止/正在启动/正在运行/服务端已停止, MCDR仍在运行
 
 `!!mirror start` 启动镜像服实例
 
@@ -135,6 +135,9 @@ mcdr_root
 > 使用 `subprocess` 代理启动镜像服 MCDR 实例时，请在镜像服 MCDR 的 `config.yml` 中将 `advanced_console` 设置为 `false`。
 
 同样的，配置完成后，你需要将`enable`设置为`true`，以真正地启用终端控制。
+
+> [!IMPORTANT]
+> 插件只认识自己启动的镜像服进程。请只通过`!!mirror start`启动镜像服，并让`launch_command`在前台运行镜像服，不要用`nohup ... &`、`start`之类的写法让它脱离。详见[README-镜像服状态](../README.md#镜像服状态)。
 
 跳至[存档同步](#存档同步)来进行下一步
 

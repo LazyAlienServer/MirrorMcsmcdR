@@ -10,7 +10,7 @@ It includes the following commands:
 
 `!!mirror help` Displays command help
 
-`!!mirror status` Gets the running status of the mirror server instance, with states such as unknown/stopped/stopping/starting/running
+`!!mirror status` Gets the running status of the mirror server instance, with states such as unknown/stopped/stopping/starting/running/server stopped, MCDR still running
 
 `!!mirror start` Starts the mirror server instance
 
@@ -137,6 +137,9 @@ When `proxy_type` is `linux`, the plugin creates a screen session; when it is `w
 > When using the `subprocess` proxy to start another MCDR instance, set `advanced_console: false` in the mirror server MCDR's `config.yml`.
 
 Similarly, after the configuration is completed, you need to set `enable` to `true` to truly enable terminal control.
+
+> [!IMPORTANT]
+> The plugin only knows the mirror server processes it started itself. Start the mirror server with `!!mirror start` only, and let `launch_command` run it in the foreground; do not detach it with `nohup ... &`, `start` or the like. See [README - Mirror server status](../README_en.md#mirror-server-status).
 
 Jump to [Save Synchronization](#save-synchronization) for the next step.
 

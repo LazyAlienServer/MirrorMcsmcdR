@@ -34,6 +34,15 @@
 | Linux terminal 代理 | `proxy_type` 为 `linux` 或 `null` 时需要 [`screen`](https://www.gnu.org/software/screen/) |
 | PrimeBackup         | 镜像服 MCDR 中需要 `>=1.13.0`，仅在启用[同步前备份](#syncbackup-同步前备份)时需要                    |
 
+## 从v1.8.0及更早版本升级
+
+升级前请先手动停止镜像服。新版本只认识自己启动并记录的进程，旧版本启动的镜像服不在记录中（见[镜像服状态](#镜像服状态)）。
+
+升级后请检查配置文件：
+- `rcon`配置已删除，旧配置中的`rcon`会被忽略。需要跨主机控制镜像服时，请使用MCSManager；
+- `terminal.regex_strict`已删除。配置的端口被任何不是插件启动的进程占用时，状态都显示为`状态未知`；
+- `subprocess`代理现在也必须配置`terminal.port`，未配置时terminal代理不可用。
+
 ## 指令
 
 默认指令前缀为 `!!mirror`。
@@ -41,7 +50,7 @@
 | 指令                                    | 说明                                |
 |-----------------------------------------|-------------------------------------|
 | `!!mirror` / `!!mirror help`            | 显示指令帮助                        |
-| `!!mirror status`                       | 查看镜像服状态                      |
+| `!!mirror status`                       | 查看镜像服状态，详情只发给执行者    |
 | `!!mirror start`                        | 启动镜像服                          |
 | `!!mirror stop`                         | 停止镜像服                          |
 | `!!mirror kill`                         | 终止镜像服                          |
@@ -174,21 +183,61 @@ terminal:
 - 新命令行终端的标题、新screen的名称，或subprocess代理日志输出使用的前缀。作为screen名称时不能超过64字节，也不能包含控制字符。
 
 **is_mcdr** `bool`
-- 是否通过MCDReforged启动镜像服，默认为`true`。Linux代理设置为`true`时，`stop`和`kill`会向screen输入MCDR指令；设置为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。Windows代理设置为`true`时，`stop`会向命令提示符窗口输入`!!MCDR server stop_exit`，设置为`false`时会输入Minecraft的`stop`命令，`kill`始终强制终止监听端口的进程；镜像服仍在启动、端口尚未开放时，则终止插件启动的全部进程。subprocess代理设置为`true`时，`stop`会发送`!!MCDR server stop_exit`，设置为`false`时会发送Minecraft的`stop`命令，`kill`会直接终止子进程。
+- 是否通过MCDReforged启动镜像服，默认为`true`。Linux代理设置为`true`时，`stop`会向screen输入`!!MCDR server stop_exit`，`kill`在端口已开放时输入`!!MCDR server kill`，否则关闭screen；设置为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。Windows代理设置为`true`时，`stop`会向命令提示符窗口输入`!!MCDR server stop_exit`，设置为`false`时会输入Minecraft的`stop`命令，`kill`始终强制终止监听端口的进程；镜像服仍在启动、端口尚未开放时，则终止插件启动的全部进程。subprocess代理设置为`true`时，`stop`会发送`!!MCDR server stop_exit`，设置为`false`时会发送Minecraft的`stop`命令，`kill`会直接终止子进程。
 
 > [!IMPORTANT]
 > `!!mirror kill -f`和`!!mirror kill --force`适用于所有terminal代理。它会强制终止插件启动并记录的全部进程（Linux代理随后关闭screen）；状态未知时，还会终止占用配置端口、但不是插件启动的进程。执行前会向执行者列出这些进程。若端口被无法读取PID的进程（例如其他用户的进程）占用，则不终止任何进程。请确认`port`配置正确，避免终止其他服务。
 >
-> Linux/Windows代理只能识别当前用户有权查看的进程。镜像服由其他用户启动时，端口状态仍可检测，但`kill`可能无法终止它。
+> 插件只能读取当前用户有权查看的进程。占用端口的进程属于其他用户时，插件可能读不到它的PID，`kill -f`将不终止任何进程。
 
 **proxy_type** `str | null`
 - 终端代理类型，替代旧版的`system`配置项。可选值为`linux`、`windows`和`subprocess`。设置为`null`时，将根据当前操作系统自动选择`linux`或`windows`。`subprocess`会在MCDR进程内启动镜像服子进程，并支持通过`!!mirror execute`发送指令。
 
 > [!NOTE]
 > 使用 `subprocess` 代理启动镜像服 MCDR 实例时，请在镜像服 MCDR 的配置文件中将 `advanced_console` 设置为 `false`。
+>
+> subprocess代理启动的镜像服是本MCDR的子进程。执行`!!mirror reload`、重载或卸载本插件时，插件会强制终止这样的镜像服。
 
 **console_log** `bool`
 - 是否默认将`subprocess`代理的镜像服控制台日志输出到MCDR控制台。此配置仅对`subprocess`代理生效。
+
+#### 镜像服状态
+
+插件只根据**自己启动的进程**和配置的`port`判断镜像服状态。每次通过terminal代理启动镜像服时，插件都会记录启动的进程，并在之后每次查询状态时把它们新启动的子进程加入记录。记录保存在`config/mirror_mcsmcdr/<指令前缀>/process.json`，重载插件后仍然有效。
+
+> [!IMPORTANT]
+> `launch_command`必须在前台运行镜像服，直到镜像服退出才结束。不要在命令或脚本中让镜像服脱离启动它的进程，例如`nohup ... &`、`setsid`、`start`或`screen -dm`。脱离的进程不在记录中，插件无法判断和控制它们。
+
+记录中的进程分为以下几类：
+- **MCDR**：`is_mcdr`为`true`时，以`python -m mcdreforged`、`mcdreforged`命令或`python MCDReforged.py`运行的Python进程；
+- **服务端**：MCDR启动的进程中，监听`port`的那一个；在端口打开之前，与镜像服MCDR配置文件中`start_command`和`working_directory`一致的那一个也会被认定为服务端；
+- **子进程**：MCDR启动、但还没有认定是否为服务端的进程，全部按服务端处理；
+- **其他进程**：除此之外的进程，例如MCDR插件启动的进程。
+
+`!!mirror status`会向所有人广播状态，并只向执行者发送详情：MCDR、服务端（或子进程）、其他进程的数量、端口，以及状态的说明和可用的操作。
+
+| 状态 | 含义 | 可用的操作 |
+|------|------|------------|
+| 已停止 | 记录中的进程都已退出，端口未被占用 | `start`、`sync` |
+| 正在启动 | 已发送启动指令，或服务端进程在运行但端口尚未打开 | `kill`、`kill -f` |
+| 正在运行 | 端口由记录中的进程监听 | `stop`、`kill`、`kill -f`；开启`auto_server_restart`时可`sync` |
+| 正在停止 | 已发送关闭指令，正在等待进程退出 | `kill`、`kill -f` |
+| 服务端已停止, MCDR仍在运行 | 服务端已退出，MCDR空闲或正在退出 | `kill`、`kill -f` |
+| 状态未知 | 端口被不是插件启动的进程占用 | `kill -f` |
+
+状态后还可能附带以下异常：
+- **已失去控制台**：记录中的进程仍在运行，但插件已无法向它们发送命令（screen或命令提示符窗口已关闭，或重载插件后subprocess代理失去了子进程）。只能使用`kill -f`；
+- **未找到MCDR进程**：`is_mcdr`为`true`，服务端在运行，但记录中没有MCDR进程。可以使用`kill`或`kill -f`；
+- **已分离**：启动命令已结束，但screen或终端仍在。可以使用`kill`或`kill -f`。
+
+服务端进程在运行、端口却一直没有打开时，状态会停在`正在启动`。请检查`port`是否与镜像服的`server-port`一致。
+
+> [!WARNING]
+> 不是本插件启动的镜像服（例如手动启动的，或旧版本插件启动的）不在记录中：
+> - 端口被占用时，状态为`状态未知`，只能用`!!mirror kill -f`终止；
+> - 端口未被占用时（镜像服正在启动、正在停止，或服务端已在MCDR内停止），状态会显示为`已停止`。此时`start`会再启动一个镜像服，`sync`会直接写入正在使用的世界。
+>
+> 因此，请只通过本插件启动镜像服。
 
 <br>
 
@@ -399,16 +448,16 @@ action:
 
 ### sync配置
 **ensure_server_closed** `bool`
-- 当此选项为`true`时, 同步时将会检查镜像服是否已停止。当此选项为`false`时, 无论镜像服是否停止, 都将直接进行同步。
+- 当此选项为`true`时, 同步时将会检查镜像服是否已停止。镜像服必须为`已停止`才能同步，`服务端已停止, MCDR仍在运行`时也会拒绝同步，需等待MCDR退出或使用`!!mirror kill`终止。当此选项为`false`时, 无论镜像服是否停止, 都将直接进行同步。
 
 **auto_server_restart** `bool`
-- 此选项仅在`ensure_server_closed`为`true`时生效。当此选项为`true`时, 如果同步时镜像服未停止, 那么将在尝试自动停止镜像服后进行同步, 并在同步完成后自动重启镜像服
+- 此选项仅在`ensure_server_closed`为`true`时生效。当此选项为`true`时, 如果同步时镜像服`正在运行`, 那么将在尝试自动停止镜像服、等待MCDR也退出后进行同步, 并在同步完成后自动重启镜像服
 
 **check_status_interval** `int`
 - 此选项仅在`auto_server_restart`生效时生效。同步时停止镜像服后, 插件需确认镜像服是否已停止。此选项为检查镜像服状态的时间间隔
 
 **max_attempt_times** `int`
-- 此选项仅在`auto_server_restart`生效时生效。检查镜像服状态的尝试次数, 超过此尝试次数后将不再尝试检查镜像服状态, 并输出`自动关闭失败`及镜像服当前状态信息。等效于超时时间 `timeout = check_status_interval * max_attempt_times`
+- 此选项仅在`auto_server_restart`生效时生效。检查镜像服状态的尝试次数, 超过此尝试次数后将不再尝试检查镜像服状态, 并输出`自动关闭失败`及镜像服当前状态信息, 同时向执行者说明仍在等待什么。等效于超时时间 `timeout = check_status_interval * max_attempt_times`
 
 **save_world** 保存世界配置 *一般无需更改*
 ```yaml
