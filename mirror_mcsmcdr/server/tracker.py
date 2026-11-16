@@ -101,6 +101,8 @@ class TreeView:
     members: tuple[LiveMember, ...]
     # None stands for a listener whose pid cannot be read
     listeners: frozenset[Optional[int]]
+    # whether the console of the record was found, before the members were; None if it was not looked for
+    console: Optional[bool] = None
 
     def member_pids(self) -> set[int]:
         return {live.member.pid for live in self.members}
@@ -147,14 +149,23 @@ class ProcessTracker:
             self._record = ProcessRecord(generation, backend, launch_path, launch_command, terminal_name, root, (root,), True)
             self._save()
 
-    def observe(self, listener: PortListener) -> TreeView:
-        """Revalidate the members, take in their new descendants and look at the port; the record follows what is found."""
+    def observe(self, listener: PortListener, console: Optional[Callable[[ProcessRecord], Optional[bool]]] = None) -> TreeView:
+        """
+        Revalidate the members, take in their new descendants and look at the port; the record follows what is found.
+
+        :param console: tells whether the console of an active record is still there. It is asked before the members:
+            a console goes away only after the processes in it, so one found gone while a member is found alive after it
+            has really been lost, rather than closed in between
+        """
         with self._lock:
             # before the members: a listener that shows up in between is then found among them, not taken for a stranger
             listeners = frozenset(listener.owners())
             record = self._record
             members: list[LiveMember] = []
+            console_found: Optional[bool] = None
             if record is not None and record.active:
+                if console is not None:
+                    console_found = console(record)
                 known = {member.pid for member in record.members}
                 members = self._take_in_descendants(self._revalidate(record.members), record.root.pid)
                 members = self._tell_server_apart(members, {live.member.pid for live in members} - known, listeners)
@@ -165,7 +176,7 @@ class ProcessTracker:
             # a listener that has exited since is no stranger, but a member that is gone now, or nothing at all
             member_pids = {live.member.pid for live in members}
             listeners = frozenset(pid for pid in listeners if pid is None or pid in member_pids or psutil.pid_exists(pid))
-            return TreeView(record, tuple(members), listeners)
+            return TreeView(record, tuple(members), listeners, console_found)
 
     @staticmethod
     def _revalidate(members: tuple[Member, ...]) -> list[LiveMember]:
