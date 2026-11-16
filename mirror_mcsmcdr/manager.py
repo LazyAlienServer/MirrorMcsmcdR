@@ -9,8 +9,8 @@ from mirror_mcsmcdr.config import MultiConfigLoader, MirrorConfig
 from mirror_mcsmcdr.runtime import MirrorRuntime
 from mirror_mcsmcdr.sync.workflow import SyncWorkflow, backup_error_console_lines, describe_backup_error
 from mirror_mcsmcdr.sync.backup import BackupError, BackupWarning, MirrorBackup
-from mirror_mcsmcdr.text_utils import help_msg, rejection_key, rtr, status_key
-from mirror_mcsmcdr.server import Action, MCSManagerProxyError, ProcessInfo, ProcessTracker, ScreenError, ServerState
+from mirror_mcsmcdr.text_utils import detail_lines, help_msg, rejection_lines, rtr, status_key
+from mirror_mcsmcdr.server import Action, MCSManagerProxyError, ProcessInfo, ProcessTracker, ScreenError, ServerState, StatusSnapshot
 from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
 from mirror_mcsmcdr.command_utils.page_utils import Page
 from mirror_mcsmcdr.command_utils.confirmation_utils import ConfirmationTask, ConfirmationManager
@@ -302,7 +302,8 @@ class MirrorManager:
             if result.accepted:
                 self.server.broadcast(self.rtr("command._execute.success", prompt=self.rtr(f"command.{command}.success", title=False).to_legacy_text()))
                 return True
-            source.reply(self.rtr("command._execute.fail", prompt=self.rtr(rejection_key(command, result), title=False).to_legacy_text()))
+            for line in rejection_lines(self.rtr, command, result):
+                source.reply(line)
         return False
 
     def status(self, source: CommandSource, context: CommandContext) -> None:
@@ -319,15 +320,40 @@ class MirrorManager:
             if snapshot.anomalies:
                 prompt += " §7/ " + self.rtr(status_key(snapshot), title=False).to_legacy_text()
             self.server.broadcast(self.rtr("command._execute.success", prompt=prompt))
-            foreign = snapshot.evidence.foreign_listeners
-            if foreign:
-                self._report_processes(runtime, source, foreign, "command.status.foreign")
+            self._report_status_details(runtime, source, snapshot)
 
-    def _report_processes(self, runtime: MirrorRuntime, source: CommandSource, processes: tuple[ProcessInfo, ...], key: str) -> None:
+    def _report_status_details(self, runtime: MirrorRuntime, source: CommandSource, snapshot: StatusSnapshot) -> None:
+        """Tell ``source`` alone what the status is made of."""
+        evidence = snapshot.evidence
+        protected: set[str] = set(runtime.config.display.protected_process_info)
+        if evidence.port is not None:
+            if evidence.mcdr_alive is not None:
+                source.reply(self.rtr("command.status.mcdr", title=False, process=self._single_process_text(evidence.mcdr_process, protected)))
+            if evidence.child_processes:
+                # until the server is told apart, all of them are taken for it
+                source.reply(self.rtr("command.status.children", title=False, processes=self._processes_text(evidence.child_processes, protected)))
+            else:
+                source.reply(self.rtr("command.status.server", title=False, process=self._single_process_text(evidence.server_process, protected)))
+            if evidence.others_count:
+                source.reply(self.rtr("command.status.others", title=False, count=evidence.others_count))
+            if evidence.foreign_listeners:
+                self._report_processes(runtime, source, evidence.foreign_listeners, "command.status.foreign", title=False, port=evidence.port)
+            else:
+                port_state = "listening" if evidence.port_listening else "closed"
+                source.reply(self.rtr(f"command.status.port.{port_state}", title=False, port=evidence.port))
+        for line in detail_lines(self.rtr, snapshot):
+            source.reply(line)
+
+    def _report_processes(
+        self, runtime: MirrorRuntime, source: CommandSource, processes: tuple[ProcessInfo, ...], key: str, title: bool = True, **kwargs: Any,
+    ) -> None:
         """
         Tell ``source`` about processes under the translation key ``key``, leaving out what the config protects.
 
         The console always gets their names, pids and command lines.
+
+        :param title: whether the first line starts a message of its own, rather than going on with one
+        :param kwargs: for the first line
         """
         for info in processes:
             self.server.logger.info(self.rtr(
@@ -341,12 +367,24 @@ class MirrorManager:
         protected: set[str] = set(runtime.config.display.protected_process_info)
         foreign = sum(not info.in_record for info in processes)
         if {"name", "pid"} <= protected:
-            source.reply(self.rtr(f"{key}.count", count=len(processes), foreign=foreign))
+            source.reply(self.rtr(f"{key}.count", title, count=len(processes), foreign=foreign, **kwargs))
             return
-        source.reply(self.rtr(f"{key}.title", count=len(processes)))
+        source.reply(self.rtr(f"{key}.title", title, count=len(processes), **kwargs))
         for info in processes:
             item = "item" if info.in_record else "item_foreign"
             source.reply(self.rtr(f"command.process.{item}", title=False, process=self._process_text(info, protected)))
+
+    def _single_process_text(self, info: Optional[ProcessInfo], protected: set[str]) -> str:
+        if info is None:
+            return self.rtr("command.status.not_running", title=False).to_legacy_text()
+        if {"name", "pid"} <= protected:
+            return self.rtr("command.status.running", title=False).to_legacy_text()
+        return self._process_text(info, protected)
+
+    def _processes_text(self, infos: tuple[ProcessInfo, ...], protected: set[str]) -> str:
+        if {"name", "pid"} <= protected:
+            return self.rtr("command.status.count", title=False, count=len(infos)).to_legacy_text()
+        return ", ".join(self._process_text(info, protected) for info in infos)
 
     def _process_text(self, info: ProcessInfo, protected: set[str]) -> str:
         if info.pid is None:

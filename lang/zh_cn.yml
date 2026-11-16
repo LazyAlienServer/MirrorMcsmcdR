@@ -98,6 +98,19 @@ mirror_mcsmcdr:
       orphan_process: "§c已失去控制台 (进程仍在运行)"
       mcdr_missing: "§c未找到MCDR进程"
 
+    detail:
+      line: "§7详情: §f{detail}"
+      panel: 状态由MCSManager报告
+      foreign_listener: 端口被不是插件启动的进程占用, 可使用{prefix} kill -f结束这些进程
+      start_pending: 启动指令已发送, 正在等待服务端打开端口
+      port_closed: 服务端进程在运行但端口未打开, 若一直如此请检查配置中的port, 或使用{prefix} kill终止
+      stop_pending: 关闭指令已发送, 正在等待进程退出
+      console_closing: 控制台正在关闭
+      mcdr_only: MCDR可能空闲或正在退出, 可使用{prefix} kill终止MCDR
+      orphan_screen: 启动命令已结束但终端仍在, 可使用{prefix} kill关闭终端
+      orphan_process: 插件已无法向这些进程发送命令, 只能使用{prefix} kill -f强制终止
+      mcdr_missing: 服务端在运行但MCDR已退出或无法识别, 可使用{prefix} kill终止
+
     outcome:
       path_not_found: 未找到有效的启动目录, 请检查是否已创建正常的{server_name}服务端和插件配置文件是否配置正确
       force_required: Screen已不存在, 请使用{prefix} kill -f强制终止残留进程
@@ -107,9 +120,19 @@ mirror_mcsmcdr:
 
     status:
       unsupported: 当前配置文件不支持status命令, 需要配置MCSM或terminal
+      mcdr: "§7MCDR: §f{process}"
+      server: "§7服务端: §f{process}"
+      children: "§7子进程: §f{processes}"
+      others: "§7其他进程: §f{count} 个"
+      port:
+        listening: "§7端口 {port}: §f已监听"
+        closed: "§7端口 {port}: §f未监听"
       foreign:
-        title: "§c端口被以下 §b{count} §c个不是插件启动的进程占用, 可使用{prefix} kill -f结束:"
-        count: "§c端口被 §b{count} §c个不是插件启动的进程占用, 可使用{prefix} kill -f结束"
+        title: "§7端口 {port}: §c被以下 §b{count} §c个不是插件启动的进程占用:"
+        count: "§7端口 {port}: §c被 §b{count} §c个不是插件启动的进程占用"
+      not_running: 未运行
+      running: 运行中
+      count: "{count} 个"
 
     process:
       item: "§7- §f{process}"
@@ -122,30 +145,20 @@ mirror_mcsmcdr:
     start:
       success: 启动指令已发送
       fail:
-        unknown: 状态未知, 请报告管理员
-        stopping: 正在停止, 请等待{server_name}停止后重新启动
-        starting: 正在启动, 请稍等
-        mcdr_only: 服务端已停止但MCDR仍在运行, 请等待MCDR退出, 或使用{prefix} kill终止MCDR后重新启动
         unsupported: 当前配置文件不支持start命令, 需要配置MCSM或terminal
-        orphan_screen: Screen进程已启动但Java未启动, 请先使用kill指令终止Screen进程
-        orphan_process: 控制台已不存在但进程仍在运行, 请使用{prefix} kill -f强制终止
+      hint:
+        stopping: "§7请等待{server_name}停止后重新启动"
 
     stop:
       success: 关闭指令已发送
       fail:
-        unknown: 状态未知, 请报告管理员
-        stopping: 正在停止, 请稍等
-        starting: 正在启动, 请等待§b{server_name}§c启动后重新停止
-        mcdr_only: 服务端已停止但MCDR仍在运行, 请等待MCDR退出, 或使用{prefix} kill终止MCDR
         unsupported: 当前配置文件不支持stop命令, 需要配置MCSM或terminal
-        orphan_screen: 不能停止, Screen已启动但未运行Java, 请尝试使用kill指令
-        orphan_process: 不能停止, 控制台已不存在, 请使用{prefix} kill -f强制终止
+      hint:
+        starting: "§7请等待{server_name}启动后重新停止"
 
     kill:
       success: 强制终止...
       fail:
-        unknown: 状态未知, 只能使用{prefix} kill -f强制终止
-        orphan_process: 控制台已不存在, 请使用{prefix} kill -f强制终止
         unsupported: 当前配置文件不支持kill命令, 需要配置MCSM或terminal
       targets:
         title: "§e{prefix} kill -f将强制终止以下 §b{count} §e个进程:"
@@ -154,15 +167,10 @@ mirror_mcsmcdr:
     sync:
       fail:
         task_exist: §b{server_name}§c已有正在进行中的同步任务
-        unknown: §c操作失败 / §b{server_name}§c状态未知, 请报告管理员
-        stopping: §c操作失败 / §b{server_name}§c正在停止, 请等待{server_name}停止后进行同步
-        starting: §c操作失败 / §b{server_name}§c正在启动, 请等待{server_name}启动后重新停止并进行同步
-        running: §c操作失败 / §b{server_name}§c正在运行, 请先停止{server_name}再进行同步
-        mcdr_only: §c操作失败 / §b{server_name}§c服务端已停止但MCDR仍在运行, 请等待MCDR退出, 或使用{prefix} kill终止MCDR后进行同步
         unsupported: §c操作失败 / §b{server_name}当前配置文件不支持获取运行状态, 需要配置MCSM或terminal
-        orphan_screen: §c操作失败 / §b{server_name}§c Screen进程与Java进程已分离 (Java未启动)，请先终止Screen进程
-        orphan_process: §c操作失败 / §b{server_name}§c控制台已不存在但进程仍在运行, 请先使用{prefix} kill -f强制终止
-        mcdr_missing: §c操作失败 / §b{server_name}§c未找到MCDR进程, 请先使用{prefix} kill终止
+      hint:
+        running: "§7请先停止{server_name}再进行同步"
+        starting: "§7请等待{server_name}启动后停止并进行同步"
       auto_restart:
         restarting: §b{server_name}§f未停止, 自动关闭{server_name}并进行同步...
         fail: §c自动关闭失败, §b{server_name}§c§f{status}
