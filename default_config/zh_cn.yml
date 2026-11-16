@@ -3,7 +3,7 @@
 # 添加另一个前缀，例如 "!!mirror2"，以配置另一个镜像服务器。
 
 "!!mirror":
-  # MCSManager 连接设置。启用时，terminal 和 RCON 不被使用。
+  # MCSManager 连接设置。启用时，terminal 不被使用。
   mcsm:
     # 是否通过 MCSManager 控制镜像服务器。
     enable: false
@@ -36,17 +36,6 @@
     proxy_type:
     # 子进程控制台输出是否默认显示。
     console_log: false
-
-  # RCON 连接设置。
-  rcon:
-    # 是否启用 RCON。
-    enable: false
-    # RCON 服务器地址。
-    address:
-    # RCON 服务器端口。
-    port:
-    # RCON 服务器密码。
-    password:
 
   # 文件同步设置。
   sync:

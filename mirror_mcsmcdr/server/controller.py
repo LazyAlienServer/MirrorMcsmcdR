@@ -47,8 +47,8 @@ class ServerController:
         evidence = Evidence()
         for backend in self.backends:
             evidence = evidence.merge(backend.observe())
-            # these settle the status on their own; the remaining backends need not be reachable
-            if evidence.panel_state is not None or evidence.rcon_reachable:
+            # the panel settles the status on its own; the remaining backends need not be reachable
+            if evidence.panel_state is not None:
                 break
         snapshot = StatusResolver.resolve(evidence, intent.action if intent is not None else None)
         if intent is not None and snapshot.state is not self._PENDING_STATES[intent.action]:

@@ -18,8 +18,6 @@ class Anomaly(Enum):
     ORPHAN_SCREEN = "orphan_screen"
     # the server is there, the screen session to control it is not
     ORPHAN_PROCESS = "orphan_process"
-    # the terminal sees a server that RCON cannot reach
-    PROBE_CONFLICT = "probe_conflict"
 
 
 @dataclass(frozen=True)
@@ -30,7 +28,6 @@ class Evidence:
     process_alive: Optional[bool] = None
     port_listening: Optional[bool] = None
     screen_exists: Optional[bool] = None
-    rcon_reachable: Optional[bool] = None
     panel_state: Optional[ServerState] = None
 
     def merge(self, other: "Evidence") -> "Evidence":

@@ -18,9 +18,3 @@ class TerminalConfig(Serializable):
     is_mcdr: bool = True
     proxy_type: Optional[Literal["windows", "linux", "subprocess"]] = None
     console_log: bool = False
-
-class RConConfig(Serializable):
-    enable: bool = False
-    address: Optional[str] = None
-    port: Optional[int] = None
-    password: Optional[str] = None

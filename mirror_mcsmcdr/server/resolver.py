@@ -21,18 +21,11 @@ class StatusResolver:
         # whatever the server runs in; None on Windows, where only the port can be observed
         host = evidence.process_alive if evidence.process_alive is not None else evidence.screen_exists
         listening = evidence.port_listening
-        rcon = evidence.rcon_reachable
         running = ServerState.STOPPING if stopping else ServerState.RUNNING
         anomaly: Optional[Anomaly] = None
 
         if host is None and listening is None:
-            if rcon is None:
-                state = ServerState.UNKNOWN
-            else:
-                state = running if rcon else ServerState.STOPPED
-        elif rcon:
-            # a server that answers is up, whatever the terminal looks like
-            state = running
+            state = ServerState.UNKNOWN
         elif listening if listening is not None else host:
             if host is False:
                 # a dead child process means the port belongs to something else
@@ -40,12 +33,6 @@ class StatusResolver:
                     state, anomaly = ServerState.RUNNING, Anomaly.ORPHAN_PROCESS
                 else:
                     state = ServerState.STOPPED
-            elif rcon is False and not stopping:
-                # RCON comes up after the port, so this is only a conflict once the start has settled
-                if starting:
-                    state = ServerState.STARTING
-                else:
-                    state, anomaly = ServerState.UNKNOWN, Anomaly.PROBE_CONFLICT
             else:
                 state = running
         elif host:

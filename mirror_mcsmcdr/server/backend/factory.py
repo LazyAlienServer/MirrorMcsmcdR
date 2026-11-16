@@ -8,7 +8,6 @@ from mirror_mcsmcdr.server.backend.base import ServerBackend, TerminalProxy
 from mirror_mcsmcdr.server.backend.child_process import SubprocessProxy
 from mirror_mcsmcdr.server.backend.linux import LinuxProxy
 from mirror_mcsmcdr.server.backend.mcsm import MCSManagerProxy
-from mirror_mcsmcdr.server.backend.rcon import RConProxy
 from mirror_mcsmcdr.server.backend.windows import WindowsProxy
 from mirror_mcsmcdr.server.system_utils.screen_utils import ScreenError
 
@@ -50,13 +49,8 @@ def build_backends(config: MirrorConfig) -> Tuple[List[ServerBackend], List[Prox
         _require("mcsm", config.mcsm, ["url", "uuid", "remote_uuid", "apikey"])
         return MCSManagerProxy(config.mcsm)
 
-    def build_rcon() -> ServerBackend:
-        _require("rcon", config.rcon, ["address", "port", "password"])
-        return RConProxy(config.rcon)
-
     builders: Tuple[Tuple[bool, Callable[[], ServerBackend]], ...] = (
         (config.mcsm.enable, build_mcsm),
-        (config.rcon.enable, build_rcon),
         (config.terminal.enable, lambda: _build_terminal(config.terminal)),
     )
     backends: List[ServerBackend] = []
