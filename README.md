@@ -152,7 +152,7 @@ terminal:
 > 2. Linux用户检查是否安装了`screen`，Windows用户检查终端中输入`python`是否能正常启动Python
 > 3. 若以上两项都不能解决，则在当前服务端的MCDR根目录下执行Linux或Windows代理对应的完整命令，并检查命令回显
 >   - Linux `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
->   - Windows `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{launch_command}')"`
+>   - Windows `cd /d "{launch_path}"&&start cmd.exe /S /C "title {terminal_name}&&{launch_command}"`
 
 其中，`linux`代理通过screen控制镜像服；`windows`代理的`stop`会向监听镜像服端口的进程所在的命令提示符窗口输入停止命令，`kill`会使用`taskkill`强制终止该进程；`subprocess`代理通过子进程标准输入输出进行控制。所有代理都需要正确配置`port`。MCSM仍可作为替代控制方式。
 
