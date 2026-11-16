@@ -31,7 +31,7 @@ def _build_terminal(config: TerminalConfig) -> TerminalProxy:
     terminal_type = terminal_types.get(config.proxy_type or platform.system().lower())
     if terminal_type is None:
         raise ProxySettingException("terminal", ["proxy_type"])
-    _require("terminal", config, ["launch_path", "launch_command"] + ([] if terminal_type is SubprocessProxy else ["port"]))
+    _require("terminal", config, ["launch_path", "launch_command", "port"])
     try:
         return terminal_type(config)
     except ScreenError as e:

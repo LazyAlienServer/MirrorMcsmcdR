@@ -24,7 +24,7 @@
     launch_path: ./Mirror
     # 用于启动镜像服务器的命令。
     launch_command: python -m mcdreforged
-    # 镜像服务器端口；子进程代理不需要。
+    # 镜像服务器端口，所有代理都必须填写。
     port:
     # 终端标题、screen 名称或子进程日志前缀。
     terminal_name: Mirror

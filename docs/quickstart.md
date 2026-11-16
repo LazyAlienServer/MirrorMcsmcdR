@@ -130,7 +130,7 @@ mcdr_root
 
 当`proxy_type`为`linux`时，插件会创建screen；为`windows`时会创建新的命令行终端；为`subprocess`时会在MCDR进程内启动镜像服子进程。`terminal_name`即为命令行终端的标题、screen的名称，或subprocess日志输出的前缀。
 
-`regex_strict`、`is_mcdr`与`proxy_type`一般无需修改。`is_mcdr`默认为`true`，表示镜像服由MCDReforged启动；`proxy_type`默认为`null`时，插件会根据操作系统自动选择`linux`或`windows`。设置为`subprocess`时，镜像服会作为MCDR子进程启动，`port`无需配置，并可通过`console_log`配置是否默认输出控制台日志。有关这些配置的详细信息参见[README-通过命令行启动镜像服终端](../README.md#terminal-通过命令行启动镜像服终端的配置)。
+`regex_strict`、`is_mcdr`与`proxy_type`一般无需修改。`is_mcdr`默认为`true`，表示镜像服由MCDReforged启动；`proxy_type`默认为`null`时，插件会根据操作系统自动选择`linux`或`windows`。设置为`subprocess`时，镜像服会作为MCDR子进程启动，并可通过`console_log`配置是否默认输出控制台日志。有关这些配置的详细信息参见[README-通过命令行启动镜像服终端](../README.md#terminal-通过命令行启动镜像服终端的配置)。
 
 > [!NOTE]
 > 使用 `subprocess` 代理启动镜像服 MCDR 实例时，请在镜像服 MCDR 的 `config.yml` 中将 `advanced_console` 设置为 `false`。
