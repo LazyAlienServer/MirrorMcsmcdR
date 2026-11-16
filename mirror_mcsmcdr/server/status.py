@@ -10,6 +10,8 @@ class ServerState(Enum):
     STARTING = "starting"
     RUNNING = "running"
     STOPPING = "stopping"
+    # the server is gone, the MCDR that ran it is not: MCDR is idle, or still exiting
+    MCDR_ONLY = "mcdr_only"
     UNKNOWN = "unknown"
 
 

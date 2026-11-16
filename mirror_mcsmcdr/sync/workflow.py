@@ -134,7 +134,7 @@ class SyncWorkflow:
             return True
         controller = runtime.controller
         snapshot = controller.status()
-        if snapshot.is_exactly(ServerState.STOPPED):
+        if snapshot.safe_to_modify():
             return True
         if not snapshot.is_exactly(ServerState.RUNNING) or not config.auto_server_restart:
             reason = "unsupported" if snapshot.evidence.empty else snapshot.label
@@ -150,7 +150,7 @@ class SyncWorkflow:
                 timeout=config.check_status_interval * config.max_attempt_times,
                 interval=config.check_status_interval,
             )
-            if snapshot.is_exactly(ServerState.STOPPED):
+            if snapshot.safe_to_modify():
                 on_server_stopped()
                 return True
         self._server.broadcast(self._tr("command.sync.auto_restart.fail", status=self._tr(status_key(snapshot), title=False)))
@@ -175,7 +175,7 @@ class SyncWorkflow:
 
     def _ensure_stopped(self, runtime: MirrorRuntime) -> None:
         snapshot = runtime.controller.status()
-        if not snapshot.is_exactly(ServerState.STOPPED):
+        if not snapshot.safe_to_modify():
             raise BackupUnavailable("mirror_not_stopped", status=self._tr(status_key(snapshot), title=False).to_legacy_text())
 
     def _refuse(self, kind: str, error: BackupError) -> "_SyncRefused":

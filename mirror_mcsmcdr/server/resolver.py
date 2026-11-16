@@ -48,6 +48,6 @@ class StatusResolver:
                 anomaly = Anomaly.MCDR_MISSING
         else:
             # MCDR without a server: it is loading or unloading, or it was told to stop the server only
-            state = pending or ServerState.UNKNOWN
+            state = pending or ServerState.MCDR_ONLY
 
         return StatusSnapshot(state, frozenset() if anomaly is None else frozenset({anomaly}), evidence)
