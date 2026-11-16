@@ -1,0 +1,238 @@
+import json
+import os
+from dataclasses import dataclass, replace
+from enum import Enum
+from pathlib import Path
+from threading import Lock
+from typing import Any, Callable, Optional
+
+import psutil
+
+from mirror_mcsmcdr.server.system_utils import process_utils
+from mirror_mcsmcdr.server.system_utils.port_utils import PortListener
+
+
+class Role(Enum):
+    MCDR = "mcdr"
+    # anything MCDR launched, and everything below that
+    SERVER = "server"
+    # the terminal and shell a launch command runs in
+    WRAPPER = "wrapper"
+    OTHER = "other"
+
+
+@dataclass(frozen=True)
+class Member:
+    pid: int
+    token: str
+    role: Role
+
+
+@dataclass(frozen=True)
+class ProcessRecord:
+    """
+    What the plugin launched last, as it is kept across plugin reloads.
+
+    The launch settings are those of that launch, so that a changed config applies from the next launch on.
+    The root is the process the plugin spawned; on Linux and Windows it is also the console the mirror is controlled through.
+    """
+
+    # counts the launches of this mirror
+    generation: int
+    backend: str
+    launch_path: str
+    launch_command: str
+    terminal_name: str
+    root: Member
+    # the live processes of the launch, parents ahead of their children
+    members: tuple[Member, ...]
+    # False once none of them is alive any more
+    active: bool
+
+    def to_json(self) -> dict[str, Any]:
+        def member(m: Member) -> dict[str, Any]:
+            return {"pid": m.pid, "token": m.token, "role": m.role.value}
+
+        return {
+            "generation": self.generation,
+            "backend": self.backend,
+            "launch_path": self.launch_path,
+            "launch_command": self.launch_command,
+            "terminal_name": self.terminal_name,
+            "root": member(self.root),
+            "members": [member(m) for m in self.members],
+            "state": "active" if self.active else "exited",
+        }
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> "ProcessRecord":
+        """:raise KeyError, TypeError, ValueError: if ``data`` is not a record"""
+        def member(m: dict[str, Any]) -> Member:
+            return Member(int(m["pid"]), str(m["token"]), Role(m["role"]))
+
+        return cls(
+            int(data["generation"]),
+            str(data["backend"]),
+            str(data["launch_path"]),
+            str(data["launch_command"]),
+            str(data["terminal_name"]),
+            member(data["root"]),
+            tuple(member(m) for m in data["members"]),
+            {"active": True, "exited": False}[data["state"]],
+        )
+
+
+@dataclass(frozen=True)
+class LiveMember:
+    member: Member
+    # bound to this very process: it refuses to act on a later one that got the same pid
+    process: psutil.Process
+
+
+@dataclass(frozen=True)
+class TreeView:
+    """The tracked processes and the listeners of the configured port, as observed at one moment."""
+
+    record: Optional[ProcessRecord]
+    # parents ahead of their children
+    members: tuple[LiveMember, ...]
+    # None stands for a listener whose pid cannot be read
+    listeners: frozenset[Optional[int]]
+
+    def member_pids(self) -> set[int]:
+        return {live.member.pid for live in self.members}
+
+    def alive(self, *roles: Role) -> bool:
+        return any(live.member.role in roles for live in self.members)
+
+    @property
+    def root_alive(self) -> bool:
+        return self.record is not None and any(live.member == self.record.root for live in self.members)
+
+    def foreign_listeners(self) -> list[Optional[int]]:
+        members = self.member_pids()
+        return [pid for pid in self.listeners if pid not in members]
+
+
+class ProcessTracker:
+    """
+    Keeps track of the processes one mirror was launched as, in a record that survives plugin and config reloads.
+
+    The record is the only thing taken as the mirror: nothing else is looked for.
+    Every method may be called from any thread.
+    """
+
+    def __init__(self, path: Path, warn: Callable[..., None]) -> None:
+        """
+        :param warn: tells the console about a problem, given the translation key under ``process_record`` and its arguments
+        """
+        self.path = path
+        self._warn = warn
+        self._lock = Lock()
+        self._record = self._load()
+
+    def register(self, backend: str, launch_path: str, launch_command: str, terminal_name: str, pid: int) -> None:
+        """Record a launch whose root process has just been spawned; it replaces the previous record."""
+        with self._lock:
+            try:
+                process = psutil.Process(pid)
+                root = Member(pid, process_utils.start_token(process), self._role_of_root(process))
+            except psutil.Error:
+                # gone already: the launch failed, and there is nothing to track
+                return
+            generation = (self._record.generation if self._record is not None else 0) + 1
+            self._record = ProcessRecord(generation, backend, launch_path, launch_command, terminal_name, root, (root,), True)
+            self._save()
+
+    def observe(self, listener: PortListener) -> TreeView:
+        """Revalidate the members, take in their new descendants and look at the port; the record follows what is found."""
+        with self._lock:
+            # before the members: a listener that shows up in between is then found among them, not taken for a stranger
+            listeners = frozenset(listener.owners())
+            record = self._record
+            members: list[LiveMember] = []
+            if record is not None and record.active:
+                members = self._take_in_descendants(self._revalidate(record.members), record.root.pid)
+                updated = replace(record, members=tuple(live.member for live in members), active=bool(members))
+                if updated != record:
+                    self._record = record = updated
+                    self._save()
+            # a listener that has exited since is no stranger, but a member that is gone now, or nothing at all
+            member_pids = {live.member.pid for live in members}
+            listeners = frozenset(pid for pid in listeners if pid is None or pid in member_pids or psutil.pid_exists(pid))
+            return TreeView(record, tuple(members), listeners)
+
+    @staticmethod
+    def _revalidate(members: tuple[Member, ...]) -> list[LiveMember]:
+        live = []
+        for member in members:
+            try:
+                process = psutil.Process(member.pid)
+                if process_utils.start_token(process) == member.token and process_utils.is_alive(process):
+                    live.append(LiveMember(member, process))
+            except psutil.Error:
+                pass
+        return live
+
+    @classmethod
+    def _take_in_descendants(cls, members: list[LiveMember], root_pid: int) -> list[LiveMember]:
+        known = {live.member.pid for live in members}
+        # breadth first, so that a role is decided from the parent's
+        index = 0
+        while index < len(members):
+            parent = members[index]
+            index += 1
+            try:
+                children = parent.process.children()
+            except psutil.Error:
+                continue
+            for child in children:
+                if child.pid in known:
+                    continue
+                try:
+                    member = Member(child.pid, process_utils.start_token(child), cls._role_of_child(child, parent.member, root_pid))
+                except psutil.Error:
+                    continue
+                if process_utils.is_alive(child):
+                    known.add(child.pid)
+                    members.append(LiveMember(member, child))
+        return members
+
+    @staticmethod
+    def _role_of_root(process: psutil.Process) -> Role:
+        if process_utils.is_mcdr(process):
+            return Role.MCDR
+        return Role.WRAPPER if process_utils.is_shell(process) else Role.OTHER
+
+    @staticmethod
+    def _role_of_child(process: psutil.Process, parent: Member, root_pid: int) -> Role:
+        if process_utils.is_mcdr(process):
+            return Role.MCDR
+        if parent.role in (Role.MCDR, Role.SERVER):
+            return Role.SERVER
+        # only the shell a terminal opens and the console host of the root: a script the command runs is not one
+        if parent.pid == root_pid and parent.role is Role.WRAPPER and process_utils.is_shell(process):
+            return Role.WRAPPER
+        return Role.OTHER
+
+    def _load(self) -> Optional[ProcessRecord]:
+        try:
+            with open(self.path, encoding="utf8") as file:
+                return ProcessRecord.from_json(json.load(file))
+        except FileNotFoundError:
+            return None
+        except (OSError, ValueError, KeyError, TypeError) as e:
+            self._warn("unreadable", path=self.path, error=e)
+            return None
+
+    def _save(self) -> None:
+        """Write the record; if that fails, it is kept in memory and lost on the next plugin reload."""
+        assert self._record is not None
+        temp_path = self.path.with_name(self.path.name + ".tmp")
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with open(temp_path, "w", encoding="utf8") as file:
+                json.dump(self._record.to_json(), file, indent=2)
+            os.replace(temp_path, self.path)
+        except OSError as e:
+            self._warn("unwritable", path=self.path, error=e)

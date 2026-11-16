@@ -23,7 +23,7 @@ def help_msg(server_name, prefix):
 _ADVISED_REJECTIONS = {
     "start": {"unknown", "stopping", "starting", "orphan_screen", "orphan_process"},
     "stop": {"unknown", "stopping", "starting", "orphan_screen", "orphan_process"},
-    "kill": {"unknown"},
+    "kill": {"unknown", "orphan_process"},
 }
 
 

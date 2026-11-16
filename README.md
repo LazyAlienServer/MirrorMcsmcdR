@@ -45,7 +45,7 @@
 | `!!mirror start`                        | 启动镜像服                          |
 | `!!mirror stop`                         | 停止镜像服                          |
 | `!!mirror kill`                         | 终止镜像服                          |
-| `!!mirror kill -f`                      | 强制终止镜像服（仅 Linux terminal） |
+| `!!mirror kill -f`                      | 强制终止镜像服（terminal 代理） |
 | `!!mirror sync`                         | 同步文件                            |
 | `!!mirror confirm`                      | 确认待执行操作                      |
 | `!!mirror reload`                       | 热重载镜像服配置                    |
@@ -139,7 +139,6 @@ terminal:
   launch_command: "python -m mcdreforged"
   port: 
   terminal_name: "Mirror"
-  regex_strict: false
   is_mcdr: true
   proxy_type: 
   console_log: false
@@ -154,7 +153,7 @@ terminal:
 >   - Linux `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
 >   - Windows `cd /d "{launch_path}"&&start cmd.exe /S /C "title {terminal_name}&&{launch_command}"`
 
-其中，`linux`代理通过screen控制镜像服；`windows`代理的`stop`会向监听镜像服端口的进程所在的命令提示符窗口输入停止命令，`kill`会使用`taskkill`强制终止该进程；`subprocess`代理通过子进程标准输入输出进行控制。所有代理都需要正确配置`port`。MCSM仍可作为替代控制方式。
+其中，`linux`代理通过screen控制镜像服；`windows`代理的`stop`会向监听镜像服端口的进程所在的命令提示符窗口输入停止命令，`kill`会强制终止该进程；`subprocess`代理通过子进程标准输入输出进行控制。所有代理都需要正确配置`port`。MCSM仍可作为替代控制方式。
 
 > [!WARNING]
 > Windows代理下的 stop 命令为实验性功能，请自行承担使用风险。
@@ -174,14 +173,11 @@ terminal:
 **terminal_name** `str`
 - 新命令行终端的标题、新screen的名称，或subprocess代理日志输出使用的前缀。作为screen名称时不能超过64字节，也不能包含控制字符。
 
-**regex_strict** `bool`
-- Linux/Windows代理在通过端口检查镜像服运行状态时，是否在找到端口后继续验证进程名必须以`java`开头（如`java`、`java.exe`、`javaw.exe`）。一般情况下无需开启。
-
 **is_mcdr** `bool`
-- 是否通过MCDReforged启动镜像服，默认为`true`。Linux代理设置为`true`时，`stop`和`kill`会向screen输入MCDR指令；设置为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。Windows代理设置为`true`时，`stop`会向命令提示符窗口输入`!!MCDR server stop_exit`，设置为`false`时会输入Minecraft的`stop`命令，`kill`始终使用`taskkill`强制终止监听端口的进程；镜像服仍在启动、端口尚未开放时，则终止启动它的命令提示符窗口及其中的全部进程。subprocess代理设置为`true`时，`stop`会发送`!!MCDR server stop_exit`，设置为`false`时会发送Minecraft的`stop`命令，`kill`会直接终止子进程。
+- 是否通过MCDReforged启动镜像服，默认为`true`。Linux代理设置为`true`时，`stop`和`kill`会向screen输入MCDR指令；设置为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。Windows代理设置为`true`时，`stop`会向命令提示符窗口输入`!!MCDR server stop_exit`，设置为`false`时会输入Minecraft的`stop`命令，`kill`始终强制终止监听端口的进程；镜像服仍在启动、端口尚未开放时，则终止插件启动的全部进程。subprocess代理设置为`true`时，`stop`会发送`!!MCDR server stop_exit`，设置为`false`时会发送Minecraft的`stop`命令，`kill`会直接终止子进程。
 
 > [!IMPORTANT]
-> `!!mirror kill -f`和`!!mirror kill --force`仅适用于Linux terminal或Windows/Linux+MCDR。Linux代理会杀死screen会话内的全部进程（包括你手动在该screen里启动的程序）以及配置端口的所有监听进程，再关闭screen；请确认`port`配置正确，避免终止其他服务。
+> `!!mirror kill -f`和`!!mirror kill --force`适用于所有terminal代理。它会强制终止插件启动并记录的全部进程（Linux代理随后关闭screen）；状态未知时，还会终止占用配置端口、但不是插件启动的进程。执行前会向执行者列出这些进程。若端口被无法读取PID的进程（例如其他用户的进程）占用，则不终止任何进程。请确认`port`配置正确，避免终止其他服务。
 >
 > Linux/Windows代理只能识别当前用户有权查看的进程。镜像服由其他用户启动时，端口状态仍可检测，但`kill`可能无法终止它。
 
@@ -465,9 +461,13 @@ save_world:
 ```yaml
 display:
   server_name: Mirror
+  protected_process_info: []
 ```
 **server_name** `str`
 - "镜像服"的名称，用以在显示时区分不同的镜像服
+
+**protected_process_info** `list`
+- 游戏内消息中不显示的进程信息，可选`name`（进程名）和`pid`，默认为空。它影响`kill -f`列出的进程和`status`提到的进程。两项都填写时只显示进程数量。控制台始终显示进程名、PID和命令行；命令行和路径在任何情况下都不会出现在游戏内消息中。
 
 <br>
 
@@ -489,7 +489,6 @@ display:
     launch_command: python -m mcdreforged
     port:
     terminal_name: Mirror
-    regex_strict: false
     is_mcdr: true
     proxy_type:
     console_log: false

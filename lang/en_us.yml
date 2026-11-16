@@ -84,6 +84,7 @@ mirror_mcsmcdr:
       failed: "§cFailed to send command"
       not_running: "§cThe mirror server is not running; cannot send command"
       not_available: "§cThis command is only available with the subprocess proxy"
+      unknown: "§cThe status of {server_name} is unknown; cannot send command. Check {prefix} status first"
     state:
       unknown: status unknown
       stopped: stopped
@@ -93,15 +94,29 @@ mirror_mcsmcdr:
 
     anomaly:
       orphan_screen: "§cDetached (Java: not running; Screen: running)"
-      orphan_process: "§cDetached (Java: running; Screen: not running)"
+      orphan_process: "§cConsole lost (processes still running)"
+      mcdr_missing: "§cMCDR process not found"
 
     outcome:
       path_not_found: Cannot find available launch path, please check if {server_name} server is created and plugins' config is configured correctly
       force_required: Screen is unavailable. Use {prefix} kill -f to forcefully terminate the remaining process
       timeout: The process did not exit in time. Use {prefix} kill -f to forcefully terminate it
+      no_target: There is no process to terminate
+      unreadable_listener: The port is held by a process whose PID cannot be read (possibly of another user); nothing was terminated
 
     status:
       unsupported: Current config does not support status command. You need to configure MCSM or terminal
+      foreign:
+        title: "§cThe port is held by §b{count} §cprocess(es) not started by the plugin; {prefix} kill -f ends them:"
+        count: "§cThe port is held by §b{count} §cprocess(es) not started by the plugin; {prefix} kill -f ends them"
+
+    process:
+      item: "§7- §f{process}"
+      item_foreign: "§7- §f{process} §c(not started by the plugin)"
+      unreadable: "a process that cannot be read"
+      in_record: started by the plugin
+      not_in_record: not started by the plugin
+      console: "{prefix}: {name} (PID {pid}), {origin}, command line: {cmdline}"
 
     start:
       success: starting command sent
@@ -111,7 +126,7 @@ mirror_mcsmcdr:
         starting: starting, please wait for a moment
         unsupported: Current config does not support start command. You need to configure MCSM or terminal
         orphan_screen: "Screen process is running but Java is not, please use the kill command to terminate the Screen process"
-        orphan_process: "Java process is running but Screen is not, please terminate the Java process first"
+        orphan_process: "The console is gone but processes are still running; use {prefix} kill -f to terminate them"
 
     stop:
       success: stopping command sent
@@ -121,13 +136,17 @@ mirror_mcsmcdr:
         starting: starting, please stop after §b{server_name}§c started
         unsupported: Current config does not support stop command. You need to configure MCSM or terminal
         orphan_screen: Cannot stop, Screen is running without Java; please try the kill command
-        orphan_process: Cannot stop, Java is running without Screen; please close the Java process in the console first
+        orphan_process: Cannot stop, the console is gone; use {prefix} kill -f to terminate the processes
 
     kill:
       success: forced termination in progress...
       fail:
-        unknown: status unknown, please report this problem to operators
+        unknown: status unknown, only {prefix} kill -f can terminate it
+        orphan_process: the console is gone; use {prefix} kill -f to terminate the processes
         unsupported: Current config does not support kill command. You need to configure MCSM or terminal
+      targets:
+        title: "§e{prefix} kill -f will forcefully terminate §b{count} §eprocess(es):"
+        count: "§e{prefix} kill -f will forcefully terminate §b{count} §eprocess(es), §b{foreign} §eof them not started by the plugin"
 
     sync:
       fail:
@@ -138,7 +157,8 @@ mirror_mcsmcdr:
         running: §cOperation failed / §b{server_name}§c running, please stop {server_name} first then sync
         unsupported: §cOperation failed / §b{server_name}§c current config does not support detecting status. You need to configure MCSM or terminal
         orphan_screen: "§cOperation failed / §b{server_name}§c Screen and Java processes detached (Java not running). Please terminate the Screen process first"
-        orphan_process: "§cOperation failed / §b{server_name}§c Screen and Java processes detached (Screen not running). Please terminate the Java process first"
+        orphan_process: "§cOperation failed / §b{server_name}§c the console is gone but processes are still running. Use {prefix} kill -f first"
+        mcdr_missing: "§cOperation failed / §b{server_name}§c MCDR process not found. Use {prefix} kill first"
       auto_restart:
         restarting: §b{server_name}§f running, auto-stopping {server_name} and syncing...
         fail: §cAuto-stopping failed, §b{server_name}§c§f{status}
@@ -204,5 +224,9 @@ mirror_mcsmcdr:
 
   screen:
     error: "§cScreen error, please report this problem to operators: §4{e}"
+
+  process_record:
+    unreadable: "Cannot read the process record {path}; mirrors launched before are no longer tracked: {error}"
+    unwritable: "Cannot write the process record {path}; after a plugin reload the running mirror will no longer be tracked: {error}"
   
   error.unknown: §cUnknown error, please check the console for details

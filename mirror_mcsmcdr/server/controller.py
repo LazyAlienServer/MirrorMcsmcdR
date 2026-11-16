@@ -3,7 +3,7 @@ from threading import Lock
 from typing import Optional, Sequence
 
 from mirror_mcsmcdr.server.action import TERMINATIONS, Action, ActionResult, Intent
-from mirror_mcsmcdr.server.backend.base import ServerBackend
+from mirror_mcsmcdr.server.backend.base import KillTargets, ServerBackend, TerminalProxy
 from mirror_mcsmcdr.server.resolver import StatusResolver
 from mirror_mcsmcdr.server.status import Evidence, ServerState, StatusSnapshot
 
@@ -72,6 +72,11 @@ class ServerController:
                 else:
                     self._set_intent(Intent(action, time.monotonic() + self._timeouts[action]))
             return result
+
+    def forcekill_targets(self) -> Optional[KillTargets]:
+        """What a forced kill would end; None if no backend can tell."""
+        backend = next((backend for backend in self.backends if Action.FORCEKILL in backend.supports), None)
+        return backend.forcekill_targets() if isinstance(backend, TerminalProxy) else None
 
     def wait_for(self, state: ServerState, timeout: float, interval: float) -> StatusSnapshot:
         """

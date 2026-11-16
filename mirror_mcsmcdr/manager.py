@@ -10,7 +10,7 @@ from mirror_mcsmcdr.runtime import MirrorRuntime
 from mirror_mcsmcdr.sync.workflow import SyncWorkflow, backup_error_console_lines, describe_backup_error
 from mirror_mcsmcdr.sync.backup import BackupError, BackupWarning, MirrorBackup
 from mirror_mcsmcdr.text_utils import help_msg, rejection_key, rtr, status_key
-from mirror_mcsmcdr.server import Action, MCSManagerProxyError, ScreenError
+from mirror_mcsmcdr.server import Action, MCSManagerProxyError, ProcessInfo, ProcessTracker, ScreenError, ServerState
 from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
 from mirror_mcsmcdr.command_utils.page_utils import Page
 from mirror_mcsmcdr.command_utils.confirmation_utils import ConfirmationTask, ConfirmationManager
@@ -90,6 +90,11 @@ class MirrorManager:
         self.server = server
         self.command_prefix = command_prefix
         self.server_name = config.display.server_name
+        # outlives the runtimes: what was launched stays tracked across config reloads
+        self._tracker = ProcessTracker(
+            Path(server.get_data_folder()) / command_prefix / "process.json",
+            lambda key, **kwargs: server.logger.warning(self.rtr(f"process_record.{key}", title=False, **kwargs)),
+        )
         self.confirmations = ConfirmationManager(self._on_confirmation_timeout)
         self._sync_workflow = SyncWorkflow(server, self.rtr)
         # Kept while disabled, so that its subprocess can still be cleaned up on unload.
@@ -133,7 +138,7 @@ class MirrorManager:
     def _apply_config(self, config: MirrorConfig) -> bool:
         """Build a runtime from the config and make it current; on failure the previous state is left untouched."""
         try:
-            runtime = MirrorRuntime.build(config, Path(self.server.get_data_folder()) / self.command_prefix)
+            runtime = MirrorRuntime.build(config, Path(self.server.get_data_folder()) / self.command_prefix, self._tracker)
         except Exception as e:
             if self.server.is_server_startup():
                 self.server.say(self.rtr("manager.reload.fail"))
@@ -314,6 +319,41 @@ class MirrorManager:
             if snapshot.anomalies:
                 prompt += " §7/ " + self.rtr(status_key(snapshot), title=False).to_legacy_text()
             self.server.broadcast(self.rtr("command._execute.success", prompt=prompt))
+            foreign = snapshot.evidence.foreign_listeners
+            if foreign:
+                self._report_processes(runtime, source, foreign, "command.status.foreign")
+
+    def _report_processes(self, runtime: MirrorRuntime, source: CommandSource, processes: tuple[ProcessInfo, ...], key: str) -> None:
+        """
+        Tell ``source`` about processes under the translation key ``key``, leaving out what the config protects.
+
+        The console always gets their names, pids and command lines.
+        """
+        for info in processes:
+            self.server.logger.info(self.rtr(
+                "command.process.console",
+                title=False,
+                name=info.name or "?",
+                pid=info.pid if info.pid is not None else "?",
+                cmdline=info.cmdline,
+                origin=self.rtr(f"command.process.{'in_record' if info.in_record else 'not_in_record'}", title=False),
+            ))
+        protected: set[str] = set(runtime.config.display.protected_process_info)
+        foreign = sum(not info.in_record for info in processes)
+        if {"name", "pid"} <= protected:
+            source.reply(self.rtr(f"{key}.count", count=len(processes), foreign=foreign))
+            return
+        source.reply(self.rtr(f"{key}.title", count=len(processes)))
+        for info in processes:
+            item = "item" if info.in_record else "item_foreign"
+            source.reply(self.rtr(f"command.process.{item}", title=False, process=self._process_text(info, protected)))
+
+    def _process_text(self, info: ProcessInfo, protected: set[str]) -> str:
+        if info.pid is None:
+            return self.rtr("command.process.unreadable", title=False).to_legacy_text()
+        name = "" if "name" in protected else info.name or "?"
+        pid = "" if "pid" in protected else f"PID {info.pid}"
+        return f"{name} ({pid})" if name and pid else name or pid
 
     def start(self, source: CommandSource, context: CommandContext) -> None:
         self._run_command("start", source, lambda runtime: self._start(runtime, source))
@@ -326,7 +366,32 @@ class MirrorManager:
 
     def kill(self, source: CommandSource, context: CommandContext, force: bool = False) -> None:
         action = Action.FORCEKILL if force else Action.KILL
-        self._run_command("kill", source, lambda runtime: self._execute(runtime, source, action))
+        self._run_command(
+            "kill",
+            source,
+            lambda runtime: self._execute(runtime, source, action),
+            confirm_if=(lambda runtime: self._review_forcekill(runtime, source)) if force else None,
+        )
+
+    def _review_forcekill(self, runtime: MirrorRuntime, source: CommandSource) -> Optional[bool]:
+        """
+        Tell ``source``, before a forced kill is run or confirmed, which processes it would end.
+
+        :return: False; None if there is nothing it could end, so there is nothing to confirm
+        """
+        with self._report_api_error(source):
+            targets = runtime.controller.forcekill_targets()
+            if targets is None:
+                # the kill itself reports that it is not supported
+                return False
+            outcome = "unreadable_listener" if targets.unreadable else None if targets.processes else "no_target"
+            if outcome is not None:
+                prompt = self.rtr(f"command.outcome.{outcome}", title=False).to_legacy_text()
+                source.reply(self.rtr("command._execute.fail", prompt=prompt))
+                return None
+            self._report_processes(runtime, source, tuple(info for info, _ in targets.processes), "command.kill.targets")
+            return False
+        return None
 
     def sync(self, source: CommandSource, context: CommandContext) -> None:
         self._run_command(
@@ -474,13 +539,17 @@ class MirrorManager:
         if terminal is None:
             source.reply(self.rtr("command.execute.not_available"))
             return
-        if not terminal.alive:
-            source.reply(self.rtr("command.execute.not_running"))
-            return
-        if not terminal.send_command(command):
-            source.reply(self.rtr("command.execute.failed"))
-            return
-        source.reply(self.rtr("command.execute.sent", cmd=command))
+        with self._report_api_error(source):
+            if runtime.controller.status().state is ServerState.UNKNOWN:
+                source.reply(self.rtr("command.execute.unknown"))
+                return
+            if not terminal.alive:
+                source.reply(self.rtr("command.execute.not_running"))
+                return
+            if not terminal.send_command(command):
+                source.reply(self.rtr("command.execute.failed"))
+                return
+            source.reply(self.rtr("command.execute.sent", cmd=command))
 
     def _on_confirmation_timeout(self, task: ConfirmationTask) -> None:
         task.source.reply(self.rtr("command.confirm.timeout", action=task.action))

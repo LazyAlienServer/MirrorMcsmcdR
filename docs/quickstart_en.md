@@ -18,7 +18,7 @@ It includes the following commands:
 
 `!!mirror kill` Terminates the mirror server instance
 
-`!!mirror kill -f` or `!!mirror kill --force` Forcefully terminates the mirror server instance (Linux terminal only)
+`!!mirror kill -f` or `!!mirror kill --force` Forcefully terminates the mirror server instance (terminal proxies)
 
 `!!mirror sync` Performs file synchronization
 
@@ -107,7 +107,6 @@ terminal:
     launch_command: python -m mcdreforged
     port:
     terminal_name: Mirror
-    regex_strict: false
     is_mcdr: true
     proxy_type:
     console_log: false
@@ -132,7 +131,7 @@ In the example, the mirror server is located in `mcdr_root/Mirror` and is starte
 
 When `proxy_type` is `linux`, the plugin creates a screen session; when it is `windows`, it creates a new command prompt; and when it is `subprocess`, it starts the mirror server as a child process inside MCDR. `terminal_name` is the title of the command prompt, the name of the screen, or the prefix used for subprocess log output.
 
-`regex_strict`, `is_mcdr`, and `proxy_type` generally do not need to be modified. `is_mcdr` defaults to `true`, meaning the mirror server is started by MCDReforged. When `proxy_type` is `null`, the plugin automatically selects `linux` or `windows` based on the operating system. When set to `subprocess`, the mirror server runs as an MCDR child process, and `console_log` controls whether its console logs are output by default. See [README-Configuring the Mirror Server Terminal through the Command Line](../README_en.md#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) for details.
+`is_mcdr` and `proxy_type` generally do not need to be modified. `is_mcdr` defaults to `true`, meaning the mirror server is started by MCDReforged. When `proxy_type` is `null`, the plugin automatically selects `linux` or `windows` based on the operating system. When set to `subprocess`, the mirror server runs as an MCDR child process, and `console_log` controls whether its console logs are output by default. See [README-Configuring the Mirror Server Terminal through the Command Line](../README_en.md#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) for details.
 
 > [!NOTE]
 > When using the `subprocess` proxy to start another MCDR instance, set `advanced_console: false` in the mirror server MCDR's `config.yml`.
