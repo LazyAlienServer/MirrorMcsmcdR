@@ -2,7 +2,7 @@ import datetime
 import time
 from contextlib import contextmanager
 from threading import Event, Lock
-from typing import Any, Callable, Iterator, Optional, Pattern, Protocol
+from typing import Callable, Iterator, Optional, Pattern
 
 from mcdreforged.api.all import CommandSource, PluginServerInterface, RTextBase
 
@@ -10,13 +10,8 @@ from mirror_mcsmcdr.config.command_config import SaveWorldConfig
 from mirror_mcsmcdr.runtime import MirrorRuntime
 from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
 from mirror_mcsmcdr.sync.backup import BackupError, BackupFailed, BackupUnavailable, MirrorBackup
-from mirror_mcsmcdr.text_utils import status_key
+from mirror_mcsmcdr.text_utils import Translator, detail_lines, refusal_lines, status_key
 from mirror_mcsmcdr.server import Action, ServerState
-
-
-class Translator(Protocol):
-    def __call__(self, key: str, title: bool = True, **kwargs: Any) -> RTextBase:
-        ...
 
 
 class _SyncRefused(Exception):
@@ -137,8 +132,11 @@ class SyncWorkflow:
         if snapshot.safe_to_modify():
             return True
         if not snapshot.is_exactly(ServerState.RUNNING) or not config.auto_server_restart:
-            reason = "unsupported" if snapshot.evidence.empty else snapshot.label
-            source.reply(self._tr(f"command.sync.fail.{reason}"))
+            if snapshot.evidence.empty:
+                source.reply(self._tr("command.sync.fail.unsupported"))
+            else:
+                for line in refusal_lines(self._tr, "sync", snapshot):
+                    source.reply(line)
             return False
 
         self._server.broadcast(self._tr("command.sync.auto_restart.restarting"))
@@ -154,6 +152,9 @@ class SyncWorkflow:
                 on_server_stopped()
                 return True
         self._server.broadcast(self._tr("command.sync.auto_restart.fail", status=self._tr(status_key(snapshot), title=False)))
+        # what it is still waiting for
+        for line in detail_lines(self._tr, snapshot):
+            source.reply(line)
         return False
 
     def _back_up(self, backup: MirrorBackup, operator: str) -> Optional[int]:

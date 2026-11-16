@@ -98,6 +98,19 @@ mirror_mcsmcdr:
       orphan_process: "§cConsole lost (processes still running)"
       mcdr_missing: "§cMCDR process not found"
 
+    detail:
+      line: "§7Detail: §f{detail}"
+      panel: reported by MCSManager
+      foreign_listener: "the port is held by processes not started by the plugin; {prefix} kill -f ends them"
+      start_pending: "starting command sent; waiting for the server to open the port"
+      port_closed: "the server process is running but the port is not open; if it stays so, check port in the config, or end it with {prefix} kill"
+      stop_pending: "stopping command sent; waiting for the processes to exit"
+      console_closing: the console is closing
+      mcdr_only: "MCDR may be idle or exiting; {prefix} kill ends it"
+      orphan_screen: "the launch command has ended but the terminal is left; {prefix} kill closes it"
+      orphan_process: "the plugin can no longer send commands to these processes; only {prefix} kill -f can end them"
+      mcdr_missing: "the server is running but MCDR has exited or cannot be recognized; {prefix} kill ends it"
+
     outcome:
       path_not_found: Cannot find available launch path, please check if {server_name} server is created and plugins' config is configured correctly
       force_required: Screen is unavailable. Use {prefix} kill -f to forcefully terminate the remaining process
@@ -107,9 +120,19 @@ mirror_mcsmcdr:
 
     status:
       unsupported: Current config does not support status command. You need to configure MCSM or terminal
+      mcdr: "§7MCDR: §f{process}"
+      server: "§7Server: §f{process}"
+      children: "§7Child processes: §f{processes}"
+      others: "§7Other processes: §f{count}"
+      port:
+        listening: "§7Port {port}: §flistening"
+        closed: "§7Port {port}: §fnot listening"
       foreign:
-        title: "§cThe port is held by §b{count} §cprocess(es) not started by the plugin; {prefix} kill -f ends them:"
-        count: "§cThe port is held by §b{count} §cprocess(es) not started by the plugin; {prefix} kill -f ends them"
+        title: "§7Port {port}: §cheld by the following §b{count} §cprocess(es) not started by the plugin:"
+        count: "§7Port {port}: §cheld by §b{count} §cprocess(es) not started by the plugin"
+      not_running: not running
+      running: running
+      count: "{count}"
 
     process:
       item: "§7- §f{process}"
@@ -122,30 +145,20 @@ mirror_mcsmcdr:
     start:
       success: starting command sent
       fail:
-        unknown: status unknown, please report this problem to operators
-        stopping: stopping, please restart after {server_name} stopped
-        starting: starting, please wait for a moment
-        mcdr_only: "the server has stopped but MCDR is still running; wait for MCDR to exit, or end it with {prefix} kill, then start again"
         unsupported: Current config does not support start command. You need to configure MCSM or terminal
-        orphan_screen: "Screen process is running but Java is not, please use the kill command to terminate the Screen process"
-        orphan_process: "The console is gone but processes are still running; use {prefix} kill -f to terminate them"
+      hint:
+        stopping: "§7Please start again after {server_name} has stopped"
 
     stop:
       success: stopping command sent
       fail:
-        unknown: status unknown, please report this problem to operators
-        stopping: stopping, please wait for a moment
-        starting: starting, please stop after §b{server_name}§c started
-        mcdr_only: "the server has stopped but MCDR is still running; wait for MCDR to exit, or end it with {prefix} kill"
         unsupported: Current config does not support stop command. You need to configure MCSM or terminal
-        orphan_screen: Cannot stop, Screen is running without Java; please try the kill command
-        orphan_process: Cannot stop, the console is gone; use {prefix} kill -f to terminate the processes
+      hint:
+        starting: "§7Please stop again after {server_name} has started"
 
     kill:
       success: forced termination in progress...
       fail:
-        unknown: status unknown, only {prefix} kill -f can terminate it
-        orphan_process: the console is gone; use {prefix} kill -f to terminate the processes
         unsupported: Current config does not support kill command. You need to configure MCSM or terminal
       targets:
         title: "§e{prefix} kill -f will forcefully terminate §b{count} §eprocess(es):"
@@ -154,15 +167,10 @@ mirror_mcsmcdr:
     sync:
       fail:
         task_exist: §b{server_name}§cOther tasks in progress
-        unknown: §cOperation failed / §b{server_name}§c status unknown, please report this problem to operators
-        stopping: §cOperation failed / §b{server_name}§c stopping, please sync after {server_name} stopped
-        starting: §cOperation failed / §b{server_name}§c starting, please stop {server_name} first then sync
-        running: §cOperation failed / §b{server_name}§c running, please stop {server_name} first then sync
-        mcdr_only: "§cOperation failed / §b{server_name}§c the server has stopped but MCDR is still running. Wait for MCDR to exit, or end it with {prefix} kill, then sync"
         unsupported: §cOperation failed / §b{server_name}§c current config does not support detecting status. You need to configure MCSM or terminal
-        orphan_screen: "§cOperation failed / §b{server_name}§c Screen and Java processes detached (Java not running). Please terminate the Screen process first"
-        orphan_process: "§cOperation failed / §b{server_name}§c the console is gone but processes are still running. Use {prefix} kill -f first"
-        mcdr_missing: "§cOperation failed / §b{server_name}§c MCDR process not found. Use {prefix} kill first"
+      hint:
+        running: "§7Please stop {server_name} first, then sync"
+        starting: "§7Please wait for {server_name} to start, then stop it and sync"
       auto_restart:
         restarting: §b{server_name}§f running, auto-stopping {server_name} and syncing...
         fail: §cAuto-stopping failed, §b{server_name}§c§f{status}

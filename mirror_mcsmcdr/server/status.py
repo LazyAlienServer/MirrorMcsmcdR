@@ -33,6 +33,24 @@ class Capability(Enum):
     TREE_KILL = "tree_kill"
 
 
+class Detail(Enum):
+    """Why the status is what it is; every status but a plain running or stopped one has one."""
+
+    # whatever the panel reports
+    PANEL = "panel"
+    FOREIGN_LISTENER = "foreign_listener"
+    START_PENDING = "start_pending"
+    # the server is there without a start of the plugin pending, yet the port stays closed
+    PORT_CLOSED = "port_closed"
+    STOP_PENDING = "stop_pending"
+    # only the terminal is left, and it is going
+    CONSOLE_CLOSING = "console_closing"
+    MCDR_ONLY = "mcdr_only"
+    ORPHAN_SCREEN = "orphan_screen"
+    ORPHAN_PROCESS = "orphan_process"
+    MCDR_MISSING = "mcdr_missing"
+
+
 @dataclass(frozen=True)
 class ProcessInfo:
     """A process as it is reported; the command line is for the console only."""
@@ -62,6 +80,14 @@ class Evidence:
     # whether the console the plugin controls the tracked processes through is still there
     endpoint_alive: Optional[bool] = None
     panel_state: Optional[ServerState] = None
+    # for the details of the status: the configured port and the processes behind the counts above
+    port: Optional[int] = None
+    mcdr_process: Optional[ProcessInfo] = None
+    # the port listener among them if there is one
+    server_process: Optional[ProcessInfo] = None
+    # what MCDR launched while the server is not told apart from the rest
+    child_processes: Optional[tuple[ProcessInfo, ...]] = None
+    others_count: Optional[int] = None
 
     def merge(self, other: "Evidence") -> "Evidence":
         """Fill the fields this evidence lacks with those of ``other``."""
@@ -84,6 +110,7 @@ class StatusSnapshot:
     state: ServerState
     anomalies: frozenset[Anomaly]
     evidence: Evidence
+    detail: Optional[Detail] = None
 
     def is_exactly(self, state: ServerState) -> bool:
         """Whether the server is in ``state`` with nothing odd about it."""

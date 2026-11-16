@@ -92,9 +92,18 @@ class TerminalProxy(ServerBackend, ABC):
             mcdr_alive: Optional[bool] = view.alive(Role.MCDR)
             server_alive = view.alive(Role.SERVER, Role.CHILD) or port_owned
             others_alive = view.alive(Role.OTHER)
+            server_roles = {Role.SERVER}
+            # with MCDR gone, a server outside of it may still hold the port
+            listener_roles = {Role.SERVER, Role.OTHER}
         else:
             mcdr_alive, others_alive = None, False
             server_alive = view.alive(Role.MCDR, Role.SERVER, Role.CHILD, Role.OTHER)
+            server_roles = listener_roles = {Role.MCDR, Role.SERVER, Role.CHILD, Role.OTHER}
+        # the listener is the server for certain; otherwise the deepest process of it, past any shell it was started through
+        server = next((live for live in view.members if live.member.pid in view.listeners and live.member.role in listener_roles), None)
+        if server is None:
+            server = next((live for live in reversed(view.members) if live.member.role in server_roles), None)
+        mcdr = next((live for live in view.members if live.member.role is Role.MCDR), None) if self.is_mcdr else None
         return Evidence(
             port_listening=bool(view.listeners),
             foreign_listeners=tuple(self._describe_listener(pid) for pid in view.foreign_listeners()),
@@ -104,6 +113,11 @@ class TerminalProxy(ServerBackend, ABC):
             wrapper_alive=view.alive(Role.WRAPPER),
             # a launch by another backend cannot be controlled from this one
             endpoint_alive=view.record is not None and view.record.backend == self.name and self._endpoint_alive(view),
+            port=self.listener.port,
+            mcdr_process=process_utils.describe(mcdr.process, True) if mcdr is not None else None,
+            server_process=process_utils.describe(server.process, True) if server is not None else None,
+            child_processes=tuple(process_utils.describe(live.process, True) for live in view.members if live.member.role is Role.CHILD),
+            others_count=sum(live.member.role is Role.OTHER and live is not server for live in view.members) if self.is_mcdr else 0,
         )
 
     @abstractmethod
