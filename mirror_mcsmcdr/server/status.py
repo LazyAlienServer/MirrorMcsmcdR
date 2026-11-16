@@ -1,4 +1,4 @@
-from dataclasses import astuple, dataclass
+from dataclasses import dataclass, fields
 from enum import Enum
 from typing import Optional
 
@@ -14,32 +14,67 @@ class ServerState(Enum):
 
 
 class Anomaly(Enum):
-    # the screen session is there, the server inside it is not
+    # the terminal or shell the mirror was launched from is left, nothing it launched is
     ORPHAN_SCREEN = "orphan_screen"
-    # the server is there, the screen session to control it is not
+    # processes the plugin launched are alive, the console to control them is not
     ORPHAN_PROCESS = "orphan_process"
+    # the mirror is run by MCDR, yet none of its processes is an MCDR instance
+    MCDR_MISSING = "mcdr_missing"
+
+
+class Capability(Enum):
+    # a new process tree may be launched
+    TERMINAL_LAUNCH = "terminal_launch"
+    # the console of the tracked processes takes input
+    CONSOLE_INPUT = "console_input"
+    # tracked processes are alive to be killed
+    TREE_KILL = "tree_kill"
+
+
+@dataclass(frozen=True)
+class ProcessInfo:
+    """A process as it is reported; the command line is for the console only."""
+
+    # None for a process whose pid cannot be read, such as a listener of another user
+    pid: Optional[int]
+    name: str
+    cmdline: str
+    in_record: bool
 
 
 @dataclass(frozen=True)
 class Evidence:
     """What the backends observed; a field is None when no backend is able to observe it."""
 
-    # the child process owned by the plugin
-    process_alive: Optional[bool] = None
+    # whether anything listens on the configured port
     port_listening: Optional[bool] = None
-    screen_exists: Optional[bool] = None
+    # listeners of the configured port that are not processes the plugin launched
+    foreign_listeners: Optional[tuple[ProcessInfo, ...]] = None
+    # the tracked processes alive, by role; None for MCDR when the mirror is not run by MCDR
+    mcdr_alive: Optional[bool] = None
+    server_alive: Optional[bool] = None
+    # tracked processes that are neither MCDR, the server, nor what launched them
+    others_alive: Optional[bool] = None
+    # the terminal and shell the mirror was launched from
+    wrapper_alive: Optional[bool] = None
+    # whether the console the plugin controls the tracked processes through is still there
+    endpoint_alive: Optional[bool] = None
     panel_state: Optional[ServerState] = None
 
     def merge(self, other: "Evidence") -> "Evidence":
         """Fill the fields this evidence lacks with those of ``other``."""
-        return Evidence(*(
-            mine if mine is not None else theirs
-            for mine, theirs in zip(astuple(self), astuple(other))
-        ))
+        return Evidence(**{
+            field.name: mine if (mine := getattr(self, field.name)) is not None else getattr(other, field.name)
+            for field in fields(self)
+        })
 
     @property
     def empty(self) -> bool:
         return self == Evidence()
+
+    @property
+    def members_alive(self) -> bool:
+        return any((self.mcdr_alive, self.server_alive, self.others_alive, self.wrapper_alive))
 
 
 @dataclass(frozen=True)
@@ -51,6 +86,26 @@ class StatusSnapshot:
     def is_exactly(self, state: ServerState) -> bool:
         """Whether the server is in ``state`` with nothing odd about it."""
         return self.state is state and not self.anomalies
+
+    def safe_to_modify(self) -> bool:
+        """Whether the files of the mirror may be changed: nothing of it is running."""
+        return self.is_exactly(ServerState.STOPPED)
+
+    def capabilities(self) -> frozenset[Capability]:
+        """What the plugin can do with the processes it launched, as far as the terminal observed them."""
+        evidence = self.evidence
+        if evidence.port_listening is None:
+            # nothing launched by the plugin was looked at
+            return frozenset()
+        capabilities = set()
+        if self.is_exactly(ServerState.STOPPED):
+            capabilities.add(Capability.TERMINAL_LAUNCH)
+        console_reader = evidence.mcdr_alive if evidence.mcdr_alive is not None else evidence.server_alive
+        if evidence.endpoint_alive and console_reader:
+            capabilities.add(Capability.CONSOLE_INPUT)
+        if evidence.members_alive:
+            capabilities.add(Capability.TREE_KILL)
+        return frozenset(capabilities)
 
     @property
     def label(self) -> str:

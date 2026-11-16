@@ -84,6 +84,7 @@ mirror_mcsmcdr:
       failed: "§c命令发送失败"
       not_running: "§c镜像服未运行，无法发送命令"
       not_available: "§c此命令仅在使用 subprocess 代理时可用"
+      unknown: "§c{server_name}状态未知, 无法发送命令, 请先查看{prefix} status"
     state:
       unknown: 状态未知
       stopped: 已停止
@@ -93,15 +94,29 @@ mirror_mcsmcdr:
 
     anomaly:
       orphan_screen: "§c已分离 (Java: 未启动; Screen: 已启动)"
-      orphan_process: "§c已分离 (Java: 已启动; Screen: 未启动)"
+      orphan_process: "§c已失去控制台 (进程仍在运行)"
+      mcdr_missing: "§c未找到MCDR进程"
 
     outcome:
       path_not_found: 未找到有效的启动目录, 请检查是否已创建正常的{server_name}服务端和插件配置文件是否配置正确
       force_required: Screen已不存在, 请使用{prefix} kill -f强制终止残留进程
       timeout: 进程未在限定时间内退出, 请使用{prefix} kill -f强制终止
+      no_target: 没有可以终止的进程
+      unreadable_listener: 端口被一个无法读取PID的进程占用 (可能属于其他用户), 未终止任何进程
 
     status:
       unsupported: 当前配置文件不支持status命令, 需要配置MCSM或terminal
+      foreign:
+        title: "§c端口被以下 §b{count} §c个不是插件启动的进程占用, 可使用{prefix} kill -f结束:"
+        count: "§c端口被 §b{count} §c个不是插件启动的进程占用, 可使用{prefix} kill -f结束"
+
+    process:
+      item: "§7- §f{process}"
+      item_foreign: "§7- §f{process} §c(不是插件启动的)"
+      unreadable: "无法读取的进程"
+      in_record: 插件启动的进程
+      not_in_record: 不是插件启动的进程
+      console: "{prefix}: {name} (PID {pid}), {origin}, 命令行: {cmdline}"
 
     start:
       success: 启动指令已发送
@@ -111,7 +126,7 @@ mirror_mcsmcdr:
         starting: 正在启动, 请稍等
         unsupported: 当前配置文件不支持start命令, 需要配置MCSM或terminal
         orphan_screen: Screen进程已启动但Java未启动, 请先使用kill指令终止Screen进程
-        orphan_process: Java进程已启动但Screen未启动, 请先终止Java进程
+        orphan_process: 控制台已不存在但进程仍在运行, 请使用{prefix} kill -f强制终止
 
     stop:
       success: 关闭指令已发送
@@ -121,13 +136,17 @@ mirror_mcsmcdr:
         starting: 正在启动, 请等待§b{server_name}§c启动后重新停止
         unsupported: 当前配置文件不支持stop命令, 需要配置MCSM或terminal
         orphan_screen: 不能停止, Screen已启动但未运行Java, 请尝试使用kill指令
-        orphan_process: 不能停止, Java运行中但无Screen终端, 请先在控制台关闭正在运行的java进程
+        orphan_process: 不能停止, 控制台已不存在, 请使用{prefix} kill -f强制终止
 
     kill:
       success: 强制终止...
       fail:
-        unknown: 状态未知, 请报告管理员
+        unknown: 状态未知, 只能使用{prefix} kill -f强制终止
+        orphan_process: 控制台已不存在, 请使用{prefix} kill -f强制终止
         unsupported: 当前配置文件不支持kill命令, 需要配置MCSM或terminal
+      targets:
+        title: "§e{prefix} kill -f将强制终止以下 §b{count} §e个进程:"
+        count: "§e{prefix} kill -f将强制终止 §b{count} §e个进程, 其中 §b{foreign} §e个不是插件启动的"
 
     sync:
       fail:
@@ -138,7 +157,8 @@ mirror_mcsmcdr:
         running: §c操作失败 / §b{server_name}§c正在运行, 请先停止{server_name}再进行同步
         unsupported: §c操作失败 / §b{server_name}当前配置文件不支持获取运行状态, 需要配置MCSM或terminal
         orphan_screen: §c操作失败 / §b{server_name}§c Screen进程与Java进程已分离 (Java未启动)，请先终止Screen进程
-        orphan_process: §c操作失败 / §b{server_name}§c Screen进程与Java进程已分离 (Screen未启动)，请先终止Java进程
+        orphan_process: §c操作失败 / §b{server_name}§c控制台已不存在但进程仍在运行, 请先使用{prefix} kill -f强制终止
+        mcdr_missing: §c操作失败 / §b{server_name}§c未找到MCDR进程, 请先使用{prefix} kill终止
       auto_restart:
         restarting: §b{server_name}§f未停止, 自动关闭{server_name}并进行同步...
         fail: §c自动关闭失败, §b{server_name}§c§f{status}
@@ -204,5 +224,9 @@ mirror_mcsmcdr:
 
   screen:
     error: "§cScreen错误, 请报告管理员: §4{e}"
+
+  process_record:
+    unreadable: "无法读取进程记录{path}, 之前启动的镜像服不再被跟踪: {error}"
+    unwritable: "无法写入进程记录{path}, 插件重载后将无法跟踪正在运行的镜像服: {error}"
   
   error.unknown: §c未知错误, 请前往终端查看错误信息

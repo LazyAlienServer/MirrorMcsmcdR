@@ -14,7 +14,6 @@ class TerminalConfig(Serializable):
     launch_command: str = "python -m mcdreforged"
     port: Optional[int] = None
     terminal_name: str = "Mirror"
-    regex_strict: bool = False
     is_mcdr: bool = True
     proxy_type: Optional[Literal["windows", "linux", "subprocess"]] = None
     console_log: bool = False

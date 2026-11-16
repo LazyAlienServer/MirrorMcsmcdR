@@ -10,6 +10,7 @@ from mirror_mcsmcdr.server.backend.linux import LinuxProxy
 from mirror_mcsmcdr.server.backend.mcsm import MCSManagerProxy
 from mirror_mcsmcdr.server.backend.windows import WindowsProxy
 from mirror_mcsmcdr.server.system_utils.screen_utils import ScreenError
+from mirror_mcsmcdr.server.tracker import ProcessTracker
 
 
 class ProxySettingException(Exception):
@@ -26,23 +27,24 @@ def _require(proxy: str, config: Serializable, keys: Sequence[str]) -> None:
         raise ProxySettingException(proxy, missing_keys)
 
 
-def _build_terminal(config: TerminalConfig) -> TerminalProxy:
-    terminal_types: Dict[str, Callable[[TerminalConfig], TerminalProxy]] = {"linux": LinuxProxy, "windows": WindowsProxy, "subprocess": SubprocessProxy}
+def _build_terminal(config: TerminalConfig, tracker: ProcessTracker) -> TerminalProxy:
+    terminal_types: Dict[str, Callable[[TerminalConfig, ProcessTracker], TerminalProxy]] = {"linux": LinuxProxy, "windows": WindowsProxy, "subprocess": SubprocessProxy}
     terminal_type = terminal_types.get(config.proxy_type or platform.system().lower())
     if terminal_type is None:
         raise ProxySettingException("terminal", ["proxy_type"])
     _require("terminal", config, ["launch_path", "launch_command", "port"])
     try:
-        return terminal_type(config)
+        return terminal_type(config, tracker)
     except ScreenError as e:
         # the only thing a screen can refuse before it is used is its name
         raise ProxySettingException("terminal", ["terminal_name"]) from e
 
 
-def build_backends(config: MirrorConfig) -> Tuple[List[ServerBackend], List[ProxySettingException]]:
+def build_backends(config: MirrorConfig, tracker: ProcessTracker) -> Tuple[List[ServerBackend], List[ProxySettingException]]:
     """
     Build the backends the config enables, in the order they are preferred for an action.
 
+    :param tracker: what the terminal records its launches in; it outlives the backends
     :return: the backends, and an error for each enabled one that could not be set up
     """
     def build_mcsm() -> ServerBackend:
@@ -51,7 +53,7 @@ def build_backends(config: MirrorConfig) -> Tuple[List[ServerBackend], List[Prox
 
     builders: Tuple[Tuple[bool, Callable[[], ServerBackend]], ...] = (
         (config.mcsm.enable, build_mcsm),
-        (config.terminal.enable, lambda: _build_terminal(config.terminal)),
+        (config.terminal.enable, lambda: _build_terminal(config.terminal, tracker)),
     )
     backends: List[ServerBackend] = []
     errors: List[ProxySettingException] = []

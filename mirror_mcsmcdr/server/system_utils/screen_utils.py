@@ -1,11 +1,8 @@
-import os
 import re
 import subprocess
 import time
 from threading import Lock
 from typing import Optional, Sequence
-
-import psutil
 
 
 class ScreenError(RuntimeError):
@@ -14,13 +11,11 @@ class ScreenError(RuntimeError):
 
 class Screen:
     """
-    A detached GNU screen session with the server launched from the shell inside it.
+    A detached GNU screen session with the server launched from the shell inside it, addressed by its pid.
 
-    The session is remembered by its pid in a file under ``path``, so that it is found again after a plugin reload.
+    The pid is set by :meth:`create`, or given by whoever kept it from an earlier launch.
     Every method may be called from any thread.
     """
-
-    PID_FILE_NAME = "mirror.pid"
 
     # screen accepts 80 bytes after -S, and "<pid>." takes up to 8 of them
     _MAX_NAME_BYTES = 64
@@ -35,7 +30,7 @@ class Screen:
     # Taken before the lock of the instance, never the other way round.
     _create_lock = Lock()
 
-    def __init__(self, name: str, path: str) -> None:
+    def __init__(self, name: str, path: str, pid: Optional[int] = None) -> None:
         """
         :raise ScreenError: if screen cannot address a session of this name
         """
@@ -43,11 +38,12 @@ class Screen:
             raise ScreenError(f"Invalid screen name {name!r}: 1 to {self._MAX_NAME_BYTES} bytes without control characters are required")
         self.name = name
         self.path = path
-        self.pid_path = os.path.join(path, self.PID_FILE_NAME)
+        # None until a session is created or given
+        self.pid = pid
         self._lock = Lock()
         self._parses_remote_commands: Optional[bool] = None
 
-    def check_existence(self) -> bool:
+    def exists(self) -> bool:
         """
         :raise ScreenError: if the sessions could not be listed
         """
@@ -60,24 +56,21 @@ class Screen:
 
         The session closes itself when the command ends successfully, and stays open for inspection when it fails.
 
-        :raise ScreenError: if the session exists already, could not be started, or could not be told from the others.
-            In the last case a session that nothing refers to may be left behind
+        :raise ScreenError: if the session could not be started, or could not be told from the others.
+            In the last case a session that nothing refers to may be left behind.
+            :attr:`pid` is set if a session was started that may be running the command after all
         """
         with self._create_lock, self._lock:
             text = self._stuff_text(command + "&&exit")
-            if self._session_pid() is not None:
-                raise ScreenError(f"Screen {self.name} is running already")
             known = self._sessions()
             started = self._run(["-dmS", self.name], cwd=self.path)
             if started.returncode != 0:
                 raise ScreenError(f"Cannot start screen {self.name}: {self._output(started)}")
-            pid = self._discover(known)
+            self.pid = self._discover(known)
             try:
-                with open(self.pid_path, "w", encoding="utf8") as file:
-                    file.write(str(pid))
-                self._send_to(pid, ["-p", "0", "-X", "stuff", text])
-            except (OSError, ScreenError) as error:
-                raise ScreenError(f"Cannot launch in screen {self.name}: {error}{self._discard(pid)}") from error
+                self._send_to(self.pid, ["-p", "0", "-X", "stuff", text])
+            except ScreenError as error:
+                raise ScreenError(f"Cannot launch in screen {self.name}: {error}{self._discard(self.pid)}") from error
 
     def send(self, command: str) -> None:
         """
@@ -113,31 +106,10 @@ class Screen:
                 if self._session_pid() is not None:
                     raise
 
-    def processes(self) -> list[psutil.Process]:
-        """
-        Everything that runs inside the session, parents ahead of their children; empty if there is no session.
-
-        That is all of its windows, including whatever an operator started in it by hand.
-        """
-        with self._lock:
-            pid = self._session_pid()
-            if pid is None:
-                return []
-            try:
-                return psutil.Process(pid).children(recursive=True)
-            except psutil.Error:
-                return []
-
     def _session_pid(self) -> Optional[int]:
-        """The pid of the session if it is alive. Forgets a session that is gone."""
-        try:
-            with open(self.pid_path, encoding="utf8") as file:
-                pid = int(file.read().strip())
-        except (OSError, ValueError):
-            return None
-        if (pid, self.name) in self._sessions():
-            return pid
-        self._remove_pid_file()
+        """The pid of the session if it is alive."""
+        if self.pid is not None and (self.pid, self.name) in self._sessions():
+            return self.pid
         return None
 
     def _sessions(self) -> set[tuple[int, str]]:
@@ -181,7 +153,7 @@ class Screen:
         Close a session that could not be used.
 
         :return: what is left to say about it: nothing if it is gone.
-            Otherwise it stays remembered, since the launch may have gone through after all
+            Otherwise :attr:`pid` stays set, since the launch may have gone through after all
         """
         try:
             self._send_to(pid, ["-X", "quit"])
@@ -192,14 +164,8 @@ class Screen:
                 gone = False
             if not gone:
                 return f"; screen {pid}.{self.name} could not be closed and may still be running"
-        self._remove_pid_file()
+        self.pid = None
         return ""
-
-    def _remove_pid_file(self) -> None:
-        try:
-            os.remove(self.pid_path)
-        except OSError:
-            pass
 
     def _send_to(self, pid: int, args: Sequence[str]) -> None:
         # always by pid: the name alone is ambiguous as soon as two mirrors share it

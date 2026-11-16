@@ -1,68 +1,43 @@
 import os
 import subprocess
 
-import psutil
-
-from mirror_mcsmcdr.config.proxy_config import TerminalConfig
 from mirror_mcsmcdr.server.action import Action, ActionResult
 from mirror_mcsmcdr.server.backend.base import TerminalProxy
-from mirror_mcsmcdr.server.status import Evidence
 from mirror_mcsmcdr.server.system_utils.console_utils import send_console_command
-from mirror_mcsmcdr.server.system_utils.port_utils import PortListener
+from mirror_mcsmcdr.server.tracker import TreeView
 
 
 class WindowsProxy(TerminalProxy):
-    # killing is already forceful here
-    supports = frozenset({Action.START, Action.STOP, Action.KILL})
+    name = "windows"
+    supports = frozenset(Action)
 
-    def __init__(self, config: TerminalConfig) -> None:
-        super().__init__(config)
-        assert config.port is not None
-        self.listener = PortListener(config.port, config.regex_strict)
-
-    def observe(self) -> Evidence:
-        return Evidence(port_listening=self.listener.is_listening())
+    def _endpoint_alive(self, view: TreeView) -> bool:
+        # the console lives as long as the cmd.exe that opened it
+        return view.root_alive
 
     def _start(self, result: ActionResult) -> ActionResult:
         if not os.path.exists(self.path):
             return result.reject(ActionResult.Outcome.PATH_NOT_FOUND)
         # One string: an argument list would escape the quotes of the launch command, and cmd.exe would pass on the escapes.
         # /S makes cmd.exe strip only the outer pair of quotes, whatever the launch command contains.
-        subprocess.Popen(f'cmd.exe /S /C "title {self.terminal_name}&&{self.command}"', cwd=self.path, creationflags=subprocess.CREATE_NEW_CONSOLE)
+        process = subprocess.Popen(f'cmd.exe /S /C "title {self.terminal_name}&&{self.command}"', cwd=self.path, creationflags=subprocess.CREATE_NEW_CONSOLE)
+        self.tracker.register(self.name, self.path, self.command, self.terminal_name, process.pid)
         return result
 
     def _stop(self, result: ActionResult) -> ActionResult:
+        view = self.tracker.observe(self.listener)
+        members = view.member_pids()
         # the listening processes normally share one console, so the first one that takes the command is enough
-        if not any(send_console_command(pid, self.stop_command) for pid in self.listener.pids()):
+        if not any(send_console_command(pid, self.stop_command) for pid in view.listeners if pid in members):
             return result.reject(ActionResult.Outcome.WRONG_STATE)
         return result
 
     def _kill(self, result: ActionResult) -> ActionResult:
-        pids = self.listener.pids()
-        if pids:
-            # with the server gone, whatever launched it ends by itself
-            for pid in pids:
-                subprocess.Popen(["taskkill", "/PID", str(pid), "/F"], shell=True)
-            return result
-        # no port is open while the server is still starting: all there is to go by is the terminal it was started in
-        for process in self._terminal_processes():
-            try:
-                process.kill()
-            except psutil.Error:
-                pass
+        view = self.tracker.observe(self.listener)
+        owners = [live.process for live in view.members if live.member.pid in view.listeners]
+        # With the server gone, whatever launched it ends by itself.
+        # No port is open while the server is still starting: then everything the plugin launched goes.
+        errors = self._kill_all(owners or [live.process for live in view.members])
+        if errors:
+            raise errors[0]
         return result
-
-    def _terminal_processes(self) -> list[psutil.Process]:
-        """The shells this backend launched the server from that are still open, each ahead of everything it runs."""
-        launch = f"title {self.terminal_name}&&{self.command}"
-        path = os.path.normcase(os.path.abspath(self.path))
-        processes: list[psutil.Process] = []
-        for process in psutil.process_iter(["name", "cmdline", "cwd"]):
-            try:
-                if (process.info["name"] or "").lower() != "cmd.exe" or not " ".join(process.info["cmdline"] or []).endswith(launch):
-                    continue
-                if os.path.normcase(process.info["cwd"] or "") == path:
-                    processes += [process, *process.children(recursive=True)]
-            except psutil.Error:
-                continue
-        return processes

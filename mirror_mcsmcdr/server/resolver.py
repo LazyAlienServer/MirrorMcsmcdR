@@ -16,36 +16,38 @@ class StatusResolver:
         if evidence.panel_state is not None:
             return StatusSnapshot(evidence.panel_state, frozenset(), evidence)
 
-        starting = intent is Action.START
         stopping = intent is Action.STOP
-        # whatever the server runs in; None on Windows, where only the port can be observed
-        host = evidence.process_alive if evidence.process_alive is not None else evidence.screen_exists
-        listening = evidence.port_listening
-        running = ServerState.STOPPING if stopping else ServerState.RUNNING
+        pending = {Action.START: ServerState.STARTING, Action.STOP: ServerState.STOPPING}.get(intent) if intent else None
         anomaly: Optional[Anomaly] = None
 
-        if host is None and listening is None:
+        if evidence.port_listening is None:
             state = ServerState.UNKNOWN
-        elif listening if listening is not None else host:
-            if host is False:
-                # a dead child process means the port belongs to something else
-                if evidence.screen_exists is False:
-                    state, anomaly = ServerState.RUNNING, Anomaly.ORPHAN_PROCESS
-                else:
-                    state = ServerState.STOPPED
-            else:
-                state = running
-        elif host:
-            if starting:
-                state = ServerState.STARTING
-            elif stopping:
-                state = ServerState.STOPPING
-            elif evidence.screen_exists:
+        elif evidence.foreign_listeners:
+            # the port is held by something the plugin did not launch
+            state = ServerState.UNKNOWN
+        elif not evidence.members_alive:
+            state = ServerState.STOPPED
+        elif not (evidence.mcdr_alive or evidence.server_alive or evidence.others_alive):
+            # only the terminal is there: it has not got to the command yet, or it is closing after it
+            if pending is not None:
+                state = pending
+            elif evidence.endpoint_alive:
+                # left behind by a command that failed
                 state, anomaly = ServerState.STOPPED, Anomaly.ORPHAN_SCREEN
             else:
-                # a child process that never opened its port within the start timeout
-                state = ServerState.RUNNING
+                state = ServerState.STOPPING
+        elif not evidence.endpoint_alive:
+            state, anomaly = ServerState.RUNNING, Anomaly.ORPHAN_PROCESS
+        elif evidence.server_alive or (evidence.others_alive and evidence.mcdr_alive is False):
+            if evidence.port_listening:
+                state = ServerState.STOPPING if stopping else ServerState.RUNNING
+            else:
+                # the port opens a while after the server process is there, and stays closed if it is not the right one
+                state = pending or ServerState.STARTING
+            if evidence.mcdr_alive is False:
+                anomaly = Anomaly.MCDR_MISSING
         else:
-            state = ServerState.STARTING if starting and host is None else ServerState.STOPPED
+            # MCDR without a server: it is loading or unloading, or it was told to stop the server only
+            state = pending or ServerState.UNKNOWN
 
         return StatusSnapshot(state, frozenset() if anomaly is None else frozenset({anomaly}), evidence)

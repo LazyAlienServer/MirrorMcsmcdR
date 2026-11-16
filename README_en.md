@@ -45,7 +45,7 @@ The default command prefix is `!!mirror`.
 | `!!mirror start`                        | Start the mirror server                                 |
 | `!!mirror stop`                         | Stop the mirror server                                  |
 | `!!mirror kill`                         | Terminate the mirror server                             |
-| `!!mirror kill -f`                      | Force-terminate the mirror server (Linux terminal only) |
+| `!!mirror kill -f`                      | Force-terminate the mirror server (terminal proxies) |
 | `!!mirror sync`                         | Synchronize files                                       |
 | `!!mirror confirm`                      | Confirm a pending operation                             |
 | `!!mirror reload`                       | Hot-reload the mirror configuration                     |
@@ -143,7 +143,6 @@ terminal:
   launch_command: "python -m mcdreforged"
   port:
   terminal_name: "Mirror"
-  regex_strict: false
   is_mcdr: true
   proxy_type:
   console_log: false
@@ -158,7 +157,7 @@ When `proxy_type` is `linux`, the plugin creates a new screen; when it is `windo
 >    - Linux: `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
 >    - Windows: `cd /d "{launch_path}"&&start cmd.exe /S /C "title {terminal_name}&&{launch_command}"`
 
-Note: The `linux` proxy controls the mirror server through screen. With the `windows` proxy, `stop` types the stop command into the command prompt window of the process listening on the configured mirror port and `kill` forcefully terminates that process with `taskkill`. The `subprocess` proxy controls the mirror server through the child process's standard input and output. Every proxy requires a correctly configured `port`. MCSM can still be used as an alternative control method.
+Note: The `linux` proxy controls the mirror server through screen. With the `windows` proxy, `stop` types the stop command into the command prompt window of the process listening on the configured mirror port and `kill` forcefully terminates that process. The `subprocess` proxy controls the mirror server through the child process's standard input and output. Every proxy requires a correctly configured `port`. MCSM can still be used as an alternative control method.
 
 > [!WARNING]
 > The `stop` command under the Windows proxy is experimental; use it at your own risk.
@@ -178,14 +177,11 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 **terminal_name** `str`
 - The title of the new command prompt, the name of the new screen, or the prefix used for subprocess proxy log output. As a screen name it must not exceed 64 bytes or contain control characters.
 
-**regex_strict** `bool`
-- Whether the Linux or Windows proxies should continue to verify that the process name starts with `java` (such as `java`, `java.exe` or `javaw.exe`) after finding the configured port. Generally, there is no need to enable it.
-
 **is_mcdr** `bool`
-- Whether the mirror server is started by MCDReforged. Defaults to `true`. For the Linux proxy, `true` makes `stop` and `kill` send MCDR commands to screen; `false` makes `stop` send Minecraft's `stop` command and `kill` perform a force kill. For the Windows proxy, `true` makes `stop` type `!!MCDR server stop_exit` into the command prompt window, while `false` types Minecraft's `stop` command; `kill` always terminates the process listening on the port with `taskkill`; while the mirror server is still starting and the port is not open yet, it terminates the command prompt window the server was started in together with everything running in it. For the subprocess proxy, `true` makes `stop` send `!!MCDR server stop_exit`, while `false` sends Minecraft's `stop` command; `kill` terminates the child process directly.
+- Whether the mirror server is started by MCDReforged. Defaults to `true`. For the Linux proxy, `true` makes `stop` and `kill` send MCDR commands to screen; `false` makes `stop` send Minecraft's `stop` command and `kill` perform a force kill. For the Windows proxy, `true` makes `stop` type `!!MCDR server stop_exit` into the command prompt window, while `false` types Minecraft's `stop` command; `kill` always forcefully terminates the process listening on the port; while the mirror server is still starting and the port is not open yet, it terminates every process the plugin started. For the subprocess proxy, `true` makes `stop` send `!!MCDR server stop_exit`, while `false` sends Minecraft's `stop` command; `kill` terminates the child process directly.
 
 > [!IMPORTANT]
-> `!!mirror kill -f` and `!!mirror kill --force` are only available for the Linux proxy or Linux/Windows+MCDR. The Linux proxy kills every process inside the screen session (including anything you started in that screen by hand) and every process listening on the configured port, then closes the screen; confirm that `port` is correct before using them.
+> `!!mirror kill -f` and `!!mirror kill --force` are available for every terminal proxy. They forcefully terminate every process the plugin started and recorded (the Linux proxy then closes the screen); when the status is unknown, they also terminate processes holding the configured port that the plugin did not start. The processes are listed to the command source first. If the port is held by a process whose PID cannot be read (such as a process of another user), nothing is terminated. Confirm that `port` is correct to avoid terminating other services.
 >
 > The Linux and Windows proxies only recognize processes the current user is allowed to inspect. When the mirror server is started by another user, the port status is still detected, but `kill` may be unable to terminate it.
 
@@ -470,9 +466,13 @@ Players can only confirm the commands they have executed
 ```yaml
 display:
     server_name: "Mirror"
+    protected_process_info: []
 ```
 **server_name** `str`
 - The name of the "mirror server", used to distinguish between different mirror servers in the display
+
+**protected_process_info** `list`
+- Process details left out of in-game messages: `name` (process name) and/or `pid`, empty by default. It applies to the processes `kill -f` lists and those `status` mentions. With both, only counts are shown. The console always shows the name, PID and command line; command lines and paths never appear in in-game messages.
 
 <br>
 
@@ -492,7 +492,6 @@ display:
         launch_command: "python -m mcdreforged"
         port: null
         terminal_name: "Mirror"
-        regex_strict: false
         is_mcdr: true
         proxy_type: null
         console_log: false

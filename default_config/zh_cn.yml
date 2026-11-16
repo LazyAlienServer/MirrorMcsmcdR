@@ -28,8 +28,6 @@
     port:
     # 终端标题、screen 名称或子进程日志前缀。
     terminal_name: Mirror
-    # Linux/Windows 代理是否验证 Java 进程名称。
-    regex_strict: false
     # 镜像服务器本身是否由 MCDReforged 启动。
     is_mcdr: true
     # 代理类型：linux、windows、subprocess 或 null 以自动选择。
@@ -123,6 +121,8 @@
   display:
     # 此镜像服务器在命令反馈中使用的名称。
     server_name: Mirror
+    # 游戏内消息不显示的进程信息，控制台始终显示全部信息。可选 name（进程名）和 pid，例如 [name, pid]；两项都填时只显示进程数量。
+    protected_process_info: []
 
 # 对于额外的镜像服务器，你可以使用类 yaml 的语法来覆盖基础配置。例如：
 # "!!mirror2":
