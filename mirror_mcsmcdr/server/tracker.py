@@ -14,10 +14,13 @@ from mirror_mcsmcdr.server.system_utils.port_utils import PortListener
 
 class Role(Enum):
     MCDR = "mcdr"
-    # anything MCDR launched, and everything below that
+    # the process MCDR runs as the server, and everything below it
     SERVER = "server"
+    # what MCDR launched while the server is not told apart yet; it is all taken for the server
+    CHILD = "child"
     # the terminal and shell a launch command runs in
     WRAPPER = "wrapper"
+    # anything else, including what MCDR launched besides the server
     OTHER = "other"
 
 
@@ -152,7 +155,9 @@ class ProcessTracker:
             record = self._record
             members: list[LiveMember] = []
             if record is not None and record.active:
+                known = {member.pid for member in record.members}
                 members = self._take_in_descendants(self._revalidate(record.members), record.root.pid)
+                members = self._tell_server_apart(members, {live.member.pid for live in members} - known, listeners)
                 updated = replace(record, members=tuple(live.member for live in members), active=bool(members))
                 if updated != record:
                     self._record = record = updated
@@ -199,6 +204,47 @@ class ProcessTracker:
         return members
 
     @staticmethod
+    def _tell_server_apart(members: list[LiveMember], new: set[int], listeners: frozenset[Optional[int]]) -> list[LiveMember]:
+        """
+        Mark which of the processes an MCDR launched is the server, and the others as other processes.
+
+        The one the port listener descends from is the server for certain; failing that, the one already known,
+        and failing that, a new one that MCDR's config describes as the server.
+        """
+        by_pid = {live.member.pid: live for live in members}
+        mcdr = {pid for pid, live in by_pid.items() if live.member.role is Role.MCDR}
+        # the child of an MCDR that each process descends from; parents come first
+        branch: dict[int, int] = {}
+        parents: dict[int, int] = {}
+        for live in members:
+            if live.member.role is Role.MCDR:
+                continue
+            try:
+                parent = parents[live.member.pid] = live.process.ppid()
+            except psutil.Error:
+                continue
+            if parent in mcdr:
+                branch[live.member.pid] = live.member.pid
+            elif parent in branch:
+                branch[live.member.pid] = branch[parent]
+        heads = set(branch.values())
+        server = next((branch[pid] for pid in listeners if pid in branch), None)
+        if server is None:
+            server = next((pid for pid in heads if by_pid[pid].member.role is Role.SERVER), None)
+        if server is None:
+            server = next((
+                pid for pid in heads & new if process_utils.is_server_of(by_pid[pid].process, by_pid[parents[pid]].process)
+            ), None)
+        if server is None:
+            return members
+        told_apart = []
+        for live in members:
+            head = branch.get(live.member.pid)
+            role = live.member.role if head is None else Role.SERVER if head == server else Role.OTHER
+            told_apart.append(live if role is live.member.role else LiveMember(replace(live.member, role=role), live.process))
+        return told_apart
+
+    @staticmethod
     def _role_of_root(process: psutil.Process) -> Role:
         if process_utils.is_mcdr(process):
             return Role.MCDR
@@ -208,8 +254,10 @@ class ProcessTracker:
     def _role_of_child(process: psutil.Process, parent: Member, root_pid: int) -> Role:
         if process_utils.is_mcdr(process):
             return Role.MCDR
-        if parent.role in (Role.MCDR, Role.SERVER):
-            return Role.SERVER
+        if parent.role is Role.MCDR:
+            return Role.CHILD
+        if parent.role in (Role.SERVER, Role.CHILD):
+            return parent.role
         # only the shell a terminal opens and the console host of the root: a script the command runs is not one
         if parent.pid == root_pid and parent.role is Role.WRAPPER and process_utils.is_shell(process):
             return Role.WRAPPER

@@ -90,11 +90,11 @@ class TerminalProxy(ServerBackend, ABC):
         port_owned = any(live.member.pid in view.listeners for live in view.members)
         if self.is_mcdr:
             mcdr_alive: Optional[bool] = view.alive(Role.MCDR)
-            server_alive = view.alive(Role.SERVER) or port_owned
+            server_alive = view.alive(Role.SERVER, Role.CHILD) or port_owned
             others_alive = view.alive(Role.OTHER)
         else:
             mcdr_alive, others_alive = None, False
-            server_alive = view.alive(Role.MCDR, Role.SERVER, Role.OTHER)
+            server_alive = view.alive(Role.MCDR, Role.SERVER, Role.CHILD, Role.OTHER)
         return Evidence(
             port_listening=bool(view.listeners),
             foreign_listeners=tuple(self._describe_listener(pid) for pid in view.foreign_listeners()),

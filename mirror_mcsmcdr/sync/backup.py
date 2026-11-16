@@ -15,14 +15,14 @@ from pathlib import Path
 from typing import Any, Optional
 
 import psutil
-from ruamel.yaml import YAML
+
+from mirror_mcsmcdr.mcdr_config import CONFIG_FILE, MCDRConfigError, read_mcdr_config
 
 PRIME_BACKUP_ID = "prime_backup"
 # the first version whose command line tool can make a backup
 MIN_PRIME_BACKUP_VERSION = (1, 13, 0)
 
 # MCDR's own constants (mcdreforged.constants.plugin_constant), so that plugins are found like MCDR finds them
-_MCDR_CONFIG_FILE = "config.yml"
 _PLUGIN_CONFIG_DIRECTORY = "config"
 _PLUGIN_META_FILE = "mcdreforged.plugin.json"
 _LINK_DIRECTORY_PLUGIN_FILE = "mcdreforged.linked_directory_plugin.json"
@@ -169,15 +169,12 @@ class MirrorBackup:
 
     @staticmethod
     def _read_mcdr_config(mcdr_path: Path) -> dict[str, Any]:
-        path = mcdr_path / _MCDR_CONFIG_FILE
         try:
-            with path.open("r", encoding="utf8") as file:
-                data = YAML(typ="safe").load(file)
-        except Exception as e:
-            raise BackupUnavailable("mcdr_config_unreadable", path=str(path), error=str(e)) from e
-        if not isinstance(data, dict):
-            raise BackupUnavailable("mcdr_config_invalid", path=str(path), option="/")
-        return data
+            return read_mcdr_config(mcdr_path / CONFIG_FILE)
+        except MCDRConfigError as e:
+            if e.error is None:
+                raise BackupUnavailable("mcdr_config_invalid", path=str(e.path), option="/") from e
+            raise BackupUnavailable("mcdr_config_unreadable", path=str(e.path), error=str(e.error)) from e
 
     @staticmethod
     def _plugin_directories(mcdr_path: Path, mcdr_config: dict[str, Any]) -> list[Path]:
@@ -186,7 +183,7 @@ class MirrorBackup:
         if directories is None:
             directories = []
         if not isinstance(directories, list) or not all(isinstance(directory, str) for directory in directories):
-            raise BackupUnavailable("mcdr_config_invalid", path=str(mcdr_path / _MCDR_CONFIG_FILE), option="plugin_directories")
+            raise BackupUnavailable("mcdr_config_invalid", path=str(mcdr_path / CONFIG_FILE), option="plugin_directories")
         # MCDR drops duplicates as Paths, so "plugins" and "./plugins" are one directory
         return list(dict.fromkeys(mcdr_path / directory for directory in directories))
 
@@ -275,7 +272,7 @@ class MirrorBackup:
         if use_working_directory:
             source_root = mcdr_config.get("working_directory", "server")
             if not isinstance(source_root, str):
-                raise BackupUnavailable("mcdr_config_invalid", path=str(mcdr_path / _MCDR_CONFIG_FILE), option="working_directory")
+                raise BackupUnavailable("mcdr_config_invalid", path=str(mcdr_path / CONFIG_FILE), option="working_directory")
         else:
             source_root = backup_config.get("source_root", _DEFAULT_SOURCE_ROOT)
             if not isinstance(source_root, str):
