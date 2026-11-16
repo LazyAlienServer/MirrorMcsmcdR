@@ -91,6 +91,7 @@ mirror_mcsmcdr:
       stopping: stopping
       starting: starting
       running: running
+      mcdr_only: server stopped, MCDR still running
 
     anomaly:
       orphan_screen: "§cDetached (Java: not running; Screen: running)"
@@ -124,6 +125,7 @@ mirror_mcsmcdr:
         unknown: status unknown, please report this problem to operators
         stopping: stopping, please restart after {server_name} stopped
         starting: starting, please wait for a moment
+        mcdr_only: "the server has stopped but MCDR is still running; wait for MCDR to exit, or end it with {prefix} kill, then start again"
         unsupported: Current config does not support start command. You need to configure MCSM or terminal
         orphan_screen: "Screen process is running but Java is not, please use the kill command to terminate the Screen process"
         orphan_process: "The console is gone but processes are still running; use {prefix} kill -f to terminate them"
@@ -134,6 +136,7 @@ mirror_mcsmcdr:
         unknown: status unknown, please report this problem to operators
         stopping: stopping, please wait for a moment
         starting: starting, please stop after §b{server_name}§c started
+        mcdr_only: "the server has stopped but MCDR is still running; wait for MCDR to exit, or end it with {prefix} kill"
         unsupported: Current config does not support stop command. You need to configure MCSM or terminal
         orphan_screen: Cannot stop, Screen is running without Java; please try the kill command
         orphan_process: Cannot stop, the console is gone; use {prefix} kill -f to terminate the processes
@@ -155,6 +158,7 @@ mirror_mcsmcdr:
         stopping: §cOperation failed / §b{server_name}§c stopping, please sync after {server_name} stopped
         starting: §cOperation failed / §b{server_name}§c starting, please stop {server_name} first then sync
         running: §cOperation failed / §b{server_name}§c running, please stop {server_name} first then sync
+        mcdr_only: "§cOperation failed / §b{server_name}§c the server has stopped but MCDR is still running. Wait for MCDR to exit, or end it with {prefix} kill, then sync"
         unsupported: §cOperation failed / §b{server_name}§c current config does not support detecting status. You need to configure MCSM or terminal
         orphan_screen: "§cOperation failed / §b{server_name}§c Screen and Java processes detached (Java not running). Please terminate the Screen process first"
         orphan_process: "§cOperation failed / §b{server_name}§c the console is gone but processes are still running. Use {prefix} kill -f first"

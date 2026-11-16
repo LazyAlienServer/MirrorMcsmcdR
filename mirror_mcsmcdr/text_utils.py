@@ -21,8 +21,8 @@ def help_msg(server_name, prefix):
 # Rejections that come with advice of their own, as command.<command>.fail.<label>.
 # Every other rejection is explained by describing the status.
 _ADVISED_REJECTIONS = {
-    "start": {"unknown", "stopping", "starting", "orphan_screen", "orphan_process"},
-    "stop": {"unknown", "stopping", "starting", "orphan_screen", "orphan_process"},
+    "start": {"unknown", "stopping", "starting", "mcdr_only", "orphan_screen", "orphan_process"},
+    "stop": {"unknown", "stopping", "starting", "mcdr_only", "orphan_screen", "orphan_process"},
     "kill": {"unknown", "orphan_process"},
 }
 

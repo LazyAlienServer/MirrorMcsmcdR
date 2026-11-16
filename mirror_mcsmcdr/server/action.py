@@ -51,9 +51,11 @@ class ActionResult:
     ALLOWED_STATES: ClassVar[dict[Action, frozenset[ServerState]]] = {
         Action.START: frozenset({ServerState.STOPPED}),
         Action.STOP: frozenset({ServerState.RUNNING}),
-        Action.KILL: frozenset({ServerState.STARTING, ServerState.RUNNING, ServerState.STOPPING}),
+        Action.KILL: frozenset({ServerState.STARTING, ServerState.RUNNING, ServerState.STOPPING, ServerState.MCDR_ONLY}),
         # the way out of a status that cannot be told
-        Action.FORCEKILL: frozenset({ServerState.STARTING, ServerState.RUNNING, ServerState.STOPPING, ServerState.UNKNOWN}),
+        Action.FORCEKILL: frozenset({
+            ServerState.STARTING, ServerState.RUNNING, ServerState.STOPPING, ServerState.MCDR_ONLY, ServerState.UNKNOWN,
+        }),
     }
 
     @classmethod
