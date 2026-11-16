@@ -86,7 +86,7 @@ class TerminalProxy(ServerBackend, ABC):
         return "!!MCDR server stop_exit" if self.is_mcdr else "stop"
 
     def observe(self) -> Evidence:
-        view = self.tracker.observe(self.listener)
+        view = self.tracker.observe(self.listener, self._console_exists)
         port_owned = any(live.member.pid in view.listeners for live in view.members)
         if self.is_mcdr:
             mcdr_alive: Optional[bool] = view.alive(Role.MCDR)
@@ -119,6 +119,14 @@ class TerminalProxy(ServerBackend, ABC):
             child_processes=tuple(process_utils.describe(live.process, True) for live in view.members if live.member.role is Role.CHILD),
             others_count=sum(live.member.role is Role.OTHER and live is not server for live in view.members) if self.is_mcdr else 0,
         )
+
+    def _console_exists(self, record: ProcessRecord) -> Optional[bool]:
+        """
+        Whether the console of an active record is still there, for a backend whose processes do not tell it.
+
+        :return: None if the processes tell it
+        """
+        return None
 
     @abstractmethod
     def _endpoint_alive(self, view: TreeView) -> bool:

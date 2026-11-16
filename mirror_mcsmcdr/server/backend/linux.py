@@ -28,8 +28,12 @@ class LinuxProxy(TerminalProxy):
             raise ScreenError("No screen was launched by this plugin")
         return Screen(record.terminal_name, record.launch_path, record.root.pid)
 
+    def _console_exists(self, record: ProcessRecord) -> Optional[bool]:
+        # a launch by another backend has no screen to look for
+        return record.backend == self.name and self._screen(record).exists()
+
     def _endpoint_alive(self, view: TreeView) -> bool:
-        return view.root_alive and self._screen(view.record).exists()
+        return view.root_alive and bool(view.console)
 
     def _start(self, result: ActionResult) -> ActionResult:
         if not os.path.exists(self.path):
