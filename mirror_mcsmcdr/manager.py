@@ -7,7 +7,8 @@ from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, Pl
 from mirror_mcsmcdr.constants import TITLE
 from mirror_mcsmcdr.config import MultiConfigLoader, MirrorConfig
 from mirror_mcsmcdr.runtime import MirrorRuntime
-from mirror_mcsmcdr.sync.workflow import SyncWorkflow
+from mirror_mcsmcdr.sync.workflow import SyncWorkflow, backup_error_console_lines, describe_backup_error
+from mirror_mcsmcdr.sync.backup import BackupError, BackupWarning, MirrorBackup
 from mirror_mcsmcdr.text_utils import help_msg, rejection_key, rtr, status_key
 from mirror_mcsmcdr.server import Action, MCSManagerProxyError, ScreenError
 from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
@@ -143,7 +144,31 @@ class MirrorManager:
         self._available = True
         for error in runtime.proxy_errors:
             self.server.broadcast(self.rtr("manager.reload.fail.proxy", proxy=error.proxy, keys="', '".join(error.missing_keys)))
+        if runtime.backup is not None:
+            self._diagnose_backup(runtime.backup)
         return True
+
+    def _diagnose_backup(self, backup: MirrorBackup) -> None:
+        """Tell the console early what a sync would run into; this decides nothing, each sync checks again."""
+        try:
+            resolved = backup.resolve()
+            backup.probe(resolved)
+            warnings = backup.warnings(resolved)
+        except BackupError as e:
+            self.server.logger.warning(self.rtr("manager.backup.unavailable", title=False, reason=describe_backup_error(self.rtr, e).to_plain_text()))
+            for line in backup_error_console_lines(self.rtr, e):
+                self.server.logger.warning(line)
+            return
+        except Exception as e:
+            self.server.logger.warning(self.rtr("manager.backup.unavailable", title=False, reason=str(e)), exc_info=e)
+            return
+        self.server.logger.info(self.rtr("manager.backup.ready", title=False, version=resolved.plugin_version, path=resolved.plugin_path))
+        self._log_backup_warnings(warnings)
+
+    def _log_backup_warnings(self, warnings: list[BackupWarning]) -> None:
+        # they name paths, so they are for the console only
+        for warning in warnings:
+            self.server.logger.warning(self.rtr(f"command.sync.backup.warning.{warning.key}", title=False, **warning.kwargs))
 
     def reload_config(self, config: MirrorConfig) -> bool:
         with self._sync_workflow.hold() as held:
@@ -207,12 +232,16 @@ class MirrorManager:
         source: CommandSource,
         action: CommandAction,
         confirmable: bool = True,
+        confirm_if: Optional[Callable[[MirrorRuntime], Optional[bool]]] = None,
     ) -> None:
         """
         Run ``action`` if the manager is available and the source is permitted.
 
         A confirmable command whose config requires confirmation is parked instead,
         and goes through the availability and permission checks again once confirmed.
+
+        :param confirm_if: asked once, before a confirmable command is run or parked: whether it has to be
+            confirmed whatever the config says. None drops the command; reporting why is up to ``confirm_if``
         """
         runtime = self._active_runtime()
         if runtime is None:
@@ -228,7 +257,13 @@ class MirrorManager:
         if not self._check_permission(runtime, source, command):
             return
         action_config = runtime.config.command.action
-        if confirmable and action_config.requires_confirm(command):
+        must_confirm = action_config.requires_confirm(command)
+        if confirmable and confirm_if is not None:
+            forced = confirm_if(runtime)
+            if forced is None:
+                return
+            must_confirm = must_confirm or forced
+        if confirmable and must_confirm:
             self.confirmations.request(
                 operator,
                 command,
@@ -293,7 +328,34 @@ class MirrorManager:
         self._run_command("kill", source, lambda runtime: self._execute(runtime, source, action))
 
     def sync(self, source: CommandSource, context: CommandContext) -> None:
-        self._run_command("sync", source, lambda runtime: self._sync(runtime, source))
+        self._run_command(
+            "sync",
+            source,
+            lambda runtime: self._sync(runtime, source),
+            confirm_if=lambda runtime: self._review_backup(runtime, source),
+        )
+
+    def _review_backup(self, runtime: MirrorRuntime, source: CommandSource) -> Optional[bool]:
+        """
+        Tell ``source``, before the sync is run or confirmed, what the pre-sync backup would not hold.
+
+        :return: whether the sync has to be confirmed for that; None if no backup can be made, so there is no sync to confirm
+        """
+        backup = runtime.backup
+        if backup is None:
+            return False
+        try:
+            warnings = backup.warnings(backup.resolve())
+        except BackupError as e:
+            source.reply(self.rtr("command.sync.backup.unavailable", reason=describe_backup_error(self.rtr, e).to_legacy_text()))
+            for line in backup_error_console_lines(self.rtr, e):
+                self.server.logger.warning(line)
+            return None
+        if not warnings:
+            return False
+        source.reply(self.rtr("command.sync.backup.warnings", count=len(warnings)))
+        self._log_backup_warnings(warnings)
+        return runtime.config.sync.backup.confirm_on_warning
 
     @new_thread(f"{TITLE}-sync")
     def _sync(self, checked: MirrorRuntime, source: CommandSource) -> None:
@@ -333,6 +395,12 @@ class MirrorManager:
         source.reply(page.get_rtext())
 
     def _get_history_rtext(self, record: SyncRecord) -> RTextBase:
+        text = self._get_outcome_rtext(record)
+        if record.backup_id is None:
+            return text
+        return RTextList(text, self.rtr("command.history.record.backup", title=False, backup_id=record.backup_id))
+
+    def _get_outcome_rtext(self, record: SyncRecord) -> RTextBase:
         if record.status == SyncStatus.SUCCESS:
             return self.rtr(
                 "command.history.record.success",

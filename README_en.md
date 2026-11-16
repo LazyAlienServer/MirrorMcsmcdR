@@ -21,6 +21,7 @@
     - Start and stop through MCDR, then force-terminate through Linux when the mirror process fails
 - **Comprehensive control features**: manage multiple mirror servers, inspect status, start, stop, force-terminate, and synchronize
 - **Hash-based file synchronization**: synchronize only files that differ from the source server, improving speed and reducing disk I/O
+- **Pre-sync backup**: optionally back up the mirror world with the mirror's own PrimeBackup before every sync; without a successful backup, nothing is synced
 - **Highly customizable configuration**: use YAML and write only changed values when configuring multiple mirror servers
 
 > [!NOTE]
@@ -33,6 +34,7 @@
 | Python               | `>=3.10`                                                                                |
 | Python package       | `xxhash>=3`                                                                             |
 | Linux terminal proxy | [`screen`](https://www.gnu.org/software/screen/) when `proxy_type` is `linux` or `null` |
+| PrimeBackup          | `>=1.13.0` in the mirror's MCDR, only with [pre-sync backup](#syncbackup-pre-sync-backup) enabled |
 
 ## Commands
 
@@ -234,6 +236,11 @@ sync:
     concurrency: 4
     ignore_files:
         - "session.lock"
+    backup:
+        enable: false
+        mcdr_path: ""
+        timeout: 600
+        confirm_on_warning: true
 ```
 
 In `sync`, `./` refers to the `MCDReforged` root directory where the server is located.
@@ -267,6 +274,90 @@ mcdr_root (./)
 
 **ignore_files** `list`
 - Files that are not synchronized, if you use the `carpet` mod and the `plus-carpet-addition(PCA)` mod, it is recommended to add `"carpet.conf"` `"pca.conf"`
+
+**backup** pre-sync backup, see [sync.backup](#syncbackup-pre-sync-backup) below
+
+<br>
+
+### sync.backup: Pre-sync backup
+
+```yaml
+sync:
+    backup:
+        enable: false
+        mcdr_path: ""
+        timeout: 600
+        confirm_on_warning: true
+```
+
+A sync overwrites the mirror world and deletes the files that only exist in the mirror; there is no undo. With `backup.enable: true`, every `!!mirror sync` first makes a backup with the **mirror's own** [PrimeBackup](https://github.com/TISUnion/PrimeBackup), through PrimeBackup's command line tool: its plugin file, its storage and its settings, exactly as the mirror admin configured them.
+
+Two rules apply:
+- **No backup, no sync.** If the backup cannot be made or fails, the sync is refused and nothing is copied. To sync without a backup, set `enable` to `false` and run `!!mirror reload`.
+- **The backup is as complete as the mirror's PrimeBackup settings make it.** They are expected to be equivalent to the sync settings. Where they are not, the plugin warns and asks for confirmation, then backs up with the settings as they are. Whoever confirms accepts that part of what the sync overwrites is not in the backup.
+
+**enable** `bool`
+- Whether every sync is preceded by a backup. Off by default; while it is `false` nothing of the mirror is read and syncing works as without this feature.
+
+**mcdr_path** `str`
+- Directory of the mirror's MCDR, the one that contains its `config.yml`. Like `sync.target`, it is relative to the MCDR root of this server. When empty, `terminal.launch_path` is used if `terminal.enable` is `true`; otherwise it must be set.
+- Paths read from the mirror's files (`plugin_directories`, `working_directory`, PrimeBackup's `storage_root` and `source_root`) are relative to `mcdr_path`, as they are for the mirror's MCDR.
+
+**timeout** `int`
+- Seconds a backup may take. A backup that takes longer is killed and the sync is refused.
+
+**confirm_on_warning** `bool`
+- Whether a sync has to be confirmed when one of the warnings below applies, even if `command.action.sync.require_confirm` is `false`. Defaults to `true`. With `false` the warning is still shown, and whether the sync is confirmed follows `require_confirm` alone.
+
+**Prerequisites**
+- The mirror runs under MCDR, with PrimeBackup `>=1.13.0` in one of its `plugin_directories`. Exactly one PrimeBackup must be there (packed `.pyz`/`.mcdr`, directory or linked directory plugin; `.disabled` ones do not count).
+- The mirror's PrimeBackup has been loaded at least once, so that its config `config/prime_backup/config.json` and its database `prime_backup.db` in `storage_root` exist.
+- The command line tool is started with the Python interpreter that runs this MCDR, so PrimeBackup's Python dependencies (see its `requirements.txt`) must be installed for it.
+
+**Warnings**
+
+When `!!mirror sync` is entered, the mirror's PrimeBackup config is compared with the sync config. In game only the number of differences is shown; the details contain paths and are written to the MCDR console.
+
+| PrimeBackup setting | Warning when |
+|---|---|
+| `backup.source_root`, or the mirror's `working_directory` when `backup.source_root_use_mcdr_working_directory` is `true` | It is not a `sync.target`, or there are further `sync.target` directories besides it |
+| `backup.targets` | A `sync.world` entry is not matched by it |
+| `backup.ignore_patterns`, `backup.ignored_files` | They contain a pattern that is not in `sync.ignore_files` |
+| `backup.retain_patterns` | It is not empty |
+| `backup.reuse_stat_unchanged_file` | It is `true`: files with unchanged size and time are not read |
+| `backup.creation_skip_missing_file` | It is `true`: files that disappear during the backup are skipped |
+| `storage_root` | It is inside a synchronized world: the sync deletes the files only the mirror has, the backup among them |
+
+With the defaults of both plugins there is no warning.
+
+**What a sync does with backup enabled**
+1. When `!!mirror sync` is entered, the mirror's PrimeBackup is located: plugin, config and database. If one is missing, the sync is refused at once. Then the warnings above are checked, and if there are any, the sync has to be confirmed.
+2. The mirror server must be stopped, as before (`auto_server_restart` may stop it).
+3. PrimeBackup's `make` makes the backup with the mirror's settings, with comment `MirrorMcsmcdR pre-sync by <operator>`.
+4. The backup counts if `make` exits with code 0 and reports a backup id. Otherwise the sync is refused, the last lines of PrimeBackup's output are written to the MCDR console, and the sync is recorded as failed.
+5. The backup id is broadcast and the main world is saved. With `ensure_server_closed: true`, the mirror must still be stopped right before copying; otherwise the sync is refused, because the backup would be stale.
+6. `!!mirror history` shows the backup id of each sync, also of a sync that failed after its backup.
+
+If no target holds any of the worlds yet, there is nothing to lose: the backup is skipped and the sync runs.
+
+Messages in game never contain paths. When a sync is refused, the paths involved are in the MCDR console.
+
+When the plugin loads and on `!!mirror reload`, the mirror's PrimeBackup is located, `--version` of the command line tool is run and the warnings are checked; the results are written to the console. This is diagnostics only: it blocks nothing, and every sync checks again.
+
+**Restoring**
+- Pre-sync backups are regular backups of the mirror's PrimeBackup, without tags, with creator `prime_backup:cli`; only the comment identifies them.
+- To restore one, use the mirror's PrimeBackup with the id from the sync message or `!!mirror history`: `!!pb back <id>` on the mirror. It restores into `restore.destination_root` when that is configured, otherwise into its source root.
+- Old pre-sync backups are pruned by the mirror's PrimeBackup prune settings; this plugin deletes nothing.
+
+**Known limits**
+- After an automatic stop (`auto_server_restart`) the backup starts at once. If the mirror's MCDR is still shutting down and its PrimeBackup still holds the database, `make` fails and the sync is refused; the mirror is restarted as usual. Run the sync again, or stop the mirror before syncing.
+- The plugin does not check whether the mirror's MCDR is running. With `ensure_server_closed: false`, or with a mirror whose MCDR keeps running while its server is stopped, the command line tool and the mirror's PrimeBackup plugin can work on the same storage at the same time.
+- The warnings are checked when the command is entered. A config changed between that and the confirmation is not warned about again.
+- A sync whose content is identical still creates a backup (deduplicated by PrimeBackup, but one more entry in its list).
+- About 1 s more per sync, and about 1 s per backup-enabled mirror when the plugin loads or reloads (`--version`).
+- The plugin trusts what `make` reported; it does not verify that the backup can be restored (the command line tool has no verify command).
+- `--version` may not import every dependency of PrimeBackup; such a gap shows at the first `make`, which then refuses the sync.
+- A `make` killed by the timeout may leave orphan files in PrimeBackup's storage; they are not cleaned up.
 
 <br>
 

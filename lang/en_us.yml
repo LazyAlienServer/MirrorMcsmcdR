@@ -31,6 +31,9 @@ mirror_mcsmcdr:
     console_only: §b{server_name}§c Console-only command
     mcsm_disabled: §cMCSM-API is disabled
     unavailable: §cConfig error, §4{prefix}§c instance disabled
+    backup:
+      ready: "{prefix}: pre-sync backup ready, PrimeBackup v{version} at {path}"
+      unavailable: "{prefix}: pre-sync backup unavailable, every sync will be refused until this is fixed: {reason}"
   
   command:
 
@@ -146,12 +149,51 @@ mirror_mcsmcdr:
       completed: §aSynchronization completed!! §fTime taken | §b{time}s §7/ §f§b{changed_files_count}§f files updated
       identical: §aNo changes detected
       error: "§cAn error occurred while syncing, please check the console for details"
+      backup:
+        start: "§b{server_name}§f: backing up with its PrimeBackup..."
+        done: "§aBackup §b#{backup_id}§a of §b{server_name}§a created"
+        skipped: "§7{server_name} holds none of the synchronized worlds yet, nothing to back up"
+        unavailable: "§cSync cancelled, no backup can be made: §f{reason}§c. See the console for details"
+        failed: "§cSync cancelled, the backup failed: §f{reason}§c. See the console for details"
+        stale: "§cSync cancelled before copying: §f{reason}§c. The backup is no longer current"
+        warnings: "§e{count} setting(s) of §b{server_name}§e's PrimeBackup differ from the sync settings, so the backup may not hold everything the sync overwrites. See the console for details"
+        detail: "Pre-sync backup of {server_name}: {detail}"
+        output: "Last lines of the PrimeBackup output:\n{output}"
+        reason:
+          mcdr_path_required: "sync.backup.mcdr_path is required while the terminal is disabled"
+          mcdr_path_not_found: "the mirror's MCDR directory does not exist"
+          mcdr_config_unreadable: "cannot read the mirror's MCDR config"
+          mcdr_config_invalid: "invalid value of '{option}' in the mirror's MCDR config"
+          plugin_not_found: "no PrimeBackup plugin in the plugin directories of the mirror's MCDR"
+          plugin_duplicated: "more than one PrimeBackup plugin in the mirror's MCDR"
+          plugin_too_old: "the mirror's PrimeBackup has version {version}, at least 1.13.0 is required"
+          pb_config_unreadable: "cannot read the mirror's PrimeBackup config"
+          pb_config_invalid: "invalid value of '{option}' in the mirror's PrimeBackup config"
+          database_not_found: "the mirror's PrimeBackup database does not exist"
+          pathspec_missing: "the Python package pathspec, which PrimeBackup requires, is not installed"
+          mirror_not_stopped: "{server_name} is {status}, not stopped"
+          probe_failed: "the PrimeBackup command line tool exited with code {code}; are its Python dependencies installed?"
+          launch: "cannot start the PrimeBackup command line tool"
+          timeout: "PrimeBackup did not finish within {timeout} seconds"
+          exit_code: "PrimeBackup exited with code {code}"
+          no_backup_id: "PrimeBackup did not report a backup id"
+          backup_id_mismatch: "PrimeBackup reported different backup ids: {ids}"
+        warning:
+          source_mismatch: "Pre-sync backup of {server_name}: its PrimeBackup backs up {source}, which is none of the sync targets ({targets}); what the sync overwrites is not backed up"
+          targets_not_backed_up: "Pre-sync backup of {server_name}: these sync targets are not the directory its PrimeBackup backs up, they are overwritten without a backup: {targets}"
+          worlds_not_targeted: "Pre-sync backup of {server_name}: backup.targets [{targets}] of its PrimeBackup does not include these synchronized worlds: {worlds}"
+          ignored: "Pre-sync backup of {server_name}: its PrimeBackup ignores what the sync does not ignore (ignore_patterns / ignored_files): {patterns}"
+          retained: "Pre-sync backup of {server_name}: retain_patterns of its PrimeBackup keeps these out of the backup: {patterns}"
+          reuse_stat_unchanged_file: "Pre-sync backup of {server_name}: its PrimeBackup has reuse_stat_unchanged_file on; files with unchanged size and time are not read and may be stored with older content"
+          creation_skip_missing_file: "Pre-sync backup of {server_name}: its PrimeBackup has creation_skip_missing_file on; files that disappear during the backup are skipped silently"
+          storage_in_world: "Pre-sync backup of {server_name}: the PrimeBackup storage {storage} is inside the synchronized world {world}, the sync would delete the backup"
     
     history:
       record:
         success: "§e[{time}] §b{operator} §aSuccess §7| §fChanged files: §b{change_file_count} §fTime taken: §b{duration}s"
         identical: "§e[{time}] §b{operator} §aNo changes §7| §fTime taken: §b{duration}s"
         failed: "§e[{time}] §b{operator} §cFailed §7| §fException: §c{exception}"
+        backup: " §7| §fBackup: §b#{backup_id}"
   
   mcsm:
     disabled: §cMCSM-API is disabled

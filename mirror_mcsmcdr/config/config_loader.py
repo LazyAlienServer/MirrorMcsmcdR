@@ -48,7 +48,7 @@ class MultiConfigLoader:
 
         annotated_first = deepcopy(template[template_prefix])
         self._apply_values(annotated_first, parent_config.serialize())
-        first_data_defined = user_config and first_prefix in user_config
+        first_data_defined = bool(user_config) and first_prefix in user_config
         needs_save = needs_save or source_path is None or source_path != self.config_path or (first_data_defined and first_data != annotated_first)
         if not needs_save:
             return
@@ -97,6 +97,8 @@ class MultiConfigLoader:
                 path = self.legacy_config_path
                 self.server.logger.warning("JSON format is outdated. Automatically convert legacy config.json to config.yml and backup to config.json.bak.")
                 config = self.server.load_config_simple("config.json")
+                if not isinstance(config, dict):
+                    raise ValueError("Legacy config.json must contain a JSON object")
                 os.rename(path, path.with_suffix('.json.bak'))
                 return config, path
             else:

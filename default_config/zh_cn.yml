@@ -65,6 +65,17 @@
     # 同步时排除的文件名。
     ignore_files:
       - session.lock
+    # 每次同步前，用镜像服自己的 PrimeBackup（>= 1.13.0）备份镜像服。
+    # 启用后，备份不成功就不会复制任何文件。备份按镜像服 PrimeBackup 的现有设置进行。
+    backup:
+      # 每次同步前是否先备份；想不备份就同步，请改为 false 并重载配置。
+      enable: false
+      # 镜像服 MCDR 的目录（其 config.yml 所在目录），相对于本 MCDR。留空时，若启用了 terminal 则使用 terminal.launch_path。
+      mcdr_path: ''
+      # 备份最多可用的秒数；超时的备份会被终止，同步被拒绝。
+      timeout: 600
+      # 镜像服 PrimeBackup 的设置与同步设置不一致、备份可能不完整时，是否必须确认后才同步。
+      confirm_on_warning: true
 
   # 命令权限和命令行为。
   command:

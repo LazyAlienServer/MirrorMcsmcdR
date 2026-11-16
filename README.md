@@ -21,6 +21,7 @@
     - 通过 MCDR 启动与停止镜像服，当镜像服进程异常时，通过 Linux 强制终止镜像服
 - **完善的控制功能**：完善的**多镜像服**控制操作，获取运行状态/启动/停止/强制终止/同步操作
 - **基于哈希的文件同步**：基于哈希的文件同步，只同步镜像服与源服务端不同的文件，提升速度并减少磁盘IO
+- **同步前备份**：可选在每次同步前用镜像服自己的 PrimeBackup 备份镜像服世界，没有成功的备份就不同步
 - **高度可自定义的配置文件**：使用YAML格式，提供高可自定义的、配置友好配置文件，多个镜像服配置时只需要书写变化的值
 
 > [!NOTE]
@@ -33,6 +34,7 @@
 | Python              | `>=3.10`                                                                                  |
 | Python 包           | `xxhash>=3`                                                                               |
 | Linux terminal 代理 | `proxy_type` 为 `linux` 或 `null` 时需要 [`screen`](https://www.gnu.org/software/screen/) |
+| PrimeBackup         | 镜像服 MCDR 中需要 `>=1.13.0`，仅在启用[同步前备份](#syncbackup-同步前备份)时需要                    |
 
 ## 指令
 
@@ -231,6 +233,11 @@ sync:
   concurrency: 4
   ignore_files:
     - "session.lock"
+  backup:
+    enable: false
+    mcdr_path: ""
+    timeout: 600
+    confirm_on_warning: true
 ```
 在`sync`中，`./`即指服务端所在的`MCDReforged`根目录，一个可能的目录结构如下：
 
@@ -263,6 +270,90 @@ mcdr_root (./)
 
 **ignore_files** `list`
 - 不进行同步的文件，若使用`carpet`模组和`plus-carpet-addition(PCA)`模组，建议添加`"carpet.conf"` `"pca.conf"`
+
+**backup** 同步前备份，见下文 [sync.backup](#syncbackup-同步前备份)
+
+<br>
+
+### sync.backup: 同步前备份
+
+```yaml
+sync:
+  backup:
+    enable: false
+    mcdr_path: ""
+    timeout: 600
+    confirm_on_warning: true
+```
+
+同步会覆盖镜像服的世界，并删除只存在于镜像服中的文件，而且无法撤销。设置 `backup.enable: true` 后，每次 `!!mirror sync` 都会先通过 PrimeBackup 的命令行工具，用**镜像服自己的** [PrimeBackup](https://github.com/TISUnion/PrimeBackup) 做一次备份：用它的插件文件、它的存储和它的设置，设置完全按镜像服管理员的配置。
+
+有两条规则：
+- **没有备份就不同步。** 备份做不了或者失败时，同步被拒绝，不复制任何文件。想不备份就同步，请把 `enable` 改为 `false` 并执行 `!!mirror reload`。
+- **备份有多完整，取决于镜像服 PrimeBackup 的设置。** 它应当与同步设置等价。不一致时，插件会给出警告并要求确认，然后按现有设置备份。确认的人即接受：同步覆盖的内容中有一部分不在备份里。
+
+**enable** `bool`
+- 每次同步前是否先备份。默认关闭；为 `false` 时插件不会读取镜像服的任何文件，同步行为与没有此功能时相同。
+
+**mcdr_path** `str`
+- 镜像服 MCDR 的目录，即其 `config.yml` 所在的目录。与 `sync.target` 一样，相对于本服务端的 MCDR 根目录。留空时，若 `terminal.enable` 为 `true` 则使用 `terminal.launch_path`，否则必须填写。
+- 从镜像服文件中读取的路径（`plugin_directories`、`working_directory`，以及 PrimeBackup 的 `storage_root` 和 `source_root`）都相对于 `mcdr_path`，与镜像服 MCDR 自己的解析方式一致。
+
+**timeout** `int`
+- 备份最多可用的秒数。超时的备份会被终止，同步被拒绝。
+
+**confirm_on_warning** `bool`
+- 出现下文的警告时，是否必须确认后才同步，即使 `command.action.sync.require_confirm` 为 `false`。默认为 `true`。设为 `false` 时警告仍会显示，是否需要确认只由 `require_confirm` 决定。
+
+**前提条件**
+- 镜像服运行在 MCDR 下，且其某个 `plugin_directories` 中装有 `>=1.13.0` 的 PrimeBackup。PrimeBackup 必须恰好只有一个（打包的 `.pyz`/`.mcdr`、目录插件或链接目录插件均可；`.disabled` 的不计入）。
+- 镜像服的 PrimeBackup 至少被加载过一次，因此其配置文件 `config/prime_backup/config.json` 和 `storage_root` 中的数据库 `prime_backup.db` 已经存在。
+- 命令行工具使用运行本 MCDR 的 Python 解释器启动，因此该解释器必须装有 PrimeBackup 的 Python 依赖（见其 `requirements.txt`）。
+
+**警告**
+
+输入 `!!mirror sync` 时，插件会把镜像服的 PrimeBackup 配置与同步配置做比对。游戏内只显示有几项不一致；详情包含路径，只写入 MCDR 控制台。
+
+| PrimeBackup 设置 | 出现警告的情况 |
+|---|---|
+| `backup.source_root`；`backup.source_root_use_mcdr_working_directory` 为 `true` 时则是镜像服的 `working_directory` | 它不是 `sync.target`，或者除它之外还有别的 `sync.target` 目录 |
+| `backup.targets` | `sync.world` 中有一项没有被它匹配到 |
+| `backup.ignore_patterns`、`backup.ignored_files` | 其中有 `sync.ignore_files` 里没有的规则 |
+| `backup.retain_patterns` | 不为空 |
+| `backup.reuse_stat_unchanged_file` | 为 `true`：大小和修改时间未变的文件不会被读取 |
+| `backup.creation_skip_missing_file` | 为 `true`：备份过程中消失的文件会被跳过 |
+| `storage_root` | 位于被同步的世界目录里面：同步会删除只存在于镜像服中的文件，备份也在其中 |
+
+两个插件都使用默认配置时，不会出现警告。
+
+**启用备份后，一次同步的过程**
+1. 输入 `!!mirror sync` 时，先定位镜像服的 PrimeBackup：插件、配置和数据库。缺少任何一项，同步立即被拒绝。接着检查上面的警告，有警告时必须确认后才同步。
+2. 镜像服必须已停止，与以前相同（`auto_server_restart` 可以自动停止它）。
+3. 由 PrimeBackup 的 `make` 按镜像服的设置做备份，备注为 `MirrorMcsmcdR pre-sync by <操作者>`。
+4. `make` 的退出码为 0 且报告了备份编号，备份才算成功。否则拒绝同步，把 PrimeBackup 输出的最后几行写入 MCDR 控制台，并把这次同步记为失败。
+5. 广播备份编号，然后保存主服世界。`ensure_server_closed` 为 `true` 时，开始复制前的一刻镜像服必须仍处于停止状态；否则备份已不是最新的，同步被拒绝。
+6. `!!mirror history` 会显示每次同步的备份编号，备份之后失败的同步也会显示。
+
+如果所有目标目录中都还没有要同步的世界，就没有可丢失的内容：跳过备份，直接同步。
+
+游戏内的消息不包含路径。同步被拒绝时，涉及的路径见 MCDR 控制台。
+
+插件加载和执行 `!!mirror reload` 时，会定位镜像服的 PrimeBackup、运行命令行工具的 `--version` 并检查警告，结果写入控制台。这只用于诊断，不会阻止任何操作，每次同步时都会重新检查。
+
+**恢复**
+- 同步前备份是镜像服 PrimeBackup 中的普通备份，没有标签，创建者为 `prime_backup:cli`，只能通过备注识别。
+- 恢复时使用镜像服的 PrimeBackup，编号见同步消息或 `!!mirror history`：在镜像服中执行 `!!pb back <编号>`。若配置了 `restore.destination_root`，会恢复到该目录，否则恢复到其备份源目录。
+- 旧的同步前备份由镜像服 PrimeBackup 的 prune 设置清理，本插件不会删除任何备份。
+
+**已知限制**
+- 自动停服（`auto_server_restart`）后会立刻开始备份。如果镜像服的 MCDR 还在退出、它的 PrimeBackup 仍占用着数据库，`make` 会失败，同步被拒绝，镜像服照常被重新启动。请重新执行同步，或者先停止镜像服再同步。
+- 插件不检查镜像服的 MCDR 是否在运行。`ensure_server_closed` 为 `false`，或者镜像服的服务端停止后 MCDR 仍在运行时，命令行工具和镜像服的 PrimeBackup 插件可能同时操作同一份存储。
+- 警告在输入指令时检查。从那时到确认之间配置发生的变化，不会再次警告。
+- 内容完全相同的同步也会创建一个备份（PrimeBackup 会去重，但备份列表中会多一项）。
+- 每次同步约多花 1 秒；插件加载或重载时，每个启用备份的镜像服约多花 1 秒（`--version`）。
+- 插件只采信 `make` 报告的结果，不验证备份能否成功恢复（命令行工具没有校验命令）。
+- `--version` 不一定会导入 PrimeBackup 的所有依赖；这种缺失会在第一次 `make` 时暴露，届时同步会被拒绝。
+- 因超时而被终止的 `make` 可能在 PrimeBackup 的存储中留下孤立文件，插件不会清理它们。
 
 <br>
 
