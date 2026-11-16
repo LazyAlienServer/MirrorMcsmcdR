@@ -42,7 +42,6 @@
 !!mirror:
   mcsm: # MCSManager配置
   terminal: # 通过命令行启动镜像服终端的配置
-  rcon: # RCON配置
   sync: # 存档同步配置
   command:
     permission: # 指令权限配置
@@ -52,7 +51,7 @@
 
 ### 简要说明
 
-其中，`mcsm` `terminal` `rcon`用于控制镜像服，例如获取状态、开启和关闭镜像服。
+其中，`mcsm` `terminal`用于控制镜像服，例如获取状态、开启和关闭镜像服。
 
 而`sync`用于同步存档，当使用`!!mirror sync`指令将生存服同步到镜像服时，它将发挥作用（即控制由源服务端同步存档至目标服务端存档的逻辑）。
 
@@ -83,7 +82,7 @@ mcsm:
   remote_uuid:
   apikey:
 ```
-需要注意的是，启用MCSM后，终端（`terminal`）与RCON（`rcon`）配置项都会弃用。
+需要注意的是，启用MCSM后，终端（`terminal`）配置项会弃用。
 
 `url`为MCSManager面板的访问地址，即请求api的地址。
 
@@ -98,7 +97,7 @@ mcsm:
 ### 通过终端控制镜像服
 
 > [!NOTE]
-> `proxy_type`为`linux`（或在Linux系统保持为`null`）时需要安装`screen`；为`windows`时会创建新的命令行终端；为`subprocess`时会在MCDR进程内启动镜像服子进程。Linux/Windows代理的`stop`和`kill`分别通过screen或系统进程控制，subprocess代理通过标准输入输出控制，`rcon`为可选的替代控制方式。
+> `proxy_type`为`linux`（或在Linux系统保持为`null`）时需要安装`screen`；为`windows`时会创建新的命令行终端；为`subprocess`时会在MCDR进程内启动镜像服子进程。Linux/Windows代理的`stop`和`kill`分别通过screen或系统进程控制，subprocess代理通过标准输入输出控制。
 
 ```yaml
 terminal:
@@ -136,21 +135,7 @@ mcdr_root
 > [!NOTE]
 > 使用 `subprocess` 代理启动镜像服 MCDR 实例时，请在镜像服 MCDR 的 `config.yml` 中将 `advanced_console` 设置为 `false`。
 
-至此，Linux和Windows用户都可以跳至[存档同步](#存档同步)来进行下一步了，或选择性地继续查看`rcon`配置。
-
 同样的，配置完成后，你需要将`enable`设置为`true`，以真正地启用终端控制。
-
-```yaml
-rcon:
-  enable: false
-  address:
-  port:
-  password:
-```
-
-然后配置此插件的配置文件。`address`为RCON的连接地址，一般情况下书写本机地址`127.0.0.1`即可。`port`为RCON的端口，即镜像服的`server.properties`文件中的`rcon.port`项。与`terminal`中的`port`同理，它应当是一个整数，无需用`"xxx"`包裹。`password`为RCON的密码，即镜像服的`server.properties`文件中的`rcon.password`项。
-
-说明：当配置RCON后，插件将通过RCON执行`stop`指令和获取镜像服状态（Windows和Linux）。若同时启用了`rcon`和`terminal`，插件将优先通过检查RCON状态来获取镜像服状态，若RCON未连接，则将通过检查端口来获取状态。若RCON状态与端口状态不匹配将会提示，这种不匹配通常是由于`rcon`配置错误，或`terminal`的端口配置错误。
 
 跳至[存档同步](#存档同步)来进行下一步
 

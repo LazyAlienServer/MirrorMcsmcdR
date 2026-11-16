@@ -13,11 +13,9 @@
   - Start and stop mirror servers directly through terminal proxies (`Linux` `Windows`), with the new terminal independent from the parent MCDR process
     - Linux uses `screen` to control the mirror server
     - Windows uses a new command prompt to control the mirror server
-  - Stop mirror servers through RCON
   - Start mirror servers as child processes inside MCDR through `subprocess`, controlled through standard input and output
   - Send commands through `!!mirror execute <command>`
   - Combine multiple control methods, for example:
-    - Start through Windows Terminal and stop through RCON
     - Start and stop through MCDR, then force-terminate through Linux when the mirror process fails
 - **Comprehensive control features**: manage multiple mirror servers, inspect status, start, stop, force-terminate, and synchronize
 - **Hash-based file synchronization**: synchronize only files that differ from the source server, improving speed and reducing disk I/O
@@ -68,7 +66,6 @@ The configuration file supports hot reloading and automatic completion. When a n
 "!!mirror":
     mcsm: # MCSManager configuration
     terminal: # Configuration for starting the mirror server terminal through the command line
-    rcon: # RCON configuration
     sync: # Save synchronization configuration
     command:
         permission: # Command permission configuration
@@ -118,7 +115,7 @@ mcsm:
     remote_uuid:
     apikey:
 ```
-After enabling MCSM, the terminal and RCON configurations will be disabled.
+After enabling MCSM, the terminal configuration will be disabled.
 
 
 **enable** `bool`
@@ -161,10 +158,10 @@ When `proxy_type` is `linux`, the plugin creates a new screen; when it is `windo
 >    - Linux: `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
 >    - Windows: `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{launch_command}')"`
 
-Note: The `linux` proxy controls the mirror server through screen. With the `windows` proxy, `stop` types the stop command into the command prompt window of the process listening on the configured mirror port and `kill` forcefully terminates that process with `taskkill`. The `subprocess` proxy controls the mirror server through the child process's standard input and output. The Linux/Windows proxies require a correctly configured `port`; the subprocess proxy does not require `port`. MCSM or RCON can still be used as alternative control methods.
+Note: The `linux` proxy controls the mirror server through screen. With the `windows` proxy, `stop` types the stop command into the command prompt window of the process listening on the configured mirror port and `kill` forcefully terminates that process with `taskkill`. The `subprocess` proxy controls the mirror server through the child process's standard input and output. The Linux/Windows proxies require a correctly configured `port`; the subprocess proxy does not require `port`. MCSM can still be used as an alternative control method.
 
 > [!WARNING]
-> The `stop` command under the Windows proxy is experimental; use it at your own risk. Configure RCON whenever possible to avoid unnecessary operational overhead.
+> The `stop` command under the Windows proxy is experimental; use it at your own risk.
 
 **enable** `bool`
 - Whether to enable the terminal. When MCSM is not enabled and this option is `true`, the mirror server will be started through the selected terminal proxy.
@@ -200,27 +197,6 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 
 **console_log** `bool`
 - Whether to output the subprocess proxy's mirror server console logs to the MCDR console by default. This option only applies to the `subprocess` proxy.
-
-<br>
-### rcon: RCON Configuration
-```yaml
-rcon:
-    enable: false
-    address: null
-    port: null
-    password: null
-```
-**enable** `bool`
-- Whether to enable RCON. When MCSM is not enabled, the plugin will execute the `stop` command and obtain the status of the mirror server through RCON. If both RCON and the terminal are enabled at the same time, the plugin will first check the status of RCON to obtain the status of the mirror server. If RCON is not connected, it will check the status through the port. If the status of RCON does not match the status of the port, a prompt will be given.
-
-**address** `str`
-- The connection address of RCON, does not include the port.
-
-**port** `int`
-- The connection port of RCON
-
-**password** `str`
-- The connection password of RCON
 
 <br>
 
@@ -520,11 +496,6 @@ display:
         is_mcdr: true
         proxy_type: null
         console_log: false
-    rcon:
-        enable: false
-        address: null
-        port: null
-        password: null
     sync:
         world:
             - "world"
@@ -593,11 +564,6 @@ display:
         launch_path: "./Mirror3"
         port: 30002
         terminal_name: "Mirror3"
-    rcon:
-        enable: true
-        address: "127.0.0.1"
-        port: 31002
-        password: "p@ssw0rd"
 ```
 
 ## Acknowledgements
@@ -613,7 +579,6 @@ display:
 - [ ] Prohibit synchronization `!!mirror sync enable/disable reason`
 - [x] language file
 - [ ] Command disable
-- [x] RCON support
 - [x] Start server through command line without MCSM
 - [x] Linux/Windows execute `kill` command through terminal
 - [x] Display history synchronization records
