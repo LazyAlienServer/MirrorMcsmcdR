@@ -13,11 +13,9 @@
   - 支持直接通过终端启动与停止镜像服（`Linux` `Windows`），并且新终端与父MCDR进程互不干扰，便于运维管理
     - Linux 通过`screen`控制镜像服
     - Windows 通过新命令行终端控制镜像服
-  - 支持通过 RCON 停止镜像服
   - 支持通过`subprocess`在MCDR进程内启动镜像服子进程，并通过标准输入输出控制镜像服
   - 支持通过`!!mirror execute <command>`向镜像服发送指令
   - 支持多种控制方式的组合使用，例如：
-    - 通过 Windows 终端 启动镜像服，通过 RCON 停止镜像服
     - 通过 MCDR 启动与停止镜像服，当镜像服进程异常时，通过 Linux 强制终止镜像服
 - **完善的控制功能**：完善的**多镜像服**控制操作，获取运行状态/启动/停止/强制终止/同步操作
 - **基于哈希的文件同步**：基于哈希的文件同步，只同步镜像服与源服务端不同的文件，提升速度并减少磁盘IO
@@ -67,7 +65,6 @@
 "!!mirror":
   mcsm: # MCSManager配置
   terminal: # 通过命令行启动镜像服终端的配置
-  rcon: # RCON配置
   sync: # 存档同步配置
   command:
     permission: # 指令权限配置
@@ -115,7 +112,7 @@ mcsm:
   remote_uuid: 
   apikey: 
 ```
-启用MCSM后，终端与RCON都会弃用。
+启用MCSM后，终端配置会弃用。
 
 **enable** `bool`
 - 是否启用MCSM，你需要在配置完成此部分后将此选项设置为`true`。
@@ -157,10 +154,10 @@ terminal:
 >   - Linux `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
 >   - Windows `cd "{launch_path}"&&start cmd.exe cmd /C python -c "import os;os.system('title {terminal_name}');os.system('{launch_command}')"`
 
-其中，`linux`代理通过screen控制镜像服；`windows`代理的`stop`会向监听镜像服端口的进程所在的命令提示符窗口输入停止命令，`kill`会使用`taskkill`强制终止该进程；`subprocess`代理通过子进程标准输入输出进行控制。Linux/Windows代理需要正确配置`port`，subprocess代理无需配置`port`。MCSM或RCON仍可作为替代控制方式。
+其中，`linux`代理通过screen控制镜像服；`windows`代理的`stop`会向监听镜像服端口的进程所在的命令提示符窗口输入停止命令，`kill`会使用`taskkill`强制终止该进程；`subprocess`代理通过子进程标准输入输出进行控制。Linux/Windows代理需要正确配置`port`，subprocess代理无需配置`port`。MCSM仍可作为替代控制方式。
 
 > [!WARNING]
-> Windows代理下的 stop 命令为实验性功能，请自行承担使用风险。请尽可能配置 RCON，避免产生不必要的运维成本。
+> Windows代理下的 stop 命令为实验性功能，请自行承担使用风险。
 
 **enable** `bool`
 - 是否启用终端，当MCSM未启用且此选项为`true`时将通过终端启动镜像服。
@@ -196,28 +193,6 @@ terminal:
 
 **console_log** `bool`
 - 是否默认将`subprocess`代理的镜像服控制台日志输出到MCDR控制台。此配置仅对`subprocess`代理生效。
-
-<br>
-
-### rcon: RCON配置
-```yaml
-rcon:
-  enable: false
-  address: 
-  port: 
-  password: 
-```
-**enable** `bool`
-- 是否启用RCON，当MCSM未启用时，插件将通过RCON执行`stop`指令和获取镜像服状态。若同时启用了RCON和终端，插件将优先通过检查RCON状态来获取镜像服状态，若RCON未连接，则将通过检查端口来获取状态。若RCON状态与端口状态不匹配将会提示。
-
-**address** `str`
-- RCON的连接地址，不包含端口。
-
-**port** `int`
-- RCON的连接端口
-
-**password** `str`
-- RCON的连接密码
 
 <br>
 
@@ -519,12 +494,6 @@ display:
     proxy_type:
     console_log: false
 
-  rcon:
-    enable: false
-    address:
-    port:
-    password:
-
   sync:
     world:
     - world
@@ -601,11 +570,6 @@ display:
     launch_path: ./Mirror3
     port: 30002
     terminal_name: Mirror3
-  rcon:
-    enable: true
-    address: 127.0.0.1
-    port: 31002
-    password: p@ssw0rd
   display.server_name: Mirror3
 ```
 
@@ -622,7 +586,6 @@ display:
 - [ ] 禁止同步`!!mirror sync enable/disable reason`
 - [x] lang语言文件
 - [ ] 指令禁用
-- [x] RCON支持
 - [x] 无MCSM下通过命令行启动服务端
 - [x] Linux/Windows通过终端执行`kill`指令
 - [x] 历史同步记录显示
