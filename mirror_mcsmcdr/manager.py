@@ -257,7 +257,8 @@ class MirrorManager:
         if not self._check_permission(runtime, source, command):
             return
         action_config = runtime.config.command.action
-        must_confirm = action_config.requires_confirm(command)
+        # execute and log have no action config: they are never confirmed
+        must_confirm = confirmable and action_config.requires_confirm(command)
         if confirmable and confirm_if is not None:
             forced = confirm_if(runtime)
             if forced is None:
