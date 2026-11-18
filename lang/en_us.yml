@@ -52,7 +52,7 @@ mirror_mcsmcdr:
       history: §7{prefix} history [page] §fView synchronization history
       reload: §7{prefix} reload §fReload config of {server_name}
       log: §7{prefix} log [count]|enable|disable §fControl subprocess proxy logs
-      execute: §7{prefix} execute <command> §fSend a command through the subprocess proxy
+      input: §7{prefix} input <command> §fSend a command through the subprocess proxy
 
     proxy:
       title: "§eInterface Status"
@@ -86,11 +86,11 @@ mirror_mcsmcdr:
       output_end: "§aOutput of §b{count} §alines ended"
       reset_on_stop: "§7Subprocess thread stopped"
       unavailable: "§cThis command is only available with the subprocess proxy"
-    execute:
+    input:
       sent: "§aCommand sent: §f{cmd}"
       failed: "§cFailed to send command"
       not_running: "§cThe mirror server is not running; cannot send command"
-      not_available: "§cThis command is only available with the subprocess proxy"
+      unavailable: "§cThis command is only available with the subprocess proxy"
       unknown: "§cThe status of {server_name} is unknown; cannot send command. Check {prefix} status first"
     state:
       unknown: status unknown

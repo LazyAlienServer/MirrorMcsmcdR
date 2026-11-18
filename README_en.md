@@ -14,7 +14,7 @@
     - Linux uses `screen` to control the mirror server
     - Windows uses a new command prompt to control the mirror server
   - Start mirror servers as child processes inside MCDR through `subprocess`, controlled through standard input and output
-  - Send commands through `!!mirror execute <command>`
+  - Send commands through `!!mirror input <command>`
   - Combine multiple control methods, for example:
     - Start and stop through MCDR, then force-terminate through Linux when the mirror process fails
 - **Comprehensive control features**: manage multiple mirror servers, inspect status, start, stop, force-terminate, and synchronize
@@ -43,7 +43,8 @@ After upgrading, check the configuration file:
 - `terminal.regex_strict` is removed. Whenever the configured port is held by any process the plugin did not start, the status is `status unknown`;
 - The `subprocess` proxy now requires `terminal.port` as well; without it the terminal proxy is unavailable;
 - `command.action.sync.max_attempt_times` is removed. After an automatic stop for a sync, the plugin waits up to `command.action.stop.timeout` seconds (60 by default; 15 before);
-- `command.action.sync.check_status_interval` moved to `command.action.check_status_interval`. A value at the old place is ignored, and the default `5` applies.
+- `command.action.sync.check_status_interval` moved to `command.action.check_status_interval`. A value at the old place is ignored, and the default `5` applies;
+- `!!mirror execute` is renamed `!!mirror input`; the old command no longer exists. The permission key `command.permission.execute` becomes `command.permission.input`; an old `execute` key is ignored, and the default `console` applies.
 
 When the plugin loads its configuration, it removes the keys it does not know from the configuration file (including the removed keys above and misspelt ones). It lists each of them with its path and value in the console and tells the game once. Before that, the original file is backed up as `config.yml.<time>-<content hash>.bak` in the same folder.
 
@@ -63,7 +64,7 @@ The default command prefix is `!!mirror`.
 | `!!mirror confirm`                      | Confirm a pending operation                             |
 | `!!mirror reload`                       | Hot-reload the mirror configuration                     |
 | `!!mirror history`                      | View synchronization history                            |
-| `!!mirror execute <command>`            | Send a command through the subprocess proxy             |
+| `!!mirror input <command>`              | Send a command through the subprocess proxy             |
 | `!!mirror log`                          | View subprocess console-log status                      |
 | `!!mirror log enable\|disable\|<count>` | Enable, disable, or limit console-log output            |
 
@@ -199,7 +200,7 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 > The plugin can only read processes the current user is allowed to inspect. When the port is held by a process of another user, the plugin may be unable to read its PID, and `kill -f` then terminates nothing.
 
 **proxy_type** `str | null`
-- The terminal proxy type, replacing the legacy `system` option. Valid values are `linux`, `windows`, and `subprocess`. When set to `null`, the plugin automatically selects `linux` or `windows` based on the current operating system. `subprocess` starts the mirror server as a child process inside MCDR and supports sending commands through `!!mirror execute`.
+- The terminal proxy type, replacing the legacy `system` option. Valid values are `linux`, `windows`, and `subprocess`. When set to `null`, the plugin automatically selects `linux` or `windows` based on the current operating system. `subprocess` starts the mirror server as a child process inside MCDR and supports sending commands through `!!mirror input`.
 
 > [!NOTE]
 > When using the `subprocess` proxy to start another MCDR instance, set `advanced_console` to `false` in the mirror server MCDR's configuration file.
@@ -409,7 +410,7 @@ permission:
     sync: 2
     confirm: 0
     log: "console"
-    execute: "console"
+    input: "console"
 ```
 `int`
 - The minimum MCDR permission level required to execute each command, set to `console` for console available only.

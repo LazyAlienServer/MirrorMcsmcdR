@@ -52,7 +52,7 @@ mirror_mcsmcdr:
       history: §7{prefix} history [page] §f查看同步历史
       reload: §7{prefix} reload §f重载{server_name}配置文件
       log: §7{prefix} log [count]|enable|disable §f控制subprocess代理日志输出
-      execute: §7{prefix} execute <command> §f向subprocess代理发送指令
+      input: §7{prefix} input <command> §f向subprocess代理发送指令
 
     proxy:
       title: "§e接口状态"
@@ -86,11 +86,11 @@ mirror_mcsmcdr:
       output_end: "§a输出 §b{count} §a行结束"
       reset_on_stop: "§7Subprocess 线程已停止"
       unavailable: "§c此命令仅在使用 subprocess 代理时可用"
-    execute:
+    input:
       sent: "§a命令已发送: §f{cmd}"
       failed: "§c命令发送失败"
       not_running: "§c镜像服未运行，无法发送命令"
-      not_available: "§c此命令仅在使用 subprocess 代理时可用"
+      unavailable: "§c此命令仅在使用 subprocess 代理时可用"
       unknown: "§c{server_name}状态未知, 无法发送命令, 请先查看{prefix} status"
     state:
       unknown: 状态未知

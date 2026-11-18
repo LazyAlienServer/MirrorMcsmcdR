@@ -26,7 +26,7 @@ It includes the following commands:
 
 `!!mirror reload` Hot reloads the configuration file for the corresponding mirror server
 
-`!!mirror execute <command>` Sends a command through the subprocess proxy
+`!!mirror input <command>` Sends a command through the subprocess proxy
 
 `!!mirror log` View the enabled/disabled status of console log output.
 

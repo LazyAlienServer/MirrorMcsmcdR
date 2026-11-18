@@ -20,7 +20,7 @@ def rtr(key: str, title: bool = True, **kwargs: Any) -> RTextBase:
 def help_msg(server_name, prefix):
     server = ServerInterface.psi()
     msg = RTextList(server.rtr(PLUGIN_ID+".command.help.info", TITLE=TITLE, VERSION=server.get_self_metadata().version))
-    for command in ["help", "reload", "status", "start", "stop", "kill", "sync", "history", "log", "execute"]:
+    for command in ["help", "reload", "status", "start", "stop", "kill", "sync", "history", "log", "input"]:
         msg.append("\n", server.rtr(PLUGIN_ID+".command.help."+command, prefix=prefix, server_name=server_name).set_click_event(RAction.run_command, f"{prefix} {command}"))
     return msg
 

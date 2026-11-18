@@ -76,7 +76,7 @@
       history: 0
       confirm: 0
       log: console
-      execute: console
+      input: console
     action:
       status:
         require_confirm: false

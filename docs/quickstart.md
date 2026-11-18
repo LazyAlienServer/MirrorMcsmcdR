@@ -26,7 +26,7 @@
 
 `!!mirror reload` 热重载对应镜像服的配置文件
 
-`!!mirror execute <command>` 向subprocess代理中的镜像服发送指令
+`!!mirror input <command>` 向subprocess代理中的镜像服发送指令
 
 `!!mirror log` 查看控制台日志输出启用/禁用状态
 

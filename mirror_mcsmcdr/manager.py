@@ -134,7 +134,7 @@ class MirrorManager:
         builder.command(f"{command_prefix} log <count>", self.set_console_log_limit)
         builder.command(f"{command_prefix} log enable", lambda source, context: self.set_console_log(source, context, True))
         builder.command(f"{command_prefix} log disable", lambda source, context: self.set_console_log(source, context, False))
-        builder.command(f"{command_prefix} execute <cmd>", self.mirror_execute)
+        builder.command(f"{command_prefix} input <cmd>", self.mirror_input)
         builder.register(self.server)
 
     def rtr(self, key: str, title: bool = True, **kwargs: Any) -> RTextBase:
@@ -271,7 +271,7 @@ class MirrorManager:
         if not self._check_permission(runtime, source, command):
             return
         action_config = runtime.config.command.action
-        # execute and log have no action config: they are never confirmed
+        # input and log have no action config: they are never confirmed
         must_confirm = confirmable and action_config.requires_confirm(command)
         if checked is not None and (must_confirm or (confirmable and confirm_if is not None)) and not self._precheck(runtime, source, command, checked):
             return
@@ -644,25 +644,25 @@ class MirrorManager:
         terminal.set_console_log_limit(count)
         source.reply(self.rtr("command.log.enabled_count", count=count))
 
-    def mirror_execute(self, source: CommandSource, context: CommandContext) -> None:
-        self._run_command("execute", source, lambda runtime: self._mirror_execute(runtime, source, context["cmd"]), confirmable=False)
+    def mirror_input(self, source: CommandSource, context: CommandContext) -> None:
+        self._run_command("input", source, lambda runtime: self._mirror_input(runtime, source, context["cmd"]), confirmable=False)
 
-    def _mirror_execute(self, runtime: MirrorRuntime, source: CommandSource, command: str) -> None:
+    def _mirror_input(self, runtime: MirrorRuntime, source: CommandSource, command: str) -> None:
         terminal = runtime.subprocess_terminal
         if terminal is None:
-            source.reply(self.rtr("command.execute.not_available"))
+            source.reply(self.rtr("command.input.unavailable"))
             return
         with self._report_api_error(source):
             if runtime.controller.status().state is ServerState.UNKNOWN:
-                source.reply(self.rtr("command.execute.unknown"))
+                source.reply(self.rtr("command.input.unknown"))
                 return
             if not terminal.alive:
-                source.reply(self.rtr("command.execute.not_running"))
+                source.reply(self.rtr("command.input.not_running"))
                 return
             if not terminal.send_command(command):
-                source.reply(self.rtr("command.execute.failed"))
+                source.reply(self.rtr("command.input.failed"))
                 return
-            source.reply(self.rtr("command.execute.sent", cmd=command))
+            source.reply(self.rtr("command.input.sent", cmd=command))
 
     def _on_confirmation_timeout(self, task: ConfirmationTask) -> None:
         task.source.reply(self.rtr("command.confirm.timeout", action=task.action))

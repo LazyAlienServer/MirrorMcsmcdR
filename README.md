@@ -14,7 +14,7 @@
     - Linux 通过`screen`控制镜像服
     - Windows 通过新命令行终端控制镜像服
   - 支持通过`subprocess`在MCDR进程内启动镜像服子进程，并通过标准输入输出控制镜像服
-  - 支持通过`!!mirror execute <command>`向镜像服发送指令
+  - 支持通过`!!mirror input <command>`向镜像服发送指令
   - 支持多种控制方式的组合使用，例如：
     - 通过 MCDR 启动与停止镜像服，当镜像服进程异常时，通过 Linux 强制终止镜像服
 - **完善的控制功能**：完善的**多镜像服**控制操作，获取运行状态/启动/停止/强制终止/同步操作
@@ -43,7 +43,8 @@
 - `terminal.regex_strict`已删除。配置的端口被任何不是插件启动的进程占用时，状态都显示为`状态未知`；
 - `subprocess`代理现在也必须配置`terminal.port`，未配置时terminal代理不可用；
 - `command.action.sync.max_attempt_times`已删除。同步自动停服后，最多等待`command.action.stop.timeout`秒（默认60秒，以前默认15秒）；
-- `command.action.sync.check_status_interval`移到了`command.action.check_status_interval`。旧位置的值会被忽略，恢复为默认值`5`。
+- `command.action.sync.check_status_interval`移到了`command.action.check_status_interval`。旧位置的值会被忽略，恢复为默认值`5`；
+- `!!mirror execute`改名为`!!mirror input`，旧指令不再可用。权限配置`command.permission.execute`随之改为`command.permission.input`，旧的`execute`会被忽略，恢复为默认值`console`。
 
 插件加载配置时，会从配置文件中删除它不认识的项（包括上面已删除的项和拼错的项），并在控制台逐项列出路径和值，同时在游戏内提示一次。删除前，原配置文件会备份为同目录下的`config.yml.<时间>-<内容哈希>.bak`。
 
@@ -63,7 +64,7 @@
 | `!!mirror confirm`                      | 确认待执行操作                      |
 | `!!mirror reload`                       | 热重载镜像服配置                    |
 | `!!mirror history`                      | 查看同步历史                        |
-| `!!mirror execute <command>`            | 通过 subprocess 代理发送指令        |
+| `!!mirror input <command>`              | 通过 subprocess 代理发送指令        |
 | `!!mirror log`                          | 查看 subprocess 控制台日志状态      |
 | `!!mirror log enable\|disable\|<count>` | 启用、禁用或限制控制台日志输出      |
 
@@ -195,7 +196,7 @@ terminal:
 > 插件只能读取当前用户有权查看的进程。占用端口的进程属于其他用户时，插件可能读不到它的PID，`kill -f`将不终止任何进程。
 
 **proxy_type** `str | null`
-- 终端代理类型，替代旧版的`system`配置项。可选值为`linux`、`windows`和`subprocess`。设置为`null`时，将根据当前操作系统自动选择`linux`或`windows`。`subprocess`会在MCDR进程内启动镜像服子进程，并支持通过`!!mirror execute`发送指令。
+- 终端代理类型，替代旧版的`system`配置项。可选值为`linux`、`windows`和`subprocess`。设置为`null`时，将根据当前操作系统自动选择`linux`或`windows`。`subprocess`会在MCDR进程内启动镜像服子进程，并支持通过`!!mirror input`发送指令。
 
 > [!NOTE]
 > 使用 `subprocess` 代理启动镜像服 MCDR 实例时，请在镜像服 MCDR 的配置文件中将 `advanced_console` 设置为 `false`。
@@ -402,7 +403,7 @@ permission:
   sync: 2
   confirm: 0
   log: "console"
-  execute: "console"
+  input: "console"
 ```
 `int | str`
 - 执行各指令所需的最低MCDR权限等级，或设置为`console`以限制只允许控制台执行
@@ -570,7 +571,7 @@ display:
       history: 0
       confirm: 0
       log: console
-      execute: console
+      input: console
     action:
       status:
         require_confirm: false

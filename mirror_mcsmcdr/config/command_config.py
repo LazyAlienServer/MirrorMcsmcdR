@@ -12,7 +12,7 @@ class CommandPermissionConfig(Serializable):
     history: PermissionRequirement = 0
     confirm: PermissionRequirement = 0
     log: PermissionRequirement = "console"
-    execute: PermissionRequirement = "console"
+    input: PermissionRequirement = "console"
 
     def requirement_of(self, command: str) -> PermissionRequirement:
         return getattr(self, command)
