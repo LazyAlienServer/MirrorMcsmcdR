@@ -319,7 +319,7 @@ A sync overwrites the mirror world and deletes the files that only exist in the 
 
 Two rules apply:
 - **No backup, no sync.** If the backup cannot be made or fails, the sync is refused and nothing is copied. To sync without a backup, set `enable` to `false` and run `!!mirror reload`.
-- **The backup is as complete as the mirror's PrimeBackup settings make it.** They are expected to be equivalent to the sync settings. Where they are not, the plugin warns and asks for confirmation, then backs up with the settings as they are. Whoever confirms accepts that part of what the sync overwrites is not in the backup.
+- **The backup is as complete as the mirror's PrimeBackup settings make it.** They are expected to be equivalent to the sync settings. Where they are not, the plugin warns and by default asks for confirmation (see `confirm_on_warning`), then backs up with the settings as they are. Whoever confirms accepts that part of what the sync overwrites is not in the backup.
 
 **enable** `bool`
 - Whether every sync is preceded by a backup. Off by default; while it is `false` nothing of the mirror is read and syncing works as without this feature.
@@ -356,8 +356,8 @@ When `!!mirror sync` is entered, the mirror's PrimeBackup config is compared wit
 With the defaults of both plugins there is no warning.
 
 **What a sync does with backup enabled**
-1. When `!!mirror sync` is entered, the mirror's PrimeBackup is located: plugin, config and database. If one is missing, the sync is refused at once. Then the warnings above are checked, and if there are any, the sync has to be confirmed.
-2. The mirror server must be stopped, as before (`auto_server_restart` may stop it).
+1. When `!!mirror sync` is entered, the mirror's PrimeBackup is located: plugin, config and database. If one is missing, the sync is refused at once. Then the warnings above are checked; if there are any and `confirm_on_warning` is `true`, the sync has to be confirmed.
+2. The mirror server must be stopped, and the mirror's MCDR must have exited too (`auto_server_restart` may stop it and waits for MCDR to exit).
 3. PrimeBackup's `make` makes the backup with the mirror's settings, with comment `MirrorMcsmcdR pre-sync by <operator>`.
 4. The backup counts if `make` exits with code 0 and reports a backup id. Otherwise the sync is refused, the last lines of PrimeBackup's output are written to the MCDR console, and the sync is recorded as failed.
 5. The backup id is broadcast and the main world is saved. With `ensure_server_closed: true`, the mirror must still be stopped right before copying; otherwise the sync is refused, because the backup would be stale.
@@ -375,8 +375,7 @@ When the plugin loads and on `!!mirror reload`, the mirror's PrimeBackup is loca
 - Old pre-sync backups are pruned by the mirror's PrimeBackup prune settings; this plugin deletes nothing.
 
 **Known limits**
-- After an automatic stop (`auto_server_restart`) the backup starts at once. If the mirror's MCDR is still shutting down and its PrimeBackup still holds the database, `make` fails and the sync is refused; the mirror is restarted as usual. Run the sync again, or stop the mirror before syncing.
-- The plugin does not check whether the mirror's MCDR is running. With `ensure_server_closed: false`, or with a mirror whose MCDR keeps running while its server is stopped, the command line tool and the mirror's PrimeBackup plugin can work on the same storage at the same time.
+- With `ensure_server_closed: false` the plugin does not check whether the mirror is running, and the command line tool and the mirror's PrimeBackup plugin can work on the same storage at the same time. A mirror this plugin did not start may be taken for stopped, with the same result (see [Mirror server status](#mirror-server-status)).
 - The warnings are checked when the command is entered. A config changed between that and the confirmation is not warned about again.
 - A sync whose content is identical still creates a backup (deduplicated by PrimeBackup, but one more entry in its list).
 - About 1 s more per sync, and about 1 s per backup-enabled mirror when the plugin loads or reloads (`--version`).
