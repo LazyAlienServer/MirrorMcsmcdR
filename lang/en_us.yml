@@ -152,6 +152,8 @@ mirror_mcsmcdr:
 
     start:
       success: starting command sent
+      ready: has started
+      not_ready: "§cStart not completed / §b{server_name} §f{status}"
       fail:
         unsupported: Current config does not support start command. You need to configure MCSM or terminal
         syncing: syncing; please wait until the sync has finished

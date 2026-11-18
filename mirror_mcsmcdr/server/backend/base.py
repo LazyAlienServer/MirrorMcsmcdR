@@ -90,25 +90,34 @@ class TerminalProxy(ServerBackend, ABC):
         self.listener = PortListener(config.port)
         self.tracker = tracker
 
-    # how often the recorded processes are looked at while watching
+    # how often the recorded processes are looked at while watching, for an exit and for the port
     _WATCH_SLICE = 0.25
+    _PORT_WATCH_SLICE = 1.0
 
     @property
     def stop_command(self) -> str:
         return "!!MCDR server stop_exit" if self.is_mcdr else "stop"
 
     def watch(self, timeout: float) -> None:
-        # Only an exit is watched, which is what a stop waits for; a new process or the port opening shows at the next status.
+        # An exit is watched, and whether the recorded processes listen on the port, from their own sockets.
+        # A new process is not: children() snapshots every process of the machine on Windows. It joins the record at the next status.
         # Not psutil.wait_procs: it reaps a process that is a child of this one, such as the shell of the subprocess proxy.
         processes, unchanged = self.tracker.live_processes()
         if not unchanged:
             # one has exited since the last status was taken
             return
-        deadline = time.monotonic() + timeout
+        listening = self.listener.listened_by(processes)
+        now = time.monotonic()
+        deadline = now + timeout
+        next_port_check = now + self._PORT_WATCH_SLICE
         while (remaining := deadline - time.monotonic()) > 0:
             time.sleep(min(self._WATCH_SLICE, remaining))
             if not all(process_utils.is_alive(process) for process in processes):
                 return
+            if time.monotonic() >= next_port_check:
+                if self.listener.listened_by(processes) != listening:
+                    return
+                next_port_check += self._PORT_WATCH_SLICE
 
     @property
     def _console_readers(self) -> frozenset[Role]:

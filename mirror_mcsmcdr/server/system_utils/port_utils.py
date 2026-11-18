@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Iterable, Optional
 
 import psutil
 
@@ -28,3 +28,23 @@ class PortListener:
                 except psutil.Error:
                     pass
         return {pid for connection, pid in found if connection.status == psutil.CONN_LISTEN and connection.laddr and connection.laddr.port == self.port}
+
+    def listened_by(self, processes: Iterable[psutil.Process]) -> bool:
+        """
+        Whether one of ``processes`` listens on the port, from their own sockets only.
+
+        Much cheaper than :meth:`owners` on Linux, which maps every socket of the machine to its process;
+        a process whose sockets cannot be read counts as not listening.
+        """
+        for process in processes:
+            try:
+                # named connections() before psutil 6
+                list_connections = getattr(process, "net_connections", None) or process.connections
+                if any(
+                    connection.status == psutil.CONN_LISTEN and connection.laddr and connection.laddr.port == self.port
+                    for connection in list_connections(kind="tcp")
+                ):
+                    return True
+            except psutil.Error:
+                pass
+        return False

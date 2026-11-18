@@ -10,7 +10,7 @@ from mirror_mcsmcdr.runtime import MirrorRuntime
 from mirror_mcsmcdr.sync.workflow import SyncWorkflow, backup_error_console_lines, describe_backup_error
 from mirror_mcsmcdr.sync.backup import BackupError, BackupWarning, MirrorBackup
 from mirror_mcsmcdr.text_utils import detail_lines, help_msg, rejection_lines, rtr, status_key
-from mirror_mcsmcdr.server import Action, MCSManagerProxyError, ProcessInfo, ProcessTracker, ScreenError, ServerState, StatusSnapshot
+from mirror_mcsmcdr.server import Action, MCSManagerProxyError, ProcessInfo, ProcessTracker, ScreenError, ServerState, StatusSnapshot, WaitEnd
 from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
 from mirror_mcsmcdr.command_utils.page_utils import Page
 from mirror_mcsmcdr.command_utils.confirmation_utils import ConfirmationTask, ConfirmationManager
@@ -103,6 +103,9 @@ class MirrorManager:
         # Only replaced while holding the sync workflow.
         self._runtime: Optional[MirrorRuntime] = None
         self._available = False
+        # the start whose outcome is awaited; an older wait stops reporting
+        self._latest_start = 0
+        self._unloaded = False
 
         server.logger.info(rtr("manager.load", prefix=command_prefix))
         self._register_commands(reload_method)
@@ -434,7 +437,41 @@ class MirrorManager:
             self._start(runtime, source)
 
     def _start(self, runtime: MirrorRuntime, source: CommandSource) -> bool:
-        return self._execute(runtime, source, Action.START)
+        if not self._execute(runtime, source, Action.START):
+            return False
+        self._latest_start += 1
+        self._await_ready(runtime, source, self._latest_start)
+        return True
+
+    @new_thread(f"{TITLE}-start")
+    def _await_ready(self, runtime: MirrorRuntime, source: CommandSource, start: int) -> None:
+        """Tell everyone whether the start ``start`` brought the mirror up; nothing if a newer start or the unload came first."""
+        def superseded() -> bool:
+            return self._unloaded or self._latest_start != start
+
+        def failed(snapshot: StatusSnapshot) -> bool:
+            # a panel may still report the mirror stopped right after it was asked to start
+            stopped = snapshot.state is ServerState.STOPPED and snapshot.evidence.panel_state is None
+            return stopped or snapshot.state is ServerState.UNKNOWN or bool(snapshot.anomalies)
+
+        action = runtime.config.command.action
+        with self._report_api_error(source):
+            waited = runtime.controller.wait_until(
+                lambda snapshot: snapshot.is_exactly(ServerState.RUNNING),
+                timeout=action.start.timeout,
+                interval=action.check_status_interval,
+                give_up=lambda snapshot: superseded() or failed(snapshot),
+            )
+            if superseded():
+                return
+            if waited.end is WaitEnd.REACHED:
+                prompt = self.rtr("command.start.ready", title=False).to_legacy_text()
+                self.server.broadcast(self.rtr("command._execute.success", prompt=prompt))
+                return
+            status = self.rtr(status_key(waited.snapshot), title=False).to_legacy_text()
+            self.server.broadcast(self.rtr("command.start.not_ready", status=status))
+            for line in detail_lines(self.rtr, waited.snapshot):
+                source.reply(line)
 
     def stop(self, source: CommandSource, context: CommandContext) -> None:
         self._run_command("stop", source, lambda runtime: self._execute(runtime, source, Action.STOP), checked=Action.STOP)
@@ -653,6 +690,7 @@ class MirrorManager:
             self.server.reply(info, self.rtr("command.confirm.cancel", action=task.action))
 
     def on_unload(self) -> None:
+        self._unloaded = True
         self.confirmations.clear()
         runtime = self._runtime
         if runtime is not None and runtime.subprocess_terminal is not None:

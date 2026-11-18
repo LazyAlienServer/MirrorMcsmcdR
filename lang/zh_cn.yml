@@ -152,6 +152,8 @@ mirror_mcsmcdr:
 
     start:
       success: 启动指令已发送
+      ready: 已启动
+      not_ready: "§c启动未完成 / §b{server_name}§f{status}"
       fail:
         unsupported: 当前配置文件不支持start命令, 需要配置MCSM或terminal
         syncing: 正在同步, 请等待同步完成

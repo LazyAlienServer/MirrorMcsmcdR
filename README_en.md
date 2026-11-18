@@ -456,10 +456,11 @@ action:
 - The config cannot be reloaded while the mirror server is `starting`. Wait for it, or run `!!mirror kill` first
 - When MCSM is enabled the status comes from MCSM, and this option does not affect it
 - After an automatic stop for a sync (`auto_server_restart`, `auto_mcdr_stop`), the plugin waits up to `stop.timeout` seconds; past that it outputs `automatic shutdown failed` with the current status of the mirror server and tells the sender what it is still waiting for
+- After every start (`!!mirror start`, the restart after a sync, and the start in `server stopped, MCDR still running`), the plugin waits in the background for the mirror server to be `running` and then broadcasts `has started`. If it becomes `stopped` or `status unknown` or shows an anomaly first, or is still not `running` after `start.timeout` seconds, it broadcasts `start not completed` with the current status and tells the sender the details
 
 ### check_status_interval
 **check_status_interval** `int`
-- The longest gap in seconds between two full checks of the status while waiting for it to change (e.g. for the mirror server to stop before a sync). As soon as a recorded process exits the plugin checks at once, without waiting for the interval; with MCSM, it is how often MCSM is asked
+- The longest gap in seconds between two full checks of the status while waiting for it to change (e.g. for the mirror server to stop before a sync, or to run after a start). As soon as a recorded process exits, or starts or stops listening on the configured port (looked at once a second), the plugin checks at once, without waiting for the interval; a newly started server process is only seen at the next full check. With MCSM, it is how often MCSM is asked
 
 ### sync Configuration
 While a sync is in progress (from the automatic stop, the wait, the backup and the copy to the restart afterwards), `!!mirror start` is refused, so that the mirror server cannot start during the copy. `stop`, `kill` and `kill -f` are not affected.
