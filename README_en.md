@@ -461,6 +461,8 @@ action:
 - The longest gap in seconds between two full checks of the status while waiting for it to change (e.g. for the mirror server to stop before a sync). As soon as a recorded process exits the plugin checks at once, without waiting for the interval; with MCSM, it is how often MCSM is asked
 
 ### sync Configuration
+While a sync is in progress (from the automatic stop, the wait, the backup and the copy to the restart afterwards), `!!mirror start` is refused, so that the mirror server cannot start during the copy. `stop`, `kill` and `kill -f` are not affected.
+
 **ensure_server_closed** `bool`
 - When this option is `true`, synchronization will check whether the mirror server has stopped. The mirror server must be `stopped`. `server stopped, MCDR still running` is refused unless `auto_server_restart` is on, until MCDR exits, is told to exit with `!!mirror stop`, or is ended with `!!mirror kill`. When this option is `false`, synchronization will be carried out directly regardless of whether the mirror server has stopped or not.
 

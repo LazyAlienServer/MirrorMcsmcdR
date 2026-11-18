@@ -147,6 +147,7 @@ mirror_mcsmcdr:
       success: 启动指令已发送
       fail:
         unsupported: 当前配置文件不支持start命令, 需要配置MCSM或terminal
+        syncing: 正在同步, 请等待同步完成
       hint:
         stopping: "§7请等待{server_name}停止后重新启动"
 

@@ -394,7 +394,24 @@ class MirrorManager:
         return f"{name} ({pid})" if name and pid else name or pid
 
     def start(self, source: CommandSource, context: CommandContext) -> None:
-        self._run_command("start", source, lambda runtime: self._start(runtime, source))
+        self._run_command("start", source, lambda runtime: self._manual_start(runtime, source))
+
+    def _manual_start(self, checked: MirrorRuntime, source: CommandSource) -> None:
+        # A sync holds the workflow from its stop to its restart: a start in between would launch the mirror into the copy.
+        # Held, not just looked at, so that a sync cannot begin between the look and the launch.
+        with self._sync_workflow.hold() as held:
+            if not held:
+                prompt = self.rtr("command.start.fail.syncing", title=False).to_legacy_text()
+                source.reply(self.rtr("command._execute.fail", prompt=prompt))
+                return
+            runtime = self._active_runtime()
+            if runtime is None:
+                source.reply(self.rtr("manager.unavailable"))
+                return
+            # a reload slipped in after the command was checked; the new config decides
+            if runtime is not checked and not self._check_permission(runtime, source, "start"):
+                return
+            self._start(runtime, source)
 
     def _start(self, runtime: MirrorRuntime, source: CommandSource) -> bool:
         return self._execute(runtime, source, Action.START)

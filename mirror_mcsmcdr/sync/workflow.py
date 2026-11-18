@@ -68,8 +68,9 @@ class SyncWorkflow:
     """
     Synchronizes the world of the source server to the mirror server.
 
-    Whoever uses or replaces a runtime for syncing has to :meth:`hold` the workflow meanwhile.
-    This keeps syncs from overlapping, and keeps a reload from swapping the runtime under a running sync.
+    Whoever uses or replaces a runtime for syncing, or starts the mirror by hand, has to :meth:`hold` the workflow meanwhile.
+    This keeps syncs from overlapping, keeps a reload from swapping the runtime under a running sync,
+    and keeps a manual start from launching the mirror while a sync stops it, copies into it or restarts it.
     """
 
     def __init__(self, server: PluginServerInterface, tr: Translator) -> None:
