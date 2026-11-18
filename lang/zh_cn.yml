@@ -67,7 +67,7 @@ mirror_mcsmcdr:
         stop: 即将停止§b{server_name}§f, §7{prefix} confirm §f以确认
         kill: 即将终止§b{server_name}§f, §7{prefix} confirm §f以确认
         forcekill: §b{server_name}§f的以上进程将被强制终止, §7{prefix} confirm §f以确认
-        sync: 即将对§b{server_name}§f进行同步, §7{prefix} confirm §f以确认
+        sync: §b{server_name}§f即将进行同步, §7{prefix} confirm §f以确认
       cancel: 操作§b{server_name}-{action}§c已取消
       previous: 先前操作§b{server_name}-{action}§c已取消
       timeout: 操作§b{server_name}-{action}§c超时已取消
