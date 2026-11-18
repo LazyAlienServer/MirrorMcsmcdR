@@ -16,7 +16,7 @@ mirror_mcsmcdr:
     init:
       error: "An error occurred when configuring {prefix}: {e}"
       success: "{prefix} §bloaded successfully"
-      fail: "{prefix} §cloaded unsuccessfully"
+      fail: "{prefix} §cfailed to load"
       prefix_notfound: "§cConfig file for {prefix} is missing, instance has been disabled"
 
   manager: 
@@ -24,7 +24,7 @@ mirror_mcsmcdr:
     reload:
       success: §aConfig file reloaded successfully§7 ({prefix})
       fail: §cInvalid config file §7({prefix})§c, please check the console and address the error
-      fail.proxy: §cInterface §7({prefix})§c config §4{proxy} §cmisses valid value(s) §4'{keys}'
+      fail.proxy: "§cConfig §7({prefix})§c: interface §4{proxy} §cis missing valid value(s) §4'{keys}'"
       fail.syncing: §cCannot reload config §7({prefix})§c while a synchronization is in progress
       fail.starting: §cCannot reload config §7({prefix})§c while §b{server_name}§c is starting. Wait for it, or run {prefix} kill first
     permission_denied: §b{server_name}§c Permission denied
@@ -61,7 +61,7 @@ mirror_mcsmcdr:
       error: "§cConfig error"
 
     confirm:
-      prompt: §7{prefix} confirm §fto confirm operation
+      prompt: §7{prefix} confirm §fto confirm the operation
       prompts:
         start: §b{server_name}§f will start; §7{prefix} confirm §fto confirm
         stop: §b{server_name}§f will stop; §7{prefix} confirm §fto confirm
@@ -70,9 +70,9 @@ mirror_mcsmcdr:
         sync: §b{server_name}§f will be synced; §7{prefix} confirm §fto confirm
       cancel: Operation §b{server_name}-{action}§c cancelled
       previous: Previous operation §b{server_name}-{action}§c cancelled
-      timeout: Operation §b{server_name}-{action}§c timed out
+      timeout: Operation §b{server_name}-{action}§c timed out and was cancelled
       none: §cNo tasks to confirm
-      others: §cYou cannot confirm other people's task
+      others: §cYou cannot confirm other people's tasks
 
     log:
       status: "{server_name} console log output: {status}"
@@ -83,7 +83,7 @@ mirror_mcsmcdr:
       set_disable: "{server_name} console log output §cdisabled"
       invalid_count: "§cOutput count must be a positive integer"
       help: "§7Usage: {prefix} log enable|disable|<count>"
-      output_end: "§aOutput of §b{count} §alines ended"
+      output_end: "§aFinished outputting §b{count} §alines"
       reset_on_stop: "§7Subprocess thread stopped"
       unavailable: "§cThis command is only available with the subprocess proxy"
     input:
@@ -119,15 +119,15 @@ mirror_mcsmcdr:
       mcdr_missing: "the server is running but MCDR has exited or cannot be recognized; {prefix} kill ends it"
 
     outcome:
-      path_not_found: Cannot find available launch path, please check if {server_name} server is created and plugins' config is configured correctly
+      path_not_found: Cannot find a valid launch path; check that the {server_name} server exists and the plugin config is correct
       force_required: Screen no longer exists; if the remaining processes have not exited after a while, end them with {prefix} kill -f
       timeout: The process did not exit in time. Use {prefix} kill -f to forcefully terminate it
       no_target: There is no process to terminate
       unreadable_listener: The port is held by a process whose PID cannot be read (possibly of another user); nothing was terminated
-      console_input_failed: Cannot type the command into the console of {server_name}; please try again later
+      console_input_failed: Cannot send the command to the console of {server_name}; please try again later
 
     status:
-      unsupported: Current config does not support status command. You need to configure MCSM or terminal
+      unsupported: The current config does not support the status command; configure MCSM or terminal
       mcdr: "§7MCDR: §f{process}"
       server: "§7Server: §f{process}"
       children: "§7Child processes: §f{processes}"
@@ -155,7 +155,7 @@ mirror_mcsmcdr:
       ready: has started
       not_ready: "§cStart not completed / §b{server_name} §f{status}"
       fail:
-        unsupported: Current config does not support start command. You need to configure MCSM or terminal
+        unsupported: The current config does not support the start command; configure MCSM or terminal
         syncing: syncing; please wait until the sync has finished
       hint:
         stopping: "§7Please start again after {server_name} has stopped"
@@ -163,14 +163,14 @@ mirror_mcsmcdr:
     stop:
       success: stopping command sent
       fail:
-        unsupported: Current config does not support stop command. You need to configure MCSM or terminal
+        unsupported: The current config does not support the stop command; configure MCSM or terminal
       hint:
         starting: "§7Please stop again after {server_name} has started"
 
     kill:
       success: forced termination in progress...
       fail:
-        unsupported: Current config does not support kill command. You need to configure MCSM or terminal
+        unsupported: The current config does not support the kill command; configure MCSM or terminal
       targets:
         title: "§e{prefix} kill -f will forcefully terminate §b{count} §eprocess(es):"
         count: "§e{prefix} kill -f will forcefully terminate §b{count} §eprocess(es), §b{foreign} §eof them not started by the plugin"
@@ -178,13 +178,13 @@ mirror_mcsmcdr:
     sync:
       fail:
         task_exist: §b{server_name} §calready has a sync in progress
-        unsupported: §cOperation failed / §b{server_name}§c current config does not support detecting status. You need to configure MCSM or terminal
+        unsupported: "§cOperation failed / §b{server_name}§c: the current config does not support querying the status; configure MCSM or terminal"
       hint:
         running: "§7Please stop {server_name} first, then sync"
         starting: "§7Please wait for {server_name} to start, then stop it and sync"
       auto_restart:
-        restarting: §b{server_name}§f running, auto-stopping {server_name} and syncing...
-        exiting: §b{server_name}§f MCDR still running, auto-stopping {server_name} MCDR and syncing...
+        restarting: §b{server_name}§f is still running; stopping it automatically and syncing...
+        exiting: §b{server_name}§f's MCDR is still running; stopping it automatically and syncing...
         fail: §cAuto-stop failed, §b{server_name} §f{status}
       success: §b{server_name}§a is syncing...
       skip_dictionary: "§cThese directories of §b{server_name}§c do not exist and were skipped: §f`§7{paths}§f`"
@@ -241,7 +241,7 @@ mirror_mcsmcdr:
     disabled: §cMCSM-API is disabled
     error:
       request: "§cMCSM request error, please report this problem to operators: §4{e}"
-      "400": "[400] Bad Request, please visit GitHub to submit the issue ({error})"
+      "400": "[400] Bad Request, please open an issue on GitHub ({error})"
       "403": "[403] Forbidden, please report this problem to operators ({error})"
       "500": "[500] Internal Server Error ({error})"
       "503": "[503] Server Unavailable"
