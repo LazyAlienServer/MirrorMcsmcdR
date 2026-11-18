@@ -85,6 +85,7 @@ mirror_mcsmcdr:
       help: "§7用法: {prefix} log enable|disable|<count>"
       output_end: "§a输出 §b{count} §a行结束"
       reset_on_stop: "§7Subprocess 线程已停止"
+      unavailable: "§c此命令仅在使用 subprocess 代理时可用"
     execute:
       sent: "§a命令已发送: §f{cmd}"
       failed: "§c命令发送失败"

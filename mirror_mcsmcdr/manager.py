@@ -574,7 +574,7 @@ class MirrorManager:
     def _log_help(self, runtime: MirrorRuntime, source: CommandSource) -> None:
         terminal = runtime.subprocess_terminal
         if terminal is None:
-            source.reply(self.rtr("command.log.not_available"))
+            source.reply(self.rtr("command.log.unavailable"))
             return
         status = "enabled" if terminal.console_log_enabled else "disabled"
         source.reply(self.rtr("command.log.status", status=self.rtr(f"command.log.{status}", title=False).to_legacy_text()))
@@ -586,7 +586,7 @@ class MirrorManager:
     def _set_console_log(self, runtime: MirrorRuntime, source: CommandSource, enabled: bool) -> None:
         terminal = runtime.subprocess_terminal
         if terminal is None:
-            source.reply(self.rtr("command.log.not_available"))
+            source.reply(self.rtr("command.log.unavailable"))
             return
         terminal.set_console_log(enabled)
         terminal.reset_log_limit()
@@ -599,7 +599,7 @@ class MirrorManager:
     def _set_console_log_limit(self, runtime: MirrorRuntime, source: CommandSource, count: int) -> None:
         terminal = runtime.subprocess_terminal
         if terminal is None:
-            source.reply(self.rtr("command.log.not_available"))
+            source.reply(self.rtr("command.log.unavailable"))
             return
         if count < 1:
             source.reply(self.rtr("command.log.invalid_count"))

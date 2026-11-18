@@ -85,6 +85,7 @@ mirror_mcsmcdr:
       help: "§7Usage: {prefix} log enable|disable|<count>"
       output_end: "§aOutput of §b{count} §alines ended"
       reset_on_stop: "§7Subprocess thread stopped"
+      unavailable: "§cThis command is only available with the subprocess proxy"
     execute:
       sent: "§aCommand sent: §f{cmd}"
       failed: "§cFailed to send command"
