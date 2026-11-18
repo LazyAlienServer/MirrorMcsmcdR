@@ -115,12 +115,12 @@ mirror_mcsmcdr:
       console_closing: the console is closing
       mcdr_only: "MCDR may be idle or exiting; {prefix} start starts the server in it, {prefix} stop makes MCDR exit, {prefix} kill ends it"
       orphan_screen: "the launch command has ended but the terminal is left; {prefix} kill closes it"
-      orphan_process: "the plugin can no longer send commands to these processes; only {prefix} kill -f can end them"
+      orphan_process: "the plugin can no longer send commands to these processes; if they have not exited after a while, end them with {prefix} kill -f"
       mcdr_missing: "the server is running but MCDR has exited or cannot be recognized; {prefix} kill ends it"
 
     outcome:
       path_not_found: Cannot find available launch path, please check if {server_name} server is created and plugins' config is configured correctly
-      force_required: Screen is unavailable. Use {prefix} kill -f to forcefully terminate the remaining process
+      force_required: Screen no longer exists; if the remaining processes have not exited after a while, end them with {prefix} kill -f
       timeout: The process did not exit in time. Use {prefix} kill -f to forcefully terminate it
       no_target: There is no process to terminate
       unreadable_listener: The port is held by a process whose PID cannot be read (possibly of another user); nothing was terminated

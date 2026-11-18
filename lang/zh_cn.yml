@@ -115,12 +115,12 @@ mirror_mcsmcdr:
       console_closing: 控制台正在关闭
       mcdr_only: MCDR可能空闲或正在退出, 可使用{prefix} start在其中启动服务端, {prefix} stop让MCDR退出, 或{prefix} kill终止MCDR
       orphan_screen: 启动命令已结束但终端仍在, 可使用{prefix} kill关闭终端
-      orphan_process: 插件已无法向这些进程发送命令, 只能使用{prefix} kill -f强制终止
+      orphan_process: 插件已无法向进程发送命令, 若等待后进程仍未退出, 请使用{prefix} kill -f强制终止
       mcdr_missing: 服务端在运行但MCDR已退出或无法识别, 可使用{prefix} kill终止
 
     outcome:
       path_not_found: 未找到有效的启动目录, 请检查是否已创建正常的{server_name}服务端和插件配置文件是否配置正确
-      force_required: Screen已不存在, 请使用{prefix} kill -f强制终止残留进程
+      force_required: Screen已不存在, 若等待后进程仍未退出, 请使用{prefix} kill -f强制终止残留进程
       timeout: 进程未在限定时间内退出, 请使用{prefix} kill -f强制终止
       no_target: 没有可以终止的进程
       unreadable_listener: 端口被一个无法读取PID的进程占用 (可能属于其他用户), 未终止任何进程
