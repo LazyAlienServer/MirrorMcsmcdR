@@ -17,23 +17,23 @@ mirror_mcsmcdr:
       error: "设置{prefix}时出错: {e}"
       success: "{prefix} §b构建成功"
       fail: "{prefix} §c构建失败"
-      prefix_notfound: "§c{prefix} 配置文件缺失, 实例已禁用"
+      prefix_notfound: "§c{prefix} 配置文件缺失，实例已禁用"
 
   manager: 
     load: "{prefix}已加载"
     reload:
       success: §a配置文件重载成功§7({prefix})
-      fail: §c无效的配置文件§7({prefix})§c, 请查看控制台并处理报错
+      fail: §c无效的配置文件§7({prefix})§c，请查看控制台并处理报错
       fail.proxy: §c配置文件§7({prefix})§c的接口 §4{proxy} §c缺少有效值 §4'{keys}'
-      fail.syncing: §c同步进行中, 无法重载配置文件§7({prefix})
-      fail.starting: §b{server_name}§c正在启动, 无法重载配置文件§7({prefix})§c, 请等待启动完成或先执行{prefix} kill
+      fail.syncing: §c同步进行中，无法重载配置文件§7({prefix})
+      fail.starting: §b{server_name}§c正在启动，无法重载配置文件§7({prefix})§c，请等待启动完成或先执行{prefix} kill
     permission_denied: §b{server_name}§c操作权限不足
     console_only: §b{server_name}§c此命令仅可通过终端执行
     mcsm_disabled: §cMCSM-API未启用
-    unavailable: §c配置文件错误, §4{prefix}§c实例已禁用
+    unavailable: §c配置文件错误，§4{prefix}§c实例已禁用
     backup:
-      ready: "{prefix}: 同步前备份已就绪, PrimeBackup v{version} 位于 {path}"
-      unavailable: "{prefix}: 同步前备份不可用, 修复之前所有同步都会被拒绝: {reason}"
+      ready: "{prefix}: 同步前备份已就绪，PrimeBackup v{version} 位于 {path}"
+      unavailable: "{prefix}: 同步前备份不可用，修复之前所有同步都会被拒绝: {reason}"
   
   command:
 
@@ -63,11 +63,11 @@ mirror_mcsmcdr:
     confirm:
       prompt: §7{prefix} confirm §f以确认操作
       prompts:
-        start: 即将启动§b{server_name}§f, §7{prefix} confirm §f以确认
-        stop: 即将停止§b{server_name}§f, §7{prefix} confirm §f以确认
-        kill: 即将终止§b{server_name}§f, §7{prefix} confirm §f以确认
-        forcekill: §b{server_name}§f的以上进程将被强制终止, §7{prefix} confirm §f以确认
-        sync: §b{server_name}§f即将进行同步, §7{prefix} confirm §f以确认
+        start: 即将启动§b{server_name}§f，§7{prefix} confirm §f以确认
+        stop: 即将停止§b{server_name}§f，§7{prefix} confirm §f以确认
+        kill: 即将终止§b{server_name}§f，§7{prefix} confirm §f以确认
+        forcekill: §b{server_name}§f的以上进程将被强制终止，§7{prefix} confirm §f以确认
+        sync: §b{server_name}§f即将进行同步，§7{prefix} confirm §f以确认
       cancel: 操作§b{server_name}-{action}§c已取消
       previous: 先前操作§b{server_name}-{action}§c已取消
       timeout: 操作§b{server_name}-{action}§c超时已取消
@@ -91,43 +91,43 @@ mirror_mcsmcdr:
       failed: "§c命令发送失败"
       not_running: "§c{server_name}未运行，无法发送命令"
       unavailable: "§c此命令仅在使用 subprocess 代理时可用"
-      unknown: "§c{server_name}状态未知, 无法发送命令, 请先查看{prefix} status"
+      unknown: "§c{server_name}状态未知，无法发送命令，请先查看{prefix} status"
     state:
       unknown: 状态未知
       stopped: 已停止
       stopping: 正在停止
       starting: 正在启动
       running: 正在运行
-      mcdr_only: 服务端已停止, MCDR仍在运行
+      mcdr_only: 服务端已停止，MCDR仍在运行
 
     anomaly:
-      orphan_screen: "§c已分离 (Java: 未启动; Screen: 已启动)"
-      orphan_process: "§c已失去控制台 (进程仍在运行)"
+      orphan_screen: "§c已分离（Java: 未启动；Screen: 已启动）"
+      orphan_process: "§c已失去控制台（进程仍在运行）"
       mcdr_missing: "§c未找到MCDR进程"
 
     detail:
       line: "§7详情: §f{detail}"
       panel: 状态由MCSManager报告
-      foreign_listener: 端口被不是插件启动的进程占用, 可使用{prefix} kill -f结束这些进程
-      start_pending: 启动指令已发送, 正在等待服务端打开端口
-      port_closed: 服务端进程在运行但端口未打开, 若一直如此请检查配置中的port, 或使用{prefix} kill终止
-      stop_pending: 关闭指令已发送, 正在等待进程退出
+      foreign_listener: 端口被不是插件启动的进程占用，可使用{prefix} kill -f结束这些进程
+      start_pending: 启动指令已发送，正在等待服务端打开端口
+      port_closed: 服务端进程在运行但端口未打开，若一直如此请检查配置中的port，或使用{prefix} kill终止
+      stop_pending: 关闭指令已发送，正在等待进程退出
       console_closing: 控制台正在关闭
-      mcdr_only: MCDR可能空闲或正在退出, 可使用{prefix} start在其中启动服务端, {prefix} stop让MCDR退出, 或{prefix} kill终止MCDR
-      orphan_screen: 启动命令已结束但终端仍在, 可使用{prefix} kill关闭终端
-      orphan_process: 插件已无法向进程发送命令, 若等待后进程仍未退出, 请使用{prefix} kill -f强制终止
-      mcdr_missing: 服务端在运行但MCDR已退出或无法识别, 可使用{prefix} kill终止
+      mcdr_only: MCDR可能空闲或正在退出，可使用{prefix} start在其中启动服务端，{prefix} stop让MCDR退出，或{prefix} kill终止MCDR
+      orphan_screen: 启动命令已结束但终端仍在，可使用{prefix} kill关闭终端
+      orphan_process: 插件已无法向进程发送命令，若等待后进程仍未退出，请使用{prefix} kill -f强制终止
+      mcdr_missing: 服务端在运行但MCDR已退出或无法识别，可使用{prefix} kill终止
 
     outcome:
-      path_not_found: 未找到有效的启动目录, 请检查是否已创建正常的{server_name}服务端和插件配置文件是否配置正确
-      force_required: Screen已不存在, 若等待后进程仍未退出, 请使用{prefix} kill -f强制终止残留进程
-      timeout: 进程未在限定时间内退出, 请使用{prefix} kill -f强制终止
+      path_not_found: 未找到有效的启动目录，请检查是否已创建正常的{server_name}服务端和插件配置文件是否配置正确
+      force_required: Screen已不存在，若等待后进程仍未退出，请使用{prefix} kill -f强制终止残留进程
+      timeout: 进程未在限定时间内退出，请使用{prefix} kill -f强制终止
       no_target: 没有可以终止的进程
-      unreadable_listener: 端口被一个无法读取PID的进程占用 (可能属于其他用户), 未终止任何进程
-      console_input_failed: 无法向{server_name}的控制台输入指令, 请稍后重试
+      unreadable_listener: 端口被一个无法读取PID的进程占用（可能属于其他用户），未终止任何进程
+      console_input_failed: 无法向{server_name}的控制台输入指令，请稍后重试
 
     status:
-      unsupported: 当前配置文件不支持status命令, 需要配置MCSM或terminal
+      unsupported: 当前配置文件不支持status命令，需要配置MCSM或terminal
       mcdr: "§7MCDR: §f{process}"
       server: "§7服务端: §f{process}"
       children: "§7子进程: §f{processes}"
@@ -144,61 +144,61 @@ mirror_mcsmcdr:
 
     process:
       item: "§7- §f{process}"
-      item_foreign: "§7- §f{process} §c(不是插件启动的)"
+      item_foreign: "§7- §f{process} §c（不是插件启动的）"
       unreadable: "无法读取的进程"
       in_record: 插件启动的进程
       not_in_record: 不是插件启动的进程
-      console: "{prefix}: {name} (PID {pid}), {origin}, 命令行: {cmdline}"
+      console: "{prefix}: {name} (PID {pid})，{origin}，命令行: {cmdline}"
 
     start:
       success: 正在启动
       ready: 已启动
       not_ready: "§c启动未完成 / §b{server_name}§f{status}"
       fail:
-        unsupported: 当前配置文件不支持start命令, 需要配置MCSM或terminal
-        syncing: 正在同步, 请等待同步完成
+        unsupported: 当前配置文件不支持start命令，需要配置MCSM或terminal
+        syncing: 正在同步，请等待同步完成
       hint:
         stopping: "§7请等待{server_name}停止后重新启动"
 
     stop:
       success: 正在停止
       fail:
-        unsupported: 当前配置文件不支持stop命令, 需要配置MCSM或terminal
+        unsupported: 当前配置文件不支持stop命令，需要配置MCSM或terminal
       hint:
         starting: "§7请等待{server_name}启动后重新停止"
 
     kill:
       success: 强制终止...
       fail:
-        unsupported: 当前配置文件不支持kill命令, 需要配置MCSM或terminal
+        unsupported: 当前配置文件不支持kill命令，需要配置MCSM或terminal
       targets:
         title: "§e{prefix} kill -f将强制终止以下 §b{count} §e个进程:"
-        count: "§e{prefix} kill -f将强制终止 §b{count} §e个进程, 其中 §b{foreign} §e个不是插件启动的"
+        count: "§e{prefix} kill -f将强制终止 §b{count} §e个进程，其中 §b{foreign} §e个不是插件启动的"
 
     sync:
       fail:
         task_exist: §b{server_name}§c已有正在进行中的同步任务
-        unsupported: §c操作失败 / §b{server_name}当前配置文件不支持获取运行状态, 需要配置MCSM或terminal
+        unsupported: §c操作失败 / §b{server_name}当前配置文件不支持获取运行状态，需要配置MCSM或terminal
       hint:
         running: "§7请先停止{server_name}再进行同步"
         starting: "§7请等待{server_name}启动后停止并进行同步"
       auto_restart:
-        restarting: §b{server_name}§f未停止, 自动关闭{server_name}并进行同步...
-        exiting: §b{server_name}§f的 MCDR 进程未停止, 自动关闭 {server_name} MCDR 并进行同步...
-        fail: §c自动关闭失败, §b{server_name}§c§f{status}
+        restarting: §b{server_name}§f未停止，自动关闭{server_name}并进行同步...
+        exiting: §b{server_name}§f的 MCDR 进程未停止，自动关闭 {server_name} MCDR 并进行同步...
+        fail: §c自动关闭失败，§b{server_name}§c§f{status}
       success: §b{server_name}§a正在进行同步...
-      skip_dictionary: "§b{server_name}§c的以下文件目录不存在, 已跳过: §f`§7{paths}§f`"
-      completed: §a同步完成! §f用时 §b{time}s §7/ §f更新了§b{changed_files_count}§f个文件
-      identical: §a文件完全相同, 无需同步
-      error: "§c同步时发生错误, 请前往终端查看错误信息"
+      skip_dictionary: "§b{server_name}§c的以下文件目录不存在，已跳过: §f`§7{paths}§f`"
+      completed: §a同步完成！§f用时 §b{time}s §7/ §f更新了§b{changed_files_count}§f个文件
+      identical: §a文件完全相同，无需同步
+      error: "§c同步时发生错误，请前往终端查看错误信息"
       backup:
         start: "§b{server_name}§f: 正在用其PrimeBackup备份..."
         done: "§a已创建§b{server_name}§a的备份 §b#{backup_id}"
-        skipped: "§7{server_name}中还没有要同步的世界, 无需备份"
-        unavailable: "§c同步已取消, 无法进行备份: §f{reason}§c. 详情见控制台"
-        failed: "§c同步已取消, 备份失败: §f{reason}§c. 详情见控制台"
-        stale: "§c同步已在复制前取消: §f{reason}§c. 备份已不是最新的"
-        warnings: "§b{server_name}§e的PrimeBackup有§b{count}§e项设置与同步设置不一致, 备份可能不包含同步将覆盖的全部内容. 详情见控制台"
+        skipped: "§7{server_name}中还没有要同步的世界，无需备份"
+        unavailable: "§c同步已取消，无法进行备份: §f{reason}§c。详情见控制台"
+        failed: "§c同步已取消，备份失败: §f{reason}§c。详情见控制台"
+        stale: "§c同步已在复制前取消: §f{reason}§c。备份已不是最新的"
+        warnings: "§b{server_name}§e的PrimeBackup有§b{count}§e项设置与同步设置不一致，备份可能不包含同步将覆盖的全部内容。详情见控制台"
         detail: "{server_name}的同步前备份: {detail}"
         output: "PrimeBackup输出的最后几行:\n{output}"
         reason:
@@ -208,27 +208,27 @@ mirror_mcsmcdr:
           mcdr_config_invalid: "镜像服的MCDR配置文件中'{option}'的值无效"
           plugin_not_found: "镜像服MCDR的插件目录中没有PrimeBackup插件"
           plugin_duplicated: "镜像服MCDR中有多个PrimeBackup插件"
-          plugin_too_old: "镜像服的PrimeBackup版本为{version}, 至少需要1.13.0"
+          plugin_too_old: "镜像服的PrimeBackup版本为{version}，至少需要1.13.0"
           pb_config_unreadable: "无法读取镜像服的PrimeBackup配置文件"
           pb_config_invalid: "镜像服的PrimeBackup配置文件中'{option}'的值无效"
           database_not_found: "镜像服的PrimeBackup数据库不存在"
           pathspec_missing: "未安装PrimeBackup所需的Python包pathspec"
-          mirror_not_stopped: "{server_name}当前状态为{status}, 而不是已停止"
-          probe_failed: "PrimeBackup命令行工具退出码为{code}, 请检查其Python依赖是否已安装"
+          mirror_not_stopped: "{server_name}当前状态为{status}，而不是已停止"
+          probe_failed: "PrimeBackup命令行工具退出码为{code}，请检查其Python依赖是否已安装"
           launch: "无法启动PrimeBackup命令行工具"
           timeout: "PrimeBackup未在{timeout}秒内完成"
           exit_code: "PrimeBackup退出码为{code}"
           no_backup_id: "PrimeBackup没有报告备份编号"
           backup_id_mismatch: "PrimeBackup报告了不同的备份编号: {ids}"
         warning:
-          source_mismatch: "{server_name}的同步前备份: 其PrimeBackup备份的目录{source}不是任何一个同步目标({targets}), 同步覆盖的内容不会被备份"
-          targets_not_backed_up: "{server_name}的同步前备份: 以下同步目标不是其PrimeBackup备份的目录, 会在没有备份的情况下被覆盖: {targets}"
+          source_mismatch: "{server_name}的同步前备份: 其PrimeBackup备份的目录{source}不是任何一个同步目标({targets})，同步覆盖的内容不会被备份"
+          targets_not_backed_up: "{server_name}的同步前备份: 以下同步目标不是其PrimeBackup备份的目录，会在没有备份的情况下被覆盖: {targets}"
           worlds_not_targeted: "{server_name}的同步前备份: 其PrimeBackup的backup.targets [{targets}] 不包含以下被同步的世界: {worlds}"
           ignored: "{server_name}的同步前备份: 其PrimeBackup忽略了同步不忽略的内容 (ignore_patterns / ignored_files): {patterns}"
           retained: "{server_name}的同步前备份: 其PrimeBackup的retain_patterns会让以下内容不进入备份: {patterns}"
-          reuse_stat_unchanged_file: "{server_name}的同步前备份: 其PrimeBackup开启了reuse_stat_unchanged_file, 大小和修改时间未变的文件不会被读取, 备份中可能是旧内容"
-          creation_skip_missing_file: "{server_name}的同步前备份: 其PrimeBackup开启了creation_skip_missing_file, 备份过程中消失的文件会被直接跳过"
-          storage_in_world: "{server_name}的同步前备份: PrimeBackup的存储目录{storage}位于被同步的世界{world}中, 同步会删除备份"
+          reuse_stat_unchanged_file: "{server_name}的同步前备份: 其PrimeBackup开启了reuse_stat_unchanged_file，大小和修改时间未变的文件不会被读取，备份中可能是旧内容"
+          creation_skip_missing_file: "{server_name}的同步前备份: 其PrimeBackup开启了creation_skip_missing_file，备份过程中消失的文件会被直接跳过"
+          storage_in_world: "{server_name}的同步前备份: PrimeBackup的存储目录{storage}位于被同步的世界{world}中，同步会删除备份"
     
     history:
       record:
@@ -240,25 +240,25 @@ mirror_mcsmcdr:
   mcsm:
     disabled: §cMCSM-API未启用
     error:
-      request: "§cMCSM请求错误, 请报告管理员: §4{e}"
-      "400": "[400] 请求参数错误, 请尝试前往GitHub提交issue以解决({error})"
-      "403": "[403] 请求权限不足, 请报告服务器管理员({error})"
+      request: "§cMCSM请求错误，请报告管理员: §4{e}"
+      "400": "[400] 请求参数错误，请尝试前往GitHub提交issue以解决({error})"
+      "403": "[403] 请求权限不足，请报告服务器管理员({error})"
       "500": "[500] 未知的服务器内部错误({error})"
       "503": "[503] 请求过于频繁"
 
   screen:
-    error: "§cScreen错误, 请报告管理员: §4{e}"
+    error: "§cScreen错误，请报告管理员: §4{e}"
 
   process_record:
-    unreadable: "无法读取进程记录{path}, 之前启动的镜像服不再被跟踪: {error}"
-    unwritable: "无法写入进程记录{path}, 插件重载后将无法跟踪正在运行的镜像服: {error}"
+    unreadable: "无法读取进程记录{path}，之前启动的镜像服不再被跟踪: {error}"
+    unwritable: "无法写入进程记录{path}，插件重载后将无法跟踪正在运行的镜像服: {error}"
 
   config_loader:
     merged: "已自动补全配置文件中缺失的项"
-    created: "配置文件不存在, 使用默认值创建 config.yml"
-    legacy_json: "config.json 格式已弃用, 自动转换为 config.yml; 原文件备份为 config.json.bak"
-    unknown_key: "配置项 §b{prefix}§f: 已移除未知项 §e{path}§f (值: §7{value}§f)"
+    created: "配置文件不存在，使用默认值创建 config.yml"
+    legacy_json: "config.json 格式已弃用，自动转换为 config.yml；原文件备份为 config.json.bak"
+    unknown_key: "配置项 §b{prefix}§f: 已移除未知项 §e{path}§f（值: §7{value}§f）"
     backup: "旧配置文件已备份到 {path}"
-    unknown_removed: "§e已从配置文件中移除 §b{count} §e个未知项, 详见控制台"
+    unknown_removed: "§e已从配置文件中移除 §b{count} §e个未知项，详见控制台"
   
-  error.unknown: §c未知错误, 请前往终端查看错误信息
+  error.unknown: §c未知错误，请前往终端查看错误信息
