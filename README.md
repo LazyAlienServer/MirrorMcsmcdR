@@ -45,6 +45,8 @@
 - `command.action.sync.max_attempt_times`已删除。同步自动停服后，最多等待`command.action.stop.timeout`秒（默认60秒，以前默认15秒）；
 - `command.action.sync.check_status_interval`移到了`command.action.check_status_interval`。旧位置的值会被忽略，恢复为默认值`5`。
 
+插件加载配置时，会从配置文件中删除它不认识的项（包括上面已删除的项和拼错的项），并在控制台逐项列出路径和值，同时在游戏内提示一次。删除前，原配置文件会备份为同目录下的`config.yml.<时间>-<内容哈希>.bak`。
+
 ## 指令
 
 默认指令前缀为 `!!mirror`。

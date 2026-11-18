@@ -45,6 +45,8 @@ After upgrading, check the configuration file:
 - `command.action.sync.max_attempt_times` is removed. After an automatic stop for a sync, the plugin waits up to `command.action.stop.timeout` seconds (60 by default; 15 before);
 - `command.action.sync.check_status_interval` moved to `command.action.check_status_interval`. A value at the old place is ignored, and the default `5` applies.
 
+When the plugin loads its configuration, it removes the keys it does not know from the configuration file (including the removed keys above and misspelt ones). It lists each of them with its path and value in the console and tells the game once. Before that, the original file is backed up as `config.yml.<time>-<content hash>.bak` in the same folder.
+
 ## Commands
 
 The default command prefix is `!!mirror`.

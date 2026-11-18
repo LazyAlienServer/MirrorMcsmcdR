@@ -2,10 +2,13 @@ from mcdreforged.api.all import PluginServerInterface
 from copy import deepcopy
 from pathlib import Path
 from mirror_mcsmcdr.config.mirror_config import MirrorConfig, MultiMirrorConfig
+from mirror_mcsmcdr.constants import REPLY_TITLE
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+import hashlib
 import os
+import time
 
 
 class MultiConfigLoader:
@@ -30,6 +33,16 @@ class MultiConfigLoader:
         template = self._load_template(yaml)
         user_config, source_path = self._load_user_config()
 
+        schema = MirrorConfig().serialize()
+        unknown: Dict[str, List[Tuple[str, Any]]] = {}
+        for prefix, data in user_config.items():
+            if not isinstance(data, dict):
+                continue
+            kept, removed = self._strip_unknown(schema, data)
+            if removed:
+                user_config[prefix] = kept
+                unknown[prefix] = removed
+
         template_prefix = next(iter(template))
         if user_config:
             first_prefix = next(iter(user_config))
@@ -49,13 +62,14 @@ class MultiConfigLoader:
         annotated_first = deepcopy(template[template_prefix])
         self._apply_values(annotated_first, parent_config.serialize())
         first_data_defined = bool(user_config) and first_prefix in user_config
-        needs_save = needs_save or source_path is None or source_path != self.config_path or (first_data_defined and first_data != annotated_first)
+        needs_save = needs_save or source_path is None or source_path != self.config_path or (first_data_defined and first_data != annotated_first) or bool(unknown)
         if not needs_save:
             return
         export_config = deepcopy(template)
         if template_prefix != first_prefix:
             del export_config[template_prefix]
         export_config[first_prefix] = annotated_first
+        self._report_unknown(unknown, source_path)
         if source_path is None:
             self.server.logger.warning("Config missing. Automatically create new config.yml with default values.")
         else:
@@ -78,6 +92,52 @@ class MultiConfigLoader:
             raise RuntimeError("Command prefix not found in user config.")
         # merged as plain data: a deserialized entry would bring its defaults along and override the parent with them
         return MirrorConfig.deserialize(self._inherit(self.parent_config.serialize(), self.user_config[command_prefix]))
+
+    def _report_unknown(self, unknown: Dict[str, List[Tuple[str, Any]]], source_path: Optional[Path]) -> None:
+        """Tell what is about to be removed; a YAML source is backed up first, a legacy JSON one already is."""
+        if not unknown:
+            return
+        for prefix, removed in unknown.items():
+            for path, value in removed:
+                self.server.logger.warning(f"Config '{prefix}': unknown key '{path}' is removed (value: {value!r})")
+        if source_path == self.config_path:
+            content = source_path.read_bytes()
+            stamp = time.strftime('%Y%m%d-%H%M%S')
+            backup_path = source_path.with_name(f"{source_path.name}.{stamp}-{hashlib.sha256(content).hexdigest()[:6]}.bak")
+            backup_path.write_bytes(content)
+            self.server.logger.warning(f"The config before the removal is backed up to {backup_path}")
+        count = sum(map(len, unknown.values()))
+        self.server.broadcast(f"{REPLY_TITLE} §e{count} unknown config key(s) removed, see the console")
+
+    @classmethod
+    def _strip_unknown(cls, schema: dict, data: dict, path: str = '') -> Tuple[dict, List[Tuple[str, Any]]]:
+        """
+        Split ``data`` into the keys ``schema`` knows and the ones it does not, the latter as (full dotted path, value).
+
+        A dotted key such as ``display.server_name`` is known if its whole path is; it is kept as written.
+        """
+        kept: dict = {}
+        removed: List[Tuple[str, Any]] = []
+        for key, value in data.items():
+            head, _, rest = str(key).partition(".")
+            if head not in schema:
+                removed.append((f"{path}{key}", value))
+                continue
+            node = schema[head]
+            if rest:
+                if not isinstance(node, dict):
+                    removed.append((f"{path}{key}", value))
+                    continue
+                inner_kept, inner_removed = cls._strip_unknown(node, {rest: value}, f"{path}{head}.")
+                removed += inner_removed
+                if inner_kept:
+                    kept[key] = inner_kept[rest]
+            elif isinstance(node, dict) and isinstance(value, dict):
+                kept[key], inner_removed = cls._strip_unknown(node, value, f"{path}{key}.")
+                removed += inner_removed
+            else:
+                kept[key] = value
+        return kept, removed
 
     def _load_template(self, yaml: YAML) -> CommentedMap:
         lang = self.server.get_mcdr_language()
