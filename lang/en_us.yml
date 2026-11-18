@@ -151,7 +151,7 @@ mirror_mcsmcdr:
       console: "{prefix}: {name} (PID {pid}), {origin}, command line: {cmdline}"
 
     start:
-      success: starting command sent
+      success: is starting
       ready: has started
       not_ready: "§cStart not completed / §b{server_name} §f{status}"
       fail:
@@ -161,7 +161,7 @@ mirror_mcsmcdr:
         stopping: "§7Please start again after {server_name} has stopped"
 
     stop:
-      success: stopping command sent
+      success: is stopping
       fail:
         unsupported: The current config does not support the stop command; configure MCSM or terminal
       hint:
