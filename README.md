@@ -222,8 +222,12 @@ terminal:
 | 正在启动 | 已发送启动指令，或服务端进程在运行但端口尚未打开 | `kill`、`kill -f` |
 | 正在运行 | 端口由记录中的进程监听 | `stop`、`kill`、`kill -f`；开启`auto_server_restart`时可`sync` |
 | 正在停止 | 已发送关闭指令，正在等待进程退出 | `kill`、`kill -f` |
-| 服务端已停止, MCDR仍在运行 | 服务端已退出，MCDR空闲或正在退出 | `kill`、`kill -f` |
+| 服务端已停止, MCDR仍在运行 | 服务端已退出，MCDR空闲或正在退出 | `start`、`stop`、`kill`、`kill -f` |
 | 状态未知 | 端口被不是插件启动的进程占用 | `kill -f` |
+
+`服务端已停止, MCDR仍在运行`时，`start`和`stop`不会再启动一个镜像服，而是向仍在运行的MCDR的控制台输入指令：`start`输入`!!MCDR server start`，在这个MCDR中启动服务端；`stop`输入`!!MCDR server exit`，让MCDR退出。MCDR正在退出时会拒绝启动服务端，此时状态会变为`已停止`。
+
+插件向镜像服控制台输入指令（`start`、`stop`，以及Linux下的`kill`）之前，会再确认一次MCDR（`is_mcdr`为`false`时为服务端）仍在运行，避免指令被启动失败后残留的终端执行。如果状态在此期间发生了变化，回复会说明现在的状态。
 
 状态后还可能附带以下异常：
 - **已失去控制台**：记录中的进程仍在运行，但插件已无法向它们发送命令（screen或命令提示符窗口已关闭，或重载插件后subprocess代理失去了子进程）。只能使用`kill -f`；
@@ -448,7 +452,7 @@ action:
 
 ### sync配置
 **ensure_server_closed** `bool`
-- 当此选项为`true`时, 同步时将会检查镜像服是否已停止。镜像服必须为`已停止`才能同步，`服务端已停止, MCDR仍在运行`时也会拒绝同步，需等待MCDR退出或使用`!!mirror kill`终止。当此选项为`false`时, 无论镜像服是否停止, 都将直接进行同步。
+- 当此选项为`true`时, 同步时将会检查镜像服是否已停止。镜像服必须为`已停止`才能同步，`服务端已停止, MCDR仍在运行`时也会拒绝同步，需等待MCDR退出，或使用`!!mirror stop`让MCDR退出、使用`!!mirror kill`终止MCDR。当此选项为`false`时, 无论镜像服是否停止, 都将直接进行同步。
 
 **auto_server_restart** `bool`
 - 此选项仅在`ensure_server_closed`为`true`时生效。当此选项为`true`时, 如果同步时镜像服`正在运行`, 那么将在尝试自动停止镜像服、等待MCDR也退出后进行同步, 并在同步完成后自动重启镜像服

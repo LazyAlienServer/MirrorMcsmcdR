@@ -6,7 +6,7 @@ import psutil
 
 from mirror_mcsmcdr.config.proxy_config import TerminalConfig
 from mirror_mcsmcdr.server.action import Action, ActionResult
-from mirror_mcsmcdr.server.status import Evidence, ProcessInfo
+from mirror_mcsmcdr.server.status import Evidence, ProcessInfo, ServerState
 from mirror_mcsmcdr.server.system_utils import process_utils
 from mirror_mcsmcdr.server.system_utils.port_utils import PortListener
 from mirror_mcsmcdr.server.tracker import ProcessRecord, ProcessTracker, Role, TreeView
@@ -85,6 +85,42 @@ class TerminalProxy(ServerBackend, ABC):
     def stop_command(self) -> str:
         return "!!MCDR server stop_exit" if self.is_mcdr else "stop"
 
+    @property
+    def _console_readers(self) -> frozenset[Role]:
+        """The roles of the processes that read what is typed into the console."""
+        return frozenset({Role.MCDR}) if self.is_mcdr else frozenset({Role.MCDR, Role.SERVER, Role.CHILD, Role.OTHER})
+
+    def _start(self, result: ActionResult) -> ActionResult:
+        if result.snapshot.state is ServerState.MCDR_ONLY:
+            # the server alone, by the MCDR that is still there
+            return self._send_console(result, "!!MCDR server start")
+        return self._launch(result)
+
+    def _stop(self, result: ActionResult) -> ActionResult:
+        # stop_exit fails once the server has stopped, so an MCDR without a server is told to exit instead
+        command = "!!MCDR server exit" if result.snapshot.state is ServerState.MCDR_ONLY else self.stop_command
+        return self._send_console(result, command)
+
+    def _send_console(self, result: ActionResult, command: str) -> ActionResult:
+        """
+        Type a command the plugin composed into the console of the recorded launch.
+
+        Right before, the console and the process that reads it are checked again:
+        whatever else is left in the console, such as the shell of a failed launch, would take the command for its own.
+        A short window between the check and the input remains.
+
+        :return: ``result``, or its rejection with CONSOLE_INPUT_FAILED.
+            Whether the status changed or the input itself failed is for the caller to tell from a new status
+        """
+        view = self.tracker.observe(self.listener, self._console_exists)
+        record = view.record
+        if (
+            record is None or record.backend != self.name or not self._endpoint_alive(view)
+            or not view.alive(*self._console_readers) or not self._type(view, command)
+        ):
+            return result.reject(ActionResult.Outcome.CONSOLE_INPUT_FAILED)
+        return result
+
     def observe(self) -> Evidence:
         view = self.tracker.observe(self.listener, self._console_exists)
         port_owned = any(live.member.pid in view.listeners for live in view.members)
@@ -131,6 +167,18 @@ class TerminalProxy(ServerBackend, ABC):
     @abstractmethod
     def _endpoint_alive(self, view: TreeView) -> bool:
         """Whether the console of the launch in ``view.record``, which this backend made, is still there."""
+
+    @abstractmethod
+    def _launch(self, result: ActionResult) -> ActionResult:
+        """Launch a new process tree with the launch command."""
+
+    @abstractmethod
+    def _type(self, view: TreeView, command: str) -> bool:
+        """
+        Deliver one line to the console of the launch in ``view.record``, which this backend made and is read by a live process.
+
+        :return: whether the console took it
+        """
 
     def forcekill_targets(self) -> KillTargets:
         view = self.tracker.observe(self.listener)

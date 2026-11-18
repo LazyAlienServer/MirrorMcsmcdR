@@ -15,7 +15,7 @@ class WindowsProxy(TerminalProxy):
         # the console lives as long as the cmd.exe that opened it
         return view.root_alive
 
-    def _start(self, result: ActionResult) -> ActionResult:
+    def _launch(self, result: ActionResult) -> ActionResult:
         if not os.path.exists(self.path):
             return result.reject(ActionResult.Outcome.PATH_NOT_FOUND)
         # One string: an argument list would escape the quotes of the launch command, and cmd.exe would pass on the escapes.
@@ -24,13 +24,10 @@ class WindowsProxy(TerminalProxy):
         self.tracker.register(self.name, self.path, self.command, self.terminal_name, process.pid)
         return result
 
-    def _stop(self, result: ActionResult) -> ActionResult:
-        view = self.tracker.observe(self.listener)
-        members = view.member_pids()
-        # the listening processes normally share one console, so the first one that takes the command is enough
-        if not any(send_console_command(pid, self.stop_command) for pid in view.listeners if pid in members):
-            return result.reject(ActionResult.Outcome.WRONG_STATE)
-        return result
+    def _type(self, view: TreeView, command: str) -> bool:
+        readers = self._console_readers
+        # they share the console the plugin opened, so the first one that takes the command is enough
+        return any(send_console_command(live.member.pid, command) for live in view.members if live.member.role in readers)
 
     def _kill(self, result: ActionResult) -> ActionResult:
         view = self.tracker.observe(self.listener)

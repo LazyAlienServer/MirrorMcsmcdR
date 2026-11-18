@@ -43,14 +43,17 @@ class ActionResult:
         NO_TARGET = "no_target"
         # a forced kill was refused: something holds the port whose pid cannot be read
         UNREADABLE_LISTENER = "unreadable_listener"
+        # the console did not take the input, although the status still allows the action
+        CONSOLE_INPUT_FAILED = "console_input_failed"
 
     action: Action
     snapshot: StatusSnapshot
     outcome: Outcome = Outcome.ACCEPTED
 
     ALLOWED_STATES: ClassVar[dict[Action, frozenset[ServerState]]] = {
-        Action.START: frozenset({ServerState.STOPPED}),
-        Action.STOP: frozenset({ServerState.RUNNING}),
+        # in MCDR_ONLY, through the console of the MCDR that is still there
+        Action.START: frozenset({ServerState.STOPPED, ServerState.MCDR_ONLY}),
+        Action.STOP: frozenset({ServerState.RUNNING, ServerState.MCDR_ONLY}),
         Action.KILL: frozenset({ServerState.STARTING, ServerState.RUNNING, ServerState.STOPPING, ServerState.MCDR_ONLY}),
         # the way out of a status that cannot be told
         Action.FORCEKILL: frozenset({

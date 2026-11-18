@@ -65,6 +65,15 @@ class ServerController:
             if not result.accepted:
                 return result
             result = backend.perform(result)
+            if result.outcome is ActionResult.Outcome.CONSOLE_INPUT_FAILED:
+                again = ActionResult.check(action, self.status())
+                if (again.snapshot.state, again.snapshot.anomalies) == (result.snapshot.state, result.snapshot.anomalies):
+                    # nothing has changed since the check: the input itself failed
+                    result = again.reject(ActionResult.Outcome.CONSOLE_INPUT_FAILED)
+                else:
+                    # The status now explains it, also where it allows the action:
+                    # that would be carried out differently, by a launch or another command.
+                    result = again if not again.accepted else again.reject(ActionResult.Outcome.WRONG_STATE)
             if result.accepted:
                 if action in TERMINATIONS:
                     # nobody is waiting for the last start or stop any more

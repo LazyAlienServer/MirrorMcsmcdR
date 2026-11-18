@@ -35,7 +35,7 @@ class LinuxProxy(TerminalProxy):
     def _endpoint_alive(self, view: TreeView) -> bool:
         return view.root_alive and bool(view.console)
 
-    def _start(self, result: ActionResult) -> ActionResult:
+    def _launch(self, result: ActionResult) -> ActionResult:
         if not os.path.exists(self.path):
             return result.reject(ActionResult.Outcome.PATH_NOT_FOUND)
         screen = Screen(self.terminal_name, self.path)
@@ -47,9 +47,9 @@ class LinuxProxy(TerminalProxy):
                 self.tracker.register(self.name, self.path, self.command, self.terminal_name, screen.pid)
         return result
 
-    def _stop(self, result: ActionResult) -> ActionResult:
-        self._screen(self.tracker.observe(self.listener).record).send(self.stop_command)
-        return result
+    def _type(self, view: TreeView, command: str) -> bool:
+        self._screen(view.record).send(command)
+        return True
 
     def _kill(self, result: ActionResult) -> ActionResult:
         if not self.is_mcdr:
@@ -58,11 +58,9 @@ class LinuxProxy(TerminalProxy):
         if not result.snapshot.evidence.endpoint_alive:
             # without the screen there is no console to send the kill command to
             return result.reject(ActionResult.Outcome.FORCE_REQUIRED)
-        screen = self._screen(self.tracker.observe(self.listener).record)
         if result.snapshot.evidence.port_listening and Capability.CONSOLE_INPUT in result.snapshot.capabilities():
-            screen.send("!!MCDR server kill")
-        else:
-            screen.quit()
+            return self._send_console(result, "!!MCDR server kill")
+        self._screen(self.tracker.observe(self.listener).record).quit()
         return result
 
     def _end(self, targets: KillTargets) -> list[Exception]:

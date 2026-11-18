@@ -226,8 +226,12 @@ The recorded processes fall into these groups:
 | starting | The start command was sent, or the server process is running but the port is not open yet | `kill`, `kill -f` |
 | running | The port is held by a recorded process | `stop`, `kill`, `kill -f`; `sync` with `auto_server_restart` |
 | stopping | The stop command was sent; waiting for the processes to exit | `kill`, `kill -f` |
-| server stopped, MCDR still running | The server has exited; MCDR is idle or exiting | `kill`, `kill -f` |
+| server stopped, MCDR still running | The server has exited; MCDR is idle or exiting | `start`, `stop`, `kill`, `kill -f` |
 | status unknown | The port is held by a process the plugin did not start | `kill -f` |
+
+In `server stopped, MCDR still running`, `start` and `stop` do not launch another mirror server; they type a command into the console of the MCDR that is still running: `start` types `!!MCDR server start`, which starts the server in that MCDR, and `stop` types `!!MCDR server exit`, which makes MCDR exit. An MCDR that is exiting refuses to start the server; the status then becomes `stopped`.
+
+Before the plugin types a command into the mirror's console (`start`, `stop`, and `kill` on Linux), it checks once more that MCDR (the server, with `is_mcdr` set to `false`) is still running, so that a terminal left behind by a failed launch does not run the command. If the status has changed in the meantime, the reply tells the status as it is now.
 
 One of these anomalies may follow the status:
 - **Console lost**: recorded processes are still running, but the plugin can no longer send them commands (the screen or command prompt window is closed, or the subprocess proxy lost its child process after a plugin reload). Only `kill -f` is available;
@@ -453,7 +457,7 @@ action:
 
 ### sync Configuration
 **ensure_server_closed** `bool`
-- When this option is `true`, synchronization will check whether the mirror server has stopped. The mirror server must be `stopped`; `server stopped, MCDR still running` is refused too, until MCDR exits or is ended with `!!mirror kill`. When this option is `false`, synchronization will be carried out directly regardless of whether the mirror server has stopped or not.
+- When this option is `true`, synchronization will check whether the mirror server has stopped. The mirror server must be `stopped`; `server stopped, MCDR still running` is refused too, until MCDR exits, is told to exit with `!!mirror stop`, or is ended with `!!mirror kill`. When this option is `false`, synchronization will be carried out directly regardless of whether the mirror server has stopped or not.
 
 **auto_server_restart** `bool`
 - This option only takes effect when `ensure_server_closed` is `true`. When this option is `true`, if the mirror server is `running` during synchronization, it will attempt to automatically stop the mirror server, wait for MCDR to exit as well, perform synchronization, and automatically restart the mirror server after the synchronization is completed.

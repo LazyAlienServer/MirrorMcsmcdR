@@ -37,7 +37,7 @@ class SubprocessProxy(TerminalProxy):
         process = self.process
         return view.root_alive and process is not None and view.record is not None and process.pid == view.record.root.pid
 
-    def _start(self, result: ActionResult) -> ActionResult:
+    def _launch(self, result: ActionResult) -> ActionResult:
         if self.alive:
             return result.reject(ActionResult.Outcome.WRONG_STATE)
 
@@ -73,11 +73,11 @@ class SubprocessProxy(TerminalProxy):
         self.tracker.register(self.name, self.path, self.command, self.terminal_name, self.process.pid)
         return result
 
-    def _stop(self, result: ActionResult) -> ActionResult:
-        if not self.send_command(self.stop_command):
-            self.reset_log_limit()
-            return result.reject(ActionResult.Outcome.WRONG_STATE)
-        return result
+    def _type(self, view: TreeView, command: str) -> bool:
+        if self.send_command(command):
+            return True
+        self.reset_log_limit()
+        return False
 
     def _kill(self, result: ActionResult) -> ActionResult:
         process = self.process

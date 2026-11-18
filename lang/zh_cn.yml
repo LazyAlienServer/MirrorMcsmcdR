@@ -106,7 +106,7 @@ mirror_mcsmcdr:
       port_closed: 服务端进程在运行但端口未打开, 若一直如此请检查配置中的port, 或使用{prefix} kill终止
       stop_pending: 关闭指令已发送, 正在等待进程退出
       console_closing: 控制台正在关闭
-      mcdr_only: MCDR可能空闲或正在退出, 可使用{prefix} kill终止MCDR
+      mcdr_only: MCDR可能空闲或正在退出, 可使用{prefix} start在其中启动服务端, {prefix} stop让MCDR退出, 或{prefix} kill终止MCDR
       orphan_screen: 启动命令已结束但终端仍在, 可使用{prefix} kill关闭终端
       orphan_process: 插件已无法向这些进程发送命令, 只能使用{prefix} kill -f强制终止
       mcdr_missing: 服务端在运行但MCDR已退出或无法识别, 可使用{prefix} kill终止
@@ -117,6 +117,7 @@ mirror_mcsmcdr:
       timeout: 进程未在限定时间内退出, 请使用{prefix} kill -f强制终止
       no_target: 没有可以终止的进程
       unreadable_listener: 端口被一个无法读取PID的进程占用 (可能属于其他用户), 未终止任何进程
+      console_input_failed: 无法向{server_name}的控制台输入指令, 请稍后重试
 
     status:
       unsupported: 当前配置文件不支持status命令, 需要配置MCSM或terminal
