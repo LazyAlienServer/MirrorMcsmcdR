@@ -95,8 +95,9 @@ class SyncWorkflow:
         """
         Run a sync and record its result in the history; the caller must :meth:`hold` the workflow.
 
-        :param on_server_stopped: called once the mirror server has been stopped for this sync.
-            The caller then has to start it again, whatever happens to the sync afterwards
+        :param on_server_stopped: called once a running mirror server has been stopped for this sync.
+            The caller then has to start it again, whatever happens to the sync afterwards.
+            An MCDR that ran without a server is made to exit without this call: nothing is to be started again
         """
         started_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         record: Optional[SyncRecord] = None
@@ -131,7 +132,9 @@ class SyncWorkflow:
         snapshot = controller.status()
         if snapshot.safe_to_modify():
             return True
-        if not snapshot.is_exactly(ServerState.RUNNING) or not config.auto_server_restart:
+        # a running server is restarted after the sync; an MCDR without a server is only told to exit, nothing was running
+        restart = snapshot.is_exactly(ServerState.RUNNING)
+        if not (restart or snapshot.is_exactly(ServerState.MCDR_ONLY)) or not config.auto_server_restart:
             if snapshot.evidence.empty:
                 source.reply(self._tr("command.sync.fail.unsupported"))
             else:
@@ -153,7 +156,8 @@ class SyncWorkflow:
             )
             snapshot = waited.snapshot
             if waited.end is WaitEnd.REACHED:
-                on_server_stopped()
+                if restart:
+                    on_server_stopped()
                 return True
         self._server.broadcast(self._tr("command.sync.auto_restart.fail", status=self._tr(status_key(snapshot), title=False)))
         # what it is still waiting for
