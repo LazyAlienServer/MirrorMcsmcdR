@@ -40,7 +40,10 @@ class SaveWorldConfig(Serializable):
 
 class SyncActionConfig(ActionConfig):
     ensure_server_closed: bool = True
+    # the server is running: stop it before the sync, start it again afterwards
     auto_server_restart: bool = False
+    # only MCDR is running: make it exit before the sync, nothing is started afterwards
+    auto_mcdr_stop: bool = False
     save_world: SaveWorldConfig = SaveWorldConfig()
 
 class HistoryActionConfig(ActionConfig):

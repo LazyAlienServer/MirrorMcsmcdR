@@ -97,6 +97,7 @@
         require_confirm: true
         ensure_server_closed: true
         auto_server_restart: false
+        auto_mcdr_stop: false
         save_world:
           # Disable automatic saving while the world is copied.
           turn_off_auto_save: true

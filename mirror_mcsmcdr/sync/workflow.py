@@ -135,7 +135,8 @@ class SyncWorkflow:
             return True
         # a running server is restarted after the sync; an MCDR without a server is only told to exit, nothing was running
         restart = snapshot.is_exactly(ServerState.RUNNING)
-        if not (restart or snapshot.is_exactly(ServerState.MCDR_ONLY)) or not config.auto_server_restart:
+        exit_mcdr = snapshot.is_exactly(ServerState.MCDR_ONLY)
+        if not ((restart and config.auto_server_restart) or (exit_mcdr and config.auto_mcdr_stop)):
             if snapshot.evidence.empty:
                 source.reply(self._tr("command.sync.fail.unsupported"))
             else:
@@ -143,7 +144,7 @@ class SyncWorkflow:
                     source.reply(line)
             return False
 
-        self._server.broadcast(self._tr("command.sync.auto_restart.restarting"))
+        self._server.broadcast(self._tr(f"command.sync.auto_restart.{'restarting' if restart else 'exiting'}"))
         result = controller.execute(Action.STOP)
         snapshot = result.snapshot
         if result.accepted:

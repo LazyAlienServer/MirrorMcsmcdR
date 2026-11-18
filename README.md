@@ -226,7 +226,7 @@ terminal:
 | 正在启动 | 已发送启动指令，或服务端进程在运行但端口尚未打开 | `kill`、`kill -f` |
 | 正在运行 | 端口由记录中的进程监听 | `stop`、`kill`、`kill -f`；开启`auto_server_restart`时可`sync` |
 | 正在停止 | 已发送关闭指令，正在等待进程退出 | `kill`、`kill -f` |
-| 服务端已停止, MCDR仍在运行 | 服务端已退出，MCDR空闲或正在退出 | `start`、`stop`、`kill`、`kill -f`；开启`auto_server_restart`时可`sync` |
+| 服务端已停止, MCDR仍在运行 | 服务端已退出，MCDR空闲或正在退出 | `start`、`stop`、`kill`、`kill -f`；开启`auto_mcdr_stop`时可`sync` |
 | 状态未知 | 端口被不是插件启动的进程占用 | `kill -f` |
 
 `服务端已停止, MCDR仍在运行`时，`start`和`stop`不会再启动一个镜像服，而是向仍在运行的MCDR的控制台输入指令：`start`输入`!!MCDR server start`，在这个MCDR中启动服务端；`stop`输入`!!MCDR server exit`，让MCDR退出。MCDR正在退出时会拒绝启动服务端，此时状态会变为`已停止`。
@@ -356,7 +356,7 @@ sync:
 
 **启用备份后，一次同步的过程**
 1. 输入 `!!mirror sync` 时，先定位镜像服的 PrimeBackup：插件、配置和数据库。缺少任何一项，同步立即被拒绝。接着检查上面的警告；有警告且 `confirm_on_warning` 为 `true` 时，必须确认后才同步。
-2. 镜像服必须已停止，镜像服的 MCDR 也必须已经退出（`auto_server_restart` 可以自动停止它，并等到 MCDR 退出）。
+2. 镜像服必须已停止，镜像服的 MCDR 也必须已经退出（`auto_server_restart`和`auto_mcdr_stop`可以自动停止它，并等到 MCDR 退出）。
 3. 由 PrimeBackup 的 `make` 按镜像服的设置做备份，备注为 `MirrorMcsmcdR pre-sync by <操作者>`。
 4. `make` 的退出码为 0 且报告了备份编号，备份才算成功。否则拒绝同步，把 PrimeBackup 输出的最后几行写入 MCDR 控制台，并把这次同步记为失败。
 5. 广播备份编号，然后保存主服世界。`ensure_server_closed` 为 `true` 时，开始复制前的一刻镜像服必须仍处于停止状态；否则备份已不是最新的，同步被拒绝。
@@ -427,6 +427,7 @@ action:
     require_confirm: true
     ensure_server_closed: true
     auto_server_restart: false
+    auto_mcdr_stop: false
     save_world:
       # 保存世界配置
       # ...
@@ -452,7 +453,7 @@ action:
 - 启动(停止)指令发出后, 镜像服最多需要多少秒完成启动(停止)。在此期间状态显示为`正在启动`(`正在停止`), 超过此时间后插件将重新只根据端口、进程等实际情况判断状态。镜像服启动较慢时请调大`start.timeout`
 - 镜像服`正在启动`时无法重载配置文件, 可等待启动完成, 或先执行`!!mirror kill`
 - 启用MCSM时状态由MCSM提供, 此选项不影响状态显示
-- 同步自动停服(`auto_server_restart`)后, 最多等待`stop.timeout`秒, 超时则输出`自动关闭失败`及镜像服当前状态, 并向执行者说明仍在等待什么
+- 同步自动停服(`auto_server_restart`、`auto_mcdr_stop`)后, 最多等待`stop.timeout`秒, 超时则输出`自动关闭失败`及镜像服当前状态, 并向执行者说明仍在等待什么
 
 ### check_status_interval
 **check_status_interval** `int`
@@ -462,10 +463,13 @@ action:
 同步进行期间（从自动停服、等待、备份、复制到同步后的重启），`!!mirror start`会被拒绝，以免镜像服在复制过程中启动。`stop`、`kill`和`kill -f`不受影响。
 
 **ensure_server_closed** `bool`
-- 当此选项为`true`时, 同步时将会检查镜像服是否已停止。镜像服必须为`已停止`才能同步。`服务端已停止, MCDR仍在运行`时, 未开启`auto_server_restart`则拒绝同步，需等待MCDR退出，或使用`!!mirror stop`让MCDR退出、使用`!!mirror kill`终止MCDR。当此选项为`false`时, 无论镜像服是否停止, 都将直接进行同步。
+- 当此选项为`true`时, 同步时将会检查镜像服是否已停止。镜像服必须为`已停止`才能同步。`服务端已停止, MCDR仍在运行`时, 未开启`auto_mcdr_stop`则拒绝同步，需等待MCDR退出，或使用`!!mirror stop`让MCDR退出、使用`!!mirror kill`终止MCDR。当此选项为`false`时, 无论镜像服是否停止, 都将直接进行同步。
 
 **auto_server_restart** `bool`
-- 此选项仅在`ensure_server_closed`为`true`时生效。当此选项为`true`时, 如果同步时镜像服`正在运行`, 那么将在尝试自动停止镜像服、等待MCDR也退出后进行同步, 并在同步完成后自动重启镜像服。如果镜像服为`服务端已停止, MCDR仍在运行`, 则会让MCDR退出后进行同步, 同步完成后不会重启, 因为同步前服务端本来就没有运行。等待时间见`stop.timeout`
+- 此选项仅在`ensure_server_closed`为`true`时生效。当此选项为`true`时, 如果同步时镜像服`正在运行`, 那么将在尝试自动停止镜像服、等待MCDR也退出后进行同步, 并在同步完成后自动重启镜像服。等待时间见`stop.timeout`
+
+**auto_mcdr_stop** `bool`
+- 此选项仅在`ensure_server_closed`为`true`时生效。当此选项为`true`时, 如果同步时镜像服为`服务端已停止, MCDR仍在运行`, 那么将让MCDR退出后进行同步。同步完成后不会重启, 因为同步前服务端本来就没有运行。等待时间见`stop.timeout`
 
 **save_world** 保存世界配置 *一般无需更改*
 ```yaml
@@ -586,6 +590,7 @@ display:
         require_confirm: true
         ensure_server_closed: true
         auto_server_restart: true
+        auto_mcdr_stop: false
         save_world:
           turn_off_auto_save: true
           commands:

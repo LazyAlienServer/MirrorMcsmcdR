@@ -97,6 +97,7 @@
         require_confirm: true
         ensure_server_closed: true
         auto_server_restart: false
+        auto_mcdr_stop: false
         save_world:
           # 复制世界时禁用自动保存。
           turn_off_auto_save: true

@@ -230,7 +230,7 @@ The recorded processes fall into these groups:
 | starting | The start command was sent, or the server process is running but the port is not open yet | `kill`, `kill -f` |
 | running | The port is held by a recorded process | `stop`, `kill`, `kill -f`; `sync` with `auto_server_restart` |
 | stopping | The stop command was sent; waiting for the processes to exit | `kill`, `kill -f` |
-| server stopped, MCDR still running | The server has exited; MCDR is idle or exiting | `start`, `stop`, `kill`, `kill -f`; `sync` with `auto_server_restart` |
+| server stopped, MCDR still running | The server has exited; MCDR is idle or exiting | `start`, `stop`, `kill`, `kill -f`; `sync` with `auto_mcdr_stop` |
 | status unknown | The port is held by a process the plugin did not start | `kill -f` |
 
 In `server stopped, MCDR still running`, `start` and `stop` do not launch another mirror server; they type a command into the console of the MCDR that is still running: `start` types `!!MCDR server start`, which starts the server in that MCDR, and `stop` types `!!MCDR server exit`, which makes MCDR exit. An MCDR that is exiting refuses to start the server; the status then becomes `stopped`.
@@ -361,7 +361,7 @@ With the defaults of both plugins there is no warning.
 
 **What a sync does with backup enabled**
 1. When `!!mirror sync` is entered, the mirror's PrimeBackup is located: plugin, config and database. If one is missing, the sync is refused at once. Then the warnings above are checked; if there are any and `confirm_on_warning` is `true`, the sync has to be confirmed.
-2. The mirror server must be stopped, and the mirror's MCDR must have exited too (`auto_server_restart` may stop it and waits for MCDR to exit).
+2. The mirror server must be stopped, and the mirror's MCDR must have exited too (`auto_server_restart` and `auto_mcdr_stop` may stop it and wait for MCDR to exit).
 3. PrimeBackup's `make` makes the backup with the mirror's settings, with comment `MirrorMcsmcdR pre-sync by <operator>`.
 4. The backup counts if `make` exits with code 0 and reports a backup id. Otherwise the sync is refused, the last lines of PrimeBackup's output are written to the MCDR console, and the sync is recorded as failed.
 5. The backup id is broadcast and the main world is saved. With `ensure_server_closed: true`, the mirror must still be stopped right before copying; otherwise the sync is refused, because the backup would be stale.
@@ -434,6 +434,7 @@ action:
     sync:
         ensure_server_closed: true
         auto_server_restart: false
+        auto_mcdr_stop: false
         save_world: # Save world configuration
         require_confirm: true
     history:
@@ -457,7 +458,7 @@ action:
 - How many seconds the mirror server may take to start (stop) after the command was sent. Meanwhile its status is shown as `starting` (`stopping`); after that the plugin judges the status only by what it observes, such as the port and the process. Increase `start.timeout` if the mirror server starts slowly
 - The config cannot be reloaded while the mirror server is `starting`. Wait for it, or run `!!mirror kill` first
 - When MCSM is enabled the status comes from MCSM, and this option does not affect it
-- After an automatic stop for a sync (`auto_server_restart`), the plugin waits up to `stop.timeout` seconds; past that it outputs `automatic shutdown failed` with the current status of the mirror server and tells the sender what it is still waiting for
+- After an automatic stop for a sync (`auto_server_restart`, `auto_mcdr_stop`), the plugin waits up to `stop.timeout` seconds; past that it outputs `automatic shutdown failed` with the current status of the mirror server and tells the sender what it is still waiting for
 
 ### check_status_interval
 **check_status_interval** `int`
@@ -467,10 +468,13 @@ action:
 While a sync is in progress (from the automatic stop, the wait, the backup and the copy to the restart afterwards), `!!mirror start` is refused, so that the mirror server cannot start during the copy. `stop`, `kill` and `kill -f` are not affected.
 
 **ensure_server_closed** `bool`
-- When this option is `true`, synchronization will check whether the mirror server has stopped. The mirror server must be `stopped`. `server stopped, MCDR still running` is refused unless `auto_server_restart` is on, until MCDR exits, is told to exit with `!!mirror stop`, or is ended with `!!mirror kill`. When this option is `false`, synchronization will be carried out directly regardless of whether the mirror server has stopped or not.
+- When this option is `true`, synchronization will check whether the mirror server has stopped. The mirror server must be `stopped`. `server stopped, MCDR still running` is refused unless `auto_mcdr_stop` is on, until MCDR exits, is told to exit with `!!mirror stop`, or is ended with `!!mirror kill`. When this option is `false`, synchronization will be carried out directly regardless of whether the mirror server has stopped or not.
 
 **auto_server_restart** `bool`
-- This option only takes effect when `ensure_server_closed` is `true`. When this option is `true`, if the mirror server is `running` during synchronization, it will attempt to automatically stop the mirror server, wait for MCDR to exit as well, perform synchronization, and automatically restart the mirror server after the synchronization is completed. If the mirror server is `server stopped, MCDR still running`, MCDR is made to exit before the synchronization, and nothing is restarted afterwards, since the server was not running before. For how long it waits, see `stop.timeout`.
+- This option only takes effect when `ensure_server_closed` is `true`. When this option is `true`, if the mirror server is `running` during synchronization, it will attempt to automatically stop the mirror server, wait for MCDR to exit as well, perform synchronization, and automatically restart the mirror server after the synchronization is completed. For how long it waits, see `stop.timeout`.
+
+**auto_mcdr_stop** `bool`
+- This option only takes effect when `ensure_server_closed` is `true`. When this option is `true`, if the mirror server is `server stopped, MCDR still running` during synchronization, MCDR is made to exit before the synchronization. Nothing is restarted afterwards, since the server was not running before. For how long it waits, see `stop.timeout`.
 
 **save_world** Save world configuration *Generally no need to change*
 ```yaml
@@ -583,6 +587,7 @@ display:
             sync:
                 ensure_server_closed: true
                 auto_server_restart: true
+                auto_mcdr_stop: false
                 save_world:
                     turn_off_auto_save: true
                     commands:
