@@ -71,14 +71,24 @@ class ServerController:
             self._settle(intent)
         return snapshot
 
+    def check(self, action: Action) -> ActionResult:
+        """What :meth:`execute` would decide now, without carrying the action out; the status may change before it runs."""
+        result, _ = self._judge(action)
+        return result
+
+    def _judge(self, action: Action) -> tuple[ActionResult, Optional[ServerBackend]]:
+        """The verdict on ``action`` for the status now, and the backend that would carry it out."""
+        # judged with the pending start or stop still in view: while starting, that is all some backends have
+        result = ActionResult.check(action, self.status())
+        backend = next((backend for backend in self.backends if action in backend.supports), None)
+        if backend is None:
+            return result.reject(ActionResult.Outcome.UNSUPPORTED), None
+        return result, backend
+
     def execute(self, action: Action) -> ActionResult:
         with self._action_lock:
-            # judged with the pending start or stop still in view: while starting, that is all some backends have
-            result = ActionResult.check(action, self.status())
-            backend = next((backend for backend in self.backends if action in backend.supports), None)
-            if backend is None:
-                return result.reject(ActionResult.Outcome.UNSUPPORTED)
-            if not result.accepted:
+            result, backend = self._judge(action)
+            if backend is None or not result.accepted:
                 return result
             result = backend.perform(result)
             if result.outcome is ActionResult.Outcome.CONSOLE_INPUT_FAILED:

@@ -17,6 +17,8 @@ from mirror_mcsmcdr.command_utils.confirmation_utils import ConfirmationTask, Co
 
 PAGE_SIZE = 5
 CONSOLE_OPERATOR = "[console]"
+# what has its own confirmation prompt, as command.confirm.prompts.<name>; the rest gets the plain one
+_CONFIRM_PROMPTS = frozenset({"start", "stop", "kill", "forcekill", "sync"})
 
 # A command body; it receives the runtime that is current when it actually runs.
 CommandAction = Callable[[MirrorRuntime], object]
@@ -238,6 +240,7 @@ class MirrorManager:
         action: CommandAction,
         confirmable: bool = True,
         confirm_if: Optional[Callable[[MirrorRuntime], Optional[bool]]] = None,
+        checked: Optional[Action] = None,
     ) -> None:
         """
         Run ``action`` if the manager is available and the source is permitted.
@@ -247,6 +250,9 @@ class MirrorManager:
 
         :param confirm_if: asked once, before a confirmable command is run or parked: whether it has to be
             confirmed whatever the config says. None drops the command; reporting why is up to ``confirm_if``
+        :param checked: the server action ``action`` carries out. It is checked against the status before
+            ``confirm_if`` and before parking, so that nobody confirms what would be refused; it also names the
+            confirmation prompt
         """
         runtime = self._active_runtime()
         if runtime is None:
@@ -264,6 +270,8 @@ class MirrorManager:
         action_config = runtime.config.command.action
         # execute and log have no action config: they are never confirmed
         must_confirm = confirmable and action_config.requires_confirm(command)
+        if checked is not None and (must_confirm or (confirmable and confirm_if is not None)) and not self._precheck(runtime, source, command, checked):
+            return
         if confirmable and confirm_if is not None:
             forced = confirm_if(runtime)
             if forced is None:
@@ -277,9 +285,21 @@ class MirrorManager:
                 lambda: self._run_command(command, source, action, confirmable=False),
                 action_config.confirm.timeout,
             )
-            source.reply(self.rtr("command.confirm.prompt").set_click_event(RAction.run_command, f"{self.command_prefix} confirm"))
+            what = checked.value if checked is not None else command
+            key = f"command.confirm.prompts.{what}" if what in _CONFIRM_PROMPTS else "command.confirm.prompt"
+            source.reply(self.rtr(key).set_click_event(RAction.run_command, f"{self.command_prefix} confirm"))
             return
         action(runtime)
+
+    def _precheck(self, runtime: MirrorRuntime, source: CommandSource, command: str, action: Action) -> bool:
+        """Whether the status allows ``action`` now; if not, tell ``source`` why, as the run itself would."""
+        with self._report_api_error(source):
+            result = runtime.controller.check(action)
+            if result.accepted:
+                return True
+            for line in rejection_lines(self.rtr, command, result):
+                source.reply(line)
+        return False
 
     @contextmanager
     def _report_api_error(self, source: CommandSource) -> Iterator[None]:
@@ -394,7 +414,7 @@ class MirrorManager:
         return f"{name} ({pid})" if name and pid else name or pid
 
     def start(self, source: CommandSource, context: CommandContext) -> None:
-        self._run_command("start", source, lambda runtime: self._manual_start(runtime, source))
+        self._run_command("start", source, lambda runtime: self._manual_start(runtime, source), checked=Action.START)
 
     def _manual_start(self, checked: MirrorRuntime, source: CommandSource) -> None:
         # A sync holds the workflow from its stop to its restart: a start in between would launch the mirror into the copy.
@@ -417,7 +437,7 @@ class MirrorManager:
         return self._execute(runtime, source, Action.START)
 
     def stop(self, source: CommandSource, context: CommandContext) -> None:
-        self._run_command("stop", source, lambda runtime: self._execute(runtime, source, Action.STOP))
+        self._run_command("stop", source, lambda runtime: self._execute(runtime, source, Action.STOP), checked=Action.STOP)
 
     def kill(self, source: CommandSource, context: CommandContext, force: bool = False) -> None:
         action = Action.FORCEKILL if force else Action.KILL
@@ -426,6 +446,7 @@ class MirrorManager:
             source,
             lambda runtime: self._execute(runtime, source, action),
             confirm_if=(lambda runtime: self._review_forcekill(runtime, source)) if force else None,
+            checked=action,
         )
 
     def _review_forcekill(self, runtime: MirrorRuntime, source: CommandSource) -> Optional[bool]:

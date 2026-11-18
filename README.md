@@ -445,6 +445,7 @@ action:
 
 **require_confirm** `bool`
 - 当此选项为`true`时, 执行该指令后需要输入`!!mirror confirm`以确认操作
+- `start`、`stop`、`kill`和`kill -f`在要求确认之前会先检查镜像服状态, 当前状态下无法执行时直接回复原因, 不再要求确认。确认后执行前会再检查一次
 
 ### start / stop配置
 **timeout** `int`

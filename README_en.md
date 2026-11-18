@@ -450,6 +450,7 @@ action:
 
 **require_confirm** `bool`
 - When this option is `true`, the command `!!mirror confirm` needs to be entered to confirm the operation after executing the command
+- `start`, `stop`, `kill` and `kill -f` check the status of the mirror server before they ask for confirmation. If the status does not allow the command, the reply says why at once, without asking for confirmation. After confirmation the status is checked again before the command runs
 
 ### start / stop Configuration
 **timeout** `int`

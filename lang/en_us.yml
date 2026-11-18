@@ -62,6 +62,12 @@ mirror_mcsmcdr:
 
     confirm:
       prompt: §7{prefix} confirm §fto confirm operation
+      prompts:
+        start: §b{server_name}§f will start; §7{prefix} confirm §fto confirm
+        stop: §b{server_name}§f will stop; §7{prefix} confirm §fto confirm
+        kill: §b{server_name}§f will be killed; §7{prefix} confirm §fto confirm
+        forcekill: §fThe processes of §b{server_name}§f listed above will be force-killed; §7{prefix} confirm §fto confirm
+        sync: §b{server_name}§f will be synced; §7{prefix} confirm §fto confirm
       cancel: Operation §b{server_name}-{action}§c cancelled
       previous: Previous operation §b{server_name}-{action}§c cancelled
       timeout: Operation §b{server_name}-{action}§c timed out
