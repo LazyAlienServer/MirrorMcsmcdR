@@ -177,7 +177,7 @@ mirror_mcsmcdr:
 
     sync:
       fail:
-        task_exist: §b{server_name}§cOther tasks in progress
+        task_exist: §b{server_name} §calready has a sync in progress
         unsupported: §cOperation failed / §b{server_name}§c current config does not support detecting status. You need to configure MCSM or terminal
       hint:
         running: "§7Please stop {server_name} first, then sync"
@@ -185,10 +185,10 @@ mirror_mcsmcdr:
       auto_restart:
         restarting: §b{server_name}§f running, auto-stopping {server_name} and syncing...
         exiting: §b{server_name}§f MCDR still running, auto-stopping {server_name} MCDR and syncing...
-        fail: §cAuto-stopping failed, §b{server_name}§c§f{status}
+        fail: §cAuto-stop failed, §b{server_name} §f{status}
       success: §b{server_name}§a is syncing...
-      skip_dictionary: "Cannot find the following directories below §b{server_name}§c, so MirrorMcsmcdr skipped it: §f`§7{paths}§f`"
-      completed: §aSynchronization completed!! §fTime taken | §b{time}s §7/ §f§b{changed_files_count}§f files updated
+      skip_dictionary: "§cThese directories of §b{server_name}§c do not exist and were skipped: §f`§7{paths}§f`"
+      completed: "§aSync completed! §fTime: §b{time}s §7/ §b{changed_files_count} §ffiles updated"
       identical: §aNo changes detected
       error: "§cAn error occurred while syncing, please check the console for details"
       backup:
