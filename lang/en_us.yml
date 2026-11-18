@@ -44,13 +44,13 @@ mirror_mcsmcdr:
     help:
       info: "§7----- §e{TITLE} §bv{VERSION} §7-----§f"
       help: §7{prefix} help §fShow this help message
-      status: §7{prefix} status §fCheck the status of {server_name}
-      start: §7{prefix} start §fStart {server_name}
-      stop: §7{prefix} stop §fStop {server_name}
-      kill: §7{prefix} kill [-f|--force] §fKill {server_name}
-      sync: §7{prefix} sync §fSynchronize {server_name}
+      status: §7{prefix} status §fCheck the status of §b{server_name}§f
+      start: §7{prefix} start §fStart §b{server_name}§f
+      stop: §7{prefix} stop §fStop §b{server_name}§f
+      kill: §7{prefix} kill [-f|--force] §fKill §b{server_name}§f
+      sync: §7{prefix} sync §fSynchronize §b{server_name}§f
       history: §7{prefix} history [page] §fView synchronization history
-      reload: §7{prefix} reload §fReload config of {server_name}
+      reload: §7{prefix} reload §fReload config of §b{server_name}§f
       log: §7{prefix} log [count]|enable|disable §fControl subprocess proxy logs
       input: §7{prefix} input <command> §fSend a command through the subprocess proxy
 
@@ -75,12 +75,12 @@ mirror_mcsmcdr:
       others: §cYou cannot confirm other people's tasks
 
     log:
-      status: "{server_name} console log output: {status}"
+      status: "§b{server_name}§f console log output: {status}"
       enabled: "§aEnabled"
-      set_enable: "{server_name} console log output §aenabled"
-      enabled_count: "{server_name} console log output §aenabled§f, stopping after §b{count} §flines"
+      set_enable: "§b{server_name}§f console log output §aenabled"
+      enabled_count: "§b{server_name}§f console log output §aenabled§f, stopping after §b{count} §flines"
       disabled: "§cDisabled"
-      set_disable: "{server_name} console log output §cdisabled"
+      set_disable: "§b{server_name}§f console log output §cdisabled"
       invalid_count: "§cOutput count must be a positive integer"
       help: "§7Usage: {prefix} log enable|disable|<count>"
       output_end: "§aFinished outputting §b{count} §alines"
@@ -89,9 +89,9 @@ mirror_mcsmcdr:
     input:
       sent: "§aCommand sent: §f{cmd}"
       failed: "§cFailed to send command"
-      not_running: "§c{server_name} is not running; cannot send command"
+      not_running: "§b{server_name}§c is not running; cannot send command"
       unavailable: "§cThis command is only available with the subprocess proxy"
-      unknown: "§cThe status of {server_name} is unknown; cannot send command. Check {prefix} status first"
+      unknown: "§cThe status of §b{server_name}§c is unknown; cannot send command. Check {prefix} status first"
     state:
       unknown: status unknown
       stopped: stopped
@@ -119,12 +119,12 @@ mirror_mcsmcdr:
       mcdr_missing: "the server is running but MCDR has exited or cannot be recognized; {prefix} kill ends it"
 
     outcome:
-      path_not_found: Cannot find a valid launch path; check that the {server_name} server exists and the plugin config is correct
+      path_not_found: Cannot find a valid launch path; check that the §b{server_name}§f server exists and the plugin config is correct
       force_required: Screen no longer exists; if the remaining processes have not exited after a while, end them with {prefix} kill -f
       timeout: The process did not exit in time. Use {prefix} kill -f to forcefully terminate it
       no_target: There is no process to terminate
       unreadable_listener: The port is held by a process whose PID cannot be read (possibly of another user); nothing was terminated
-      console_input_failed: Cannot send the command to the console of {server_name}; please try again later
+      console_input_failed: Cannot send the command to the console of §b{server_name}§f; please try again later
 
     status:
       unsupported: The current config does not support the status command; configure MCSM or terminal
@@ -158,14 +158,14 @@ mirror_mcsmcdr:
         unsupported: The current config does not support the start command; configure MCSM or terminal
         syncing: syncing; please wait until the sync has finished
       hint:
-        stopping: "§7Please start again after {server_name} has stopped"
+        stopping: "§7Please start again after §b{server_name}§7 has stopped"
 
     stop:
       success: is stopping
       fail:
         unsupported: The current config does not support the stop command; configure MCSM or terminal
       hint:
-        starting: "§7Please stop again after {server_name} has started"
+        starting: "§7Please stop again after §b{server_name}§7 has started"
 
     kill:
       success: forced termination in progress...
@@ -180,8 +180,8 @@ mirror_mcsmcdr:
         task_exist: §b{server_name} §calready has a sync in progress
         unsupported: "§cOperation failed / §b{server_name}§c: the current config does not support querying the status; configure MCSM or terminal"
       hint:
-        running: "§7Please stop {server_name} first, then sync"
-        starting: "§7Please wait for {server_name} to start, then stop it and sync"
+        running: "§7Please stop §b{server_name}§7 first, then sync"
+        starting: "§7Please wait for §b{server_name}§7 to start, then stop it and sync"
       auto_restart:
         restarting: §b{server_name}§f is still running; stopping it automatically and syncing...
         exiting: §b{server_name}§f's MCDR is still running; stopping it automatically and syncing...
@@ -194,12 +194,12 @@ mirror_mcsmcdr:
       backup:
         start: "§b{server_name}§f: backing up with its PrimeBackup..."
         done: "§aBackup §b#{backup_id}§a of §b{server_name}§a created"
-        skipped: "§7{server_name} holds none of the synchronized worlds yet, nothing to back up"
+        skipped: "§b{server_name}§7 holds none of the synchronized worlds yet, nothing to back up"
         unavailable: "§cSync cancelled, no backup can be made: §f{reason}§c. See the console for details"
         failed: "§cSync cancelled, the backup failed: §f{reason}§c. See the console for details"
         stale: "§cSync cancelled before copying: §f{reason}§c. The backup is no longer current"
         warnings: "§e{count} setting(s) of §b{server_name}§e's PrimeBackup differ from the sync settings, so the backup may not hold everything the sync overwrites. See the console for details"
-        detail: "Pre-sync backup of {server_name}: {detail}"
+        detail: "Pre-sync backup of §b{server_name}§f: {detail}"
         output: "Last lines of the PrimeBackup output:\n{output}"
         reason:
           mcdr_path_required: "sync.backup.mcdr_path is required while the terminal is disabled"
@@ -213,7 +213,7 @@ mirror_mcsmcdr:
           pb_config_invalid: "invalid value of '{option}' in the mirror's PrimeBackup config"
           database_not_found: "the mirror's PrimeBackup database does not exist"
           pathspec_missing: "the Python package pathspec, which PrimeBackup requires, is not installed"
-          mirror_not_stopped: "{server_name} is {status}, not stopped"
+          mirror_not_stopped: "§b{server_name}§f is {status}, not stopped"
           probe_failed: "the PrimeBackup command line tool exited with code {code}; are its Python dependencies installed?"
           launch: "cannot start the PrimeBackup command line tool"
           timeout: "PrimeBackup did not finish within {timeout} seconds"
@@ -221,14 +221,14 @@ mirror_mcsmcdr:
           no_backup_id: "PrimeBackup did not report a backup id"
           backup_id_mismatch: "PrimeBackup reported different backup ids: {ids}"
         warning:
-          source_mismatch: "Pre-sync backup of {server_name}: its PrimeBackup backs up {source}, which is none of the sync targets ({targets}); what the sync overwrites is not backed up"
-          targets_not_backed_up: "Pre-sync backup of {server_name}: these sync targets are not the directory its PrimeBackup backs up, they are overwritten without a backup: {targets}"
-          worlds_not_targeted: "Pre-sync backup of {server_name}: backup.targets [{targets}] of its PrimeBackup does not include these synchronized worlds: {worlds}"
-          ignored: "Pre-sync backup of {server_name}: its PrimeBackup ignores what the sync does not ignore (ignore_patterns / ignored_files): {patterns}"
-          retained: "Pre-sync backup of {server_name}: retain_patterns of its PrimeBackup keeps these out of the backup: {patterns}"
-          reuse_stat_unchanged_file: "Pre-sync backup of {server_name}: its PrimeBackup has reuse_stat_unchanged_file on; files with unchanged size and time are not read and may be stored with older content"
-          creation_skip_missing_file: "Pre-sync backup of {server_name}: its PrimeBackup has creation_skip_missing_file on; files that disappear during the backup are skipped silently"
-          storage_in_world: "Pre-sync backup of {server_name}: the PrimeBackup storage {storage} is inside the synchronized world {world}, the sync would delete the backup"
+          source_mismatch: "Pre-sync backup of §b{server_name}§f: its PrimeBackup backs up {source}, which is none of the sync targets ({targets}); what the sync overwrites is not backed up"
+          targets_not_backed_up: "Pre-sync backup of §b{server_name}§f: these sync targets are not the directory its PrimeBackup backs up, they are overwritten without a backup: {targets}"
+          worlds_not_targeted: "Pre-sync backup of §b{server_name}§f: backup.targets [{targets}] of its PrimeBackup does not include these synchronized worlds: {worlds}"
+          ignored: "Pre-sync backup of §b{server_name}§f: its PrimeBackup ignores what the sync does not ignore (ignore_patterns / ignored_files): {patterns}"
+          retained: "Pre-sync backup of §b{server_name}§f: retain_patterns of its PrimeBackup keeps these out of the backup: {patterns}"
+          reuse_stat_unchanged_file: "Pre-sync backup of §b{server_name}§f: its PrimeBackup has reuse_stat_unchanged_file on; files with unchanged size and time are not read and may be stored with older content"
+          creation_skip_missing_file: "Pre-sync backup of §b{server_name}§f: its PrimeBackup has creation_skip_missing_file on; files that disappear during the backup are skipped silently"
+          storage_in_world: "Pre-sync backup of §b{server_name}§f: the PrimeBackup storage {storage} is inside the synchronized world {world}, the sync would delete the backup"
     
     history:
       record:

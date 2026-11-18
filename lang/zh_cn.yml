@@ -44,13 +44,13 @@ mirror_mcsmcdr:
     help:
       info: §7----- §e{TITLE} §bv{VERSION} §7-----§f
       help: §7{prefix} help §f显示此帮助信息
-      status: §7{prefix} status §f查看{server_name}状态
-      start: §7{prefix} start §f启动{server_name}
-      stop: §7{prefix} stop §f停止{server_name}
-      kill: §7{prefix} kill [-f|--force] §f终止{server_name}
-      sync: §7{prefix} sync §f同步{server_name}
+      status: §7{prefix} status §f查看§b{server_name}§f状态
+      start: §7{prefix} start §f启动§b{server_name}§f
+      stop: §7{prefix} stop §f停止§b{server_name}§f
+      kill: §7{prefix} kill [-f|--force] §f终止§b{server_name}§f
+      sync: §7{prefix} sync §f同步§b{server_name}§f
       history: §7{prefix} history [page] §f查看同步历史
-      reload: §7{prefix} reload §f重载{server_name}配置文件
+      reload: §7{prefix} reload §f重载§b{server_name}§f配置文件
       log: §7{prefix} log [count]|enable|disable §f控制subprocess代理日志输出
       input: §7{prefix} input <command> §f向subprocess代理发送指令
 
@@ -75,12 +75,12 @@ mirror_mcsmcdr:
       others: §c你不能确认其他人的任务
 
     log:
-      status: "{server_name}控制台日志输出: {status}"
+      status: "§b{server_name}§f控制台日志输出: {status}"
       enabled: "§a已启用"
-      set_enable: "{server_name}控制台日志输出§a已启用"
-      enabled_count: "{server_name}控制台日志输出§a已启用§f，输出 §b{count} §f行后停止"
+      set_enable: "§b{server_name}§f控制台日志输出§a已启用"
+      enabled_count: "§b{server_name}§f控制台日志输出§a已启用§f，输出 §b{count} §f行后停止"
       disabled: "§c已禁用"
-      set_disable: "{server_name}控制台日志输出§c已禁用"
+      set_disable: "§b{server_name}§f控制台日志输出§c已禁用"
       invalid_count: "§c输出行数必须是正整数"
       help: "§7用法: {prefix} log enable|disable|<count>"
       output_end: "§a输出 §b{count} §a行结束"
@@ -89,9 +89,9 @@ mirror_mcsmcdr:
     input:
       sent: "§a命令已发送: §f{cmd}"
       failed: "§c命令发送失败"
-      not_running: "§c{server_name}未运行，无法发送命令"
+      not_running: "§b{server_name}§c未运行，无法发送命令"
       unavailable: "§c此命令仅在使用 subprocess 代理时可用"
-      unknown: "§c{server_name}状态未知，无法发送命令，请先查看{prefix} status"
+      unknown: "§b{server_name}§c状态未知，无法发送命令，请先查看{prefix} status"
     state:
       unknown: 状态未知
       stopped: 已停止
@@ -119,12 +119,12 @@ mirror_mcsmcdr:
       mcdr_missing: 服务端在运行但MCDR已退出或无法识别，可使用{prefix} kill终止
 
     outcome:
-      path_not_found: 未找到有效的启动目录，请检查是否已创建正常的{server_name}服务端和插件配置文件是否配置正确
+      path_not_found: 未找到有效的启动目录，请检查是否已创建正常的§b{server_name}§f服务端和插件配置文件是否配置正确
       force_required: Screen已不存在，若等待后进程仍未退出，请使用{prefix} kill -f强制终止残留进程
       timeout: 进程未在限定时间内退出，请使用{prefix} kill -f强制终止
       no_target: 没有可以终止的进程
       unreadable_listener: 端口被一个无法读取PID的进程占用（可能属于其他用户），未终止任何进程
-      console_input_failed: 无法向{server_name}的控制台输入指令，请稍后重试
+      console_input_failed: 无法向§b{server_name}§f的控制台输入指令，请稍后重试
 
     status:
       unsupported: 当前配置文件不支持status命令，需要配置MCSM或terminal
@@ -158,14 +158,14 @@ mirror_mcsmcdr:
         unsupported: 当前配置文件不支持start命令，需要配置MCSM或terminal
         syncing: 正在同步，请等待同步完成
       hint:
-        stopping: "§7请等待{server_name}停止后重新启动"
+        stopping: "§7请等待§b{server_name}§7停止后重新启动"
 
     stop:
       success: 正在停止
       fail:
         unsupported: 当前配置文件不支持stop命令，需要配置MCSM或terminal
       hint:
-        starting: "§7请等待{server_name}启动后重新停止"
+        starting: "§7请等待§b{server_name}§7启动后重新停止"
 
     kill:
       success: 强制终止...
@@ -178,13 +178,13 @@ mirror_mcsmcdr:
     sync:
       fail:
         task_exist: §b{server_name}§c已有正在进行中的同步任务
-        unsupported: §c操作失败 / §b{server_name}当前配置文件不支持获取运行状态，需要配置MCSM或terminal
+        unsupported: §c操作失败 / §b{server_name}§c当前配置文件不支持获取运行状态，需要配置MCSM或terminal
       hint:
-        running: "§7请先停止{server_name}再进行同步"
-        starting: "§7请等待{server_name}启动后停止并进行同步"
+        running: "§7请先停止§b{server_name}§7再进行同步"
+        starting: "§7请等待§b{server_name}§7启动后停止并进行同步"
       auto_restart:
-        restarting: §b{server_name}§f未停止，自动关闭{server_name}并进行同步...
-        exiting: §b{server_name}§f的 MCDR 进程未停止，自动关闭 {server_name} MCDR 并进行同步...
+        restarting: §b{server_name}§f未停止，自动关闭§b{server_name}§f并进行同步...
+        exiting: §b{server_name}§f的 MCDR 进程未停止，自动关闭§b{server_name}§f MCDR 并进行同步...
         fail: §c自动关闭失败，§b{server_name}§c§f{status}
       success: §b{server_name}§a正在进行同步...
       skip_dictionary: "§b{server_name}§c的以下文件目录不存在，已跳过: §f`§7{paths}§f`"
@@ -194,12 +194,12 @@ mirror_mcsmcdr:
       backup:
         start: "§b{server_name}§f: 正在用其PrimeBackup备份..."
         done: "§a已创建§b{server_name}§a的备份 §b#{backup_id}"
-        skipped: "§7{server_name}中还没有要同步的世界，无需备份"
+        skipped: "§b{server_name}§7中还没有要同步的世界，无需备份"
         unavailable: "§c同步已取消，无法进行备份: §f{reason}§c。详情见控制台"
         failed: "§c同步已取消，备份失败: §f{reason}§c。详情见控制台"
         stale: "§c同步已在复制前取消: §f{reason}§c。备份已不是最新的"
         warnings: "§b{server_name}§e的PrimeBackup有§b{count}§e项设置与同步设置不一致，备份可能不包含同步将覆盖的全部内容。详情见控制台"
-        detail: "{server_name}的同步前备份: {detail}"
+        detail: "§b{server_name}§f的同步前备份: {detail}"
         output: "PrimeBackup输出的最后几行:\n{output}"
         reason:
           mcdr_path_required: "terminal未启用时必须填写sync.backup.mcdr_path"
@@ -213,7 +213,7 @@ mirror_mcsmcdr:
           pb_config_invalid: "镜像服的PrimeBackup配置文件中'{option}'的值无效"
           database_not_found: "镜像服的PrimeBackup数据库不存在"
           pathspec_missing: "未安装PrimeBackup所需的Python包pathspec"
-          mirror_not_stopped: "{server_name}当前状态为{status}，而不是已停止"
+          mirror_not_stopped: "§b{server_name}§f当前状态为{status}，而不是已停止"
           probe_failed: "PrimeBackup命令行工具退出码为{code}，请检查其Python依赖是否已安装"
           launch: "无法启动PrimeBackup命令行工具"
           timeout: "PrimeBackup未在{timeout}秒内完成"
@@ -221,14 +221,14 @@ mirror_mcsmcdr:
           no_backup_id: "PrimeBackup没有报告备份编号"
           backup_id_mismatch: "PrimeBackup报告了不同的备份编号: {ids}"
         warning:
-          source_mismatch: "{server_name}的同步前备份: 其PrimeBackup备份的目录{source}不是任何一个同步目标({targets})，同步覆盖的内容不会被备份"
-          targets_not_backed_up: "{server_name}的同步前备份: 以下同步目标不是其PrimeBackup备份的目录，会在没有备份的情况下被覆盖: {targets}"
-          worlds_not_targeted: "{server_name}的同步前备份: 其PrimeBackup的backup.targets [{targets}] 不包含以下被同步的世界: {worlds}"
-          ignored: "{server_name}的同步前备份: 其PrimeBackup忽略了同步不忽略的内容 (ignore_patterns / ignored_files): {patterns}"
-          retained: "{server_name}的同步前备份: 其PrimeBackup的retain_patterns会让以下内容不进入备份: {patterns}"
-          reuse_stat_unchanged_file: "{server_name}的同步前备份: 其PrimeBackup开启了reuse_stat_unchanged_file，大小和修改时间未变的文件不会被读取，备份中可能是旧内容"
-          creation_skip_missing_file: "{server_name}的同步前备份: 其PrimeBackup开启了creation_skip_missing_file，备份过程中消失的文件会被直接跳过"
-          storage_in_world: "{server_name}的同步前备份: PrimeBackup的存储目录{storage}位于被同步的世界{world}中，同步会删除备份"
+          source_mismatch: "§b{server_name}§f的同步前备份: 其PrimeBackup备份的目录{source}不是任何一个同步目标({targets})，同步覆盖的内容不会被备份"
+          targets_not_backed_up: "§b{server_name}§f的同步前备份: 以下同步目标不是其PrimeBackup备份的目录，会在没有备份的情况下被覆盖: {targets}"
+          worlds_not_targeted: "§b{server_name}§f的同步前备份: 其PrimeBackup的backup.targets [{targets}] 不包含以下被同步的世界: {worlds}"
+          ignored: "§b{server_name}§f的同步前备份: 其PrimeBackup忽略了同步不忽略的内容 (ignore_patterns / ignored_files): {patterns}"
+          retained: "§b{server_name}§f的同步前备份: 其PrimeBackup的retain_patterns会让以下内容不进入备份: {patterns}"
+          reuse_stat_unchanged_file: "§b{server_name}§f的同步前备份: 其PrimeBackup开启了reuse_stat_unchanged_file，大小和修改时间未变的文件不会被读取，备份中可能是旧内容"
+          creation_skip_missing_file: "§b{server_name}§f的同步前备份: 其PrimeBackup开启了creation_skip_missing_file，备份过程中消失的文件会被直接跳过"
+          storage_in_world: "§b{server_name}§f的同步前备份: PrimeBackup的存储目录{storage}位于被同步的世界{world}中，同步会删除备份"
     
     history:
       record:
