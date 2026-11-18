@@ -178,6 +178,19 @@ class ProcessTracker:
             listeners = frozenset(pid for pid in listeners if pid is None or pid in member_pids or psutil.pid_exists(pid))
             return TreeView(record, tuple(members), listeners, console_found)
 
+    def live_processes(self) -> tuple[list[psutil.Process], bool]:
+        """
+        The recorded processes that are still alive, checked against their identities; nothing else is looked at, nothing is written.
+
+        :return: them, and whether every process the record held at the last observation is among them
+        """
+        with self._lock:
+            record = self._record
+            if record is None or not record.active:
+                return [], True
+            live = self._revalidate(record.members)
+            return [member.process for member in live], len(live) == len(record.members)
+
     @staticmethod
     def _revalidate(members: tuple[Member, ...]) -> list[LiveMember]:
         live = []

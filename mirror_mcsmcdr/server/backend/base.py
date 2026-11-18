@@ -1,3 +1,4 @@
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import ClassVar, Iterable, Optional
@@ -20,6 +21,14 @@ class ServerBackend(ABC):
     @abstractmethod
     def observe(self) -> Evidence:
         ...
+
+    def watch(self, timeout: float) -> None:
+        """
+        Block until something this backend observes may have changed, or for ``timeout`` at most.
+
+        Returning early is a hint only: the caller observes again either way. By default nothing is watched.
+        """
+        time.sleep(timeout)
 
     def perform(self, result: ActionResult) -> ActionResult:
         """
@@ -81,9 +90,25 @@ class TerminalProxy(ServerBackend, ABC):
         self.listener = PortListener(config.port)
         self.tracker = tracker
 
+    # how often the recorded processes are looked at while watching
+    _WATCH_SLICE = 0.25
+
     @property
     def stop_command(self) -> str:
         return "!!MCDR server stop_exit" if self.is_mcdr else "stop"
+
+    def watch(self, timeout: float) -> None:
+        # Only an exit is watched, which is what a stop waits for; a new process or the port opening shows at the next status.
+        # Not psutil.wait_procs: it reaps a process that is a child of this one, such as the shell of the subprocess proxy.
+        processes, unchanged = self.tracker.live_processes()
+        if not unchanged:
+            # one has exited since the last status was taken
+            return
+        deadline = time.monotonic() + timeout
+        while (remaining := deadline - time.monotonic()) > 0:
+            time.sleep(min(self._WATCH_SLICE, remaining))
+            if not all(process_utils.is_alive(process) for process in processes):
+                return
 
     @property
     def _console_readers(self) -> frozenset[Role]:

@@ -11,7 +11,7 @@ from mirror_mcsmcdr.runtime import MirrorRuntime
 from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
 from mirror_mcsmcdr.sync.backup import BackupError, BackupFailed, BackupUnavailable, MirrorBackup
 from mirror_mcsmcdr.text_utils import Translator, detail_lines, refusal_lines, status_key
-from mirror_mcsmcdr.server import Action, ServerState
+from mirror_mcsmcdr.server import Action, ServerState, StatusSnapshot, WaitEnd
 
 
 class _SyncRefused(Exception):
@@ -143,12 +143,16 @@ class SyncWorkflow:
         result = controller.execute(Action.STOP)
         snapshot = result.snapshot
         if result.accepted:
-            snapshot = controller.wait_for(
-                ServerState.STOPPED,
-                timeout=config.check_status_interval * config.max_attempt_times,
-                interval=config.check_status_interval,
+            action = runtime.config.command.action
+            waited = controller.wait_until(
+                StatusSnapshot.safe_to_modify,
+                timeout=action.stop.timeout,
+                interval=action.check_status_interval,
+                # a listener the plugin did not start does not go away by waiting
+                give_up=lambda status: status.state is ServerState.UNKNOWN,
             )
-            if snapshot.safe_to_modify():
+            snapshot = waited.snapshot
+            if waited.end is WaitEnd.REACHED:
                 on_server_stopped()
                 return True
         self._server.broadcast(self._tr("command.sync.auto_restart.fail", status=self._tr(status_key(snapshot), title=False)))

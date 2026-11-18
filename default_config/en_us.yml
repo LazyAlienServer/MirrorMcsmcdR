@@ -89,14 +89,14 @@
         require_confirm: true
         # Seconds a stop may take; meanwhile the status is "stopping".
         timeout: 60
+      # Longest gap in seconds between two full checks while waiting for the mirror's status to change (e.g. for it to stop before a sync); an exit of a recorded process is checked at once.
+      check_status_interval: 5
       kill:
         require_confirm: true
       sync:
         require_confirm: true
         ensure_server_closed: true
         auto_server_restart: false
-        check_status_interval: 5
-        max_attempt_times: 3
         save_world:
           # Disable automatic saving while the world is copied.
           turn_off_auto_save: true

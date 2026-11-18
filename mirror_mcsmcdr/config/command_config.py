@@ -41,8 +41,6 @@ class SaveWorldConfig(Serializable):
 class SyncActionConfig(ActionConfig):
     ensure_server_closed: bool = True
     auto_server_restart: bool = False
-    check_status_interval: int = 5
-    max_attempt_times: int = 3
     save_world: SaveWorldConfig = SaveWorldConfig()
 
 class HistoryActionConfig(ActionConfig):
@@ -59,6 +57,8 @@ class CommandActionConfig(Serializable):
     status: ActionConfig = ActionConfig()
     start: StartActionConfig = StartActionConfig()
     stop: StopActionConfig = StopActionConfig(require_confirm=True)
+    # the longest gap in seconds between two full checks while waiting for the status to change
+    check_status_interval: int = 5
     kill: ActionConfig = ActionConfig(require_confirm=True)
     sync: SyncActionConfig = SyncActionConfig(require_confirm=True)
     history: HistoryActionConfig = HistoryActionConfig()

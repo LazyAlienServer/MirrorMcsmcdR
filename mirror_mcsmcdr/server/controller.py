@@ -1,11 +1,27 @@
 import time
+from dataclasses import dataclass
+from enum import Enum
 from threading import Lock
-from typing import Optional, Sequence
+from typing import Callable, Optional, Sequence
 
 from mirror_mcsmcdr.server.action import TERMINATIONS, Action, ActionResult, Intent
 from mirror_mcsmcdr.server.backend.base import KillTargets, ServerBackend, TerminalProxy
 from mirror_mcsmcdr.server.resolver import StatusResolver
 from mirror_mcsmcdr.server.status import Evidence, ServerState, StatusSnapshot
+
+
+class WaitEnd(Enum):
+    REACHED = "reached"
+    # the status is one that waiting longer would not change
+    GAVE_UP = "gave_up"
+    TIMEOUT = "timeout"
+
+
+@dataclass(frozen=True)
+class WaitResult:
+    end: WaitEnd
+    # the last status observed
+    snapshot: StatusSnapshot
 
 
 class ServerController:
@@ -87,19 +103,34 @@ class ServerController:
         backend = next((backend for backend in self.backends if Action.FORCEKILL in backend.supports), None)
         return backend.forcekill_targets() if isinstance(backend, TerminalProxy) else None
 
-    def wait_for(self, state: ServerState, timeout: float, interval: float) -> StatusSnapshot:
+    def wait_until(
+        self,
+        until: Callable[[StatusSnapshot], bool],
+        timeout: float,
+        interval: float,
+        give_up: Callable[[StatusSnapshot], bool] = lambda _: False,
+    ) -> WaitResult:
         """
-        Poll until the server is exactly in ``state``.
+        Wait until the status satisfies ``until``.
 
-        :return: the last status observed, which is not in ``state`` if the timeout ran out
+        Every decision is made on a full status. In between, a backend watches for a change that is cheap to see,
+        for ``interval`` at most, so that the next status is taken as soon as something has happened.
+
+        :param give_up: tells a status that waiting longer would not change
         """
+        # the terminal sees processes exit; the panel has nothing to watch but time
+        watcher = next((backend for backend in self.backends if isinstance(backend, TerminalProxy)), self.backends[0])
         deadline = time.monotonic() + timeout
         while True:
             snapshot = self.status()
+            if until(snapshot):
+                return WaitResult(WaitEnd.REACHED, snapshot)
+            if give_up(snapshot):
+                return WaitResult(WaitEnd.GAVE_UP, snapshot)
             remaining = deadline - time.monotonic()
-            if snapshot.is_exactly(state) or remaining <= 0:
-                return snapshot
-            time.sleep(min(interval, remaining))
+            if remaining <= 0:
+                return WaitResult(WaitEnd.TIMEOUT, snapshot)
+            watcher.watch(min(interval, remaining))
 
     def is_starting(self) -> bool:
         """Whether a start issued through this controller is still settling."""

@@ -41,7 +41,9 @@
 升级后请检查配置文件：
 - `rcon`配置已删除，旧配置中的`rcon`会被忽略。需要跨主机控制镜像服时，请使用MCSManager；
 - `terminal.regex_strict`已删除。配置的端口被任何不是插件启动的进程占用时，状态都显示为`状态未知`；
-- `subprocess`代理现在也必须配置`terminal.port`，未配置时terminal代理不可用。
+- `subprocess`代理现在也必须配置`terminal.port`，未配置时terminal代理不可用；
+- `command.action.sync.max_attempt_times`已删除。同步自动停服后，最多等待`command.action.stop.timeout`秒（默认60秒，以前默认15秒）；
+- `command.action.sync.check_status_interval`移到了`command.action.check_status_interval`。旧位置的值会被忽略，恢复为默认值`5`。
 
 ## 指令
 
@@ -416,14 +418,13 @@ action:
   stop:
     require_confirm: true
     timeout: 60
+  check_status_interval: 5
   kill:
     require_confirm: true
   sync:
     require_confirm: true
     ensure_server_closed: true
     auto_server_restart: false
-    check_status_interval: 5
-    max_attempt_times: 3
     save_world:
       # 保存世界配置
       # ...
@@ -448,19 +449,18 @@ action:
 - 启动(停止)指令发出后, 镜像服最多需要多少秒完成启动(停止)。在此期间状态显示为`正在启动`(`正在停止`), 超过此时间后插件将重新只根据端口、进程等实际情况判断状态。镜像服启动较慢时请调大`start.timeout`
 - 镜像服`正在启动`时无法重载配置文件, 可等待启动完成, 或先执行`!!mirror kill`
 - 启用MCSM时状态由MCSM提供, 此选项不影响状态显示
+- 同步自动停服(`auto_server_restart`)后, 最多等待`stop.timeout`秒, 超时则输出`自动关闭失败`及镜像服当前状态, 并向执行者说明仍在等待什么
+
+### check_status_interval
+**check_status_interval** `int`
+- 等待镜像服状态变化(例如同步前等待其停止)时, 两次完整检查状态之间的最长间隔(秒)。记录中的进程一退出, 插件就会立即检查, 不必等满这个间隔; 启用MCSM时按此间隔查询MCSM
 
 ### sync配置
 **ensure_server_closed** `bool`
 - 当此选项为`true`时, 同步时将会检查镜像服是否已停止。镜像服必须为`已停止`才能同步，`服务端已停止, MCDR仍在运行`时也会拒绝同步，需等待MCDR退出，或使用`!!mirror stop`让MCDR退出、使用`!!mirror kill`终止MCDR。当此选项为`false`时, 无论镜像服是否停止, 都将直接进行同步。
 
 **auto_server_restart** `bool`
-- 此选项仅在`ensure_server_closed`为`true`时生效。当此选项为`true`时, 如果同步时镜像服`正在运行`, 那么将在尝试自动停止镜像服、等待MCDR也退出后进行同步, 并在同步完成后自动重启镜像服
-
-**check_status_interval** `int`
-- 此选项仅在`auto_server_restart`生效时生效。同步时停止镜像服后, 插件需确认镜像服是否已停止。此选项为检查镜像服状态的时间间隔
-
-**max_attempt_times** `int`
-- 此选项仅在`auto_server_restart`生效时生效。检查镜像服状态的尝试次数, 超过此尝试次数后将不再尝试检查镜像服状态, 并输出`自动关闭失败`及镜像服当前状态信息, 同时向执行者说明仍在等待什么。等效于超时时间 `timeout = check_status_interval * max_attempt_times`
+- 此选项仅在`ensure_server_closed`为`true`时生效。当此选项为`true`时, 如果同步时镜像服`正在运行`, 那么将在尝试自动停止镜像服、等待MCDR也退出后进行同步, 并在同步完成后自动重启镜像服。等待时间见`stop.timeout`
 
 **save_world** 保存世界配置 *一般无需更改*
 ```yaml
@@ -581,8 +581,6 @@ display:
         require_confirm: true
         ensure_server_closed: true
         auto_server_restart: true
-        check_status_interval: 5
-        max_attempt_times: 3
         save_world:
           turn_off_auto_save: true
           commands:

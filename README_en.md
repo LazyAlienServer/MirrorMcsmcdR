@@ -41,7 +41,9 @@ Stop the mirror server by hand before upgrading. The new version only knows the 
 After upgrading, check the configuration file:
 - The `rcon` section is removed, and an old `rcon` section is ignored. Use MCSManager to control a mirror server on another host;
 - `terminal.regex_strict` is removed. Whenever the configured port is held by any process the plugin did not start, the status is `status unknown`;
-- The `subprocess` proxy now requires `terminal.port` as well; without it the terminal proxy is unavailable.
+- The `subprocess` proxy now requires `terminal.port` as well; without it the terminal proxy is unavailable;
+- `command.action.sync.max_attempt_times` is removed. After an automatic stop for a sync, the plugin waits up to `command.action.stop.timeout` seconds (60 by default; 15 before);
+- `command.action.sync.check_status_interval` moved to `command.action.check_status_interval`. A value at the old place is ignored, and the default `5` applies.
 
 ## Commands
 
@@ -424,13 +426,12 @@ action:
     stop:
         require_confirm: true
         timeout: 60
+    check_status_interval: 5
     kill:
         require_confirm: true
     sync:
         ensure_server_closed: true
         auto_server_restart: false
-        check_status_interval: 5
-        max_attempt_times: 3
         save_world: # Save world configuration
         require_confirm: true
     history:
@@ -453,19 +454,18 @@ action:
 - How many seconds the mirror server may take to start (stop) after the command was sent. Meanwhile its status is shown as `starting` (`stopping`); after that the plugin judges the status only by what it observes, such as the port and the process. Increase `start.timeout` if the mirror server starts slowly
 - The config cannot be reloaded while the mirror server is `starting`. Wait for it, or run `!!mirror kill` first
 - When MCSM is enabled the status comes from MCSM, and this option does not affect it
+- After an automatic stop for a sync (`auto_server_restart`), the plugin waits up to `stop.timeout` seconds; past that it outputs `automatic shutdown failed` with the current status of the mirror server and tells the sender what it is still waiting for
+
+### check_status_interval
+**check_status_interval** `int`
+- The longest gap in seconds between two full checks of the status while waiting for it to change (e.g. for the mirror server to stop before a sync). As soon as a recorded process exits the plugin checks at once, without waiting for the interval; with MCSM, it is how often MCSM is asked
 
 ### sync Configuration
 **ensure_server_closed** `bool`
 - When this option is `true`, synchronization will check whether the mirror server has stopped. The mirror server must be `stopped`; `server stopped, MCDR still running` is refused too, until MCDR exits, is told to exit with `!!mirror stop`, or is ended with `!!mirror kill`. When this option is `false`, synchronization will be carried out directly regardless of whether the mirror server has stopped or not.
 
 **auto_server_restart** `bool`
-- This option only takes effect when `ensure_server_closed` is `true`. When this option is `true`, if the mirror server is `running` during synchronization, it will attempt to automatically stop the mirror server, wait for MCDR to exit as well, perform synchronization, and automatically restart the mirror server after the synchronization is completed.
-
-**check_status_interval** `int`
-- This option only takes effect when `auto_server_restart` is in effect. After stopping the mirror server during synchronization, the plugin needs to confirm whether the mirror server has stopped. This option is the time interval for checking the status of the mirror server.
-
-**max_attempt_times** `int`
-- This option only takes effect when `auto_server_restart` is in effect. The number of attempts to check the status of the mirror server, after exceeding this number of attempts, it will no longer attempt to check the status of the mirror server, and output `automatic shutdown failed` and the current status information of the mirror server, telling the sender what it is still waiting for. Equivalent to the timeout time `timeout = check_status_interval * max_attempt_times`
+- This option only takes effect when `ensure_server_closed` is `true`. When this option is `true`, if the mirror server is `running` during synchronization, it will attempt to automatically stop the mirror server, wait for MCDR to exit as well, perform synchronization, and automatically restart the mirror server after the synchronization is completed. For how long it waits, see `stop.timeout`.
 
 **save_world** Save world configuration *Generally no need to change*
 ```yaml
@@ -578,8 +578,6 @@ display:
             sync:
                 ensure_server_closed: true
                 auto_server_restart: true
-                check_status_interval: 5
-                max_attempt_times: 3
                 save_world:
                     turn_off_auto_save: true
                     commands:
