@@ -401,7 +401,6 @@ permission:
   kill: 3
   sync: 2
   confirm: 0
-  abort: 0
   log: "console"
   execute: "console"
 ```
@@ -437,8 +436,6 @@ action:
   confirm:
     timeout: 30
     cancel_anymsg: true
-  abort:
-    operator: everyone
 ```
 
 
@@ -513,9 +510,6 @@ save_world:
 **cancel_anymsg** `bool`
 - 若玩家执行某指令后发送了除`confirm`指令外的消息, 则此指令操作自动取消。除此之外, 若玩家执行了某指令后又执行了对应镜像服的其他指令, 则先前执行的指令自动取消
 
-### abort配置
-~此功能仍在开发~
-
 <br>
 
 ### display: 显示配置
@@ -574,7 +568,6 @@ display:
       sync: 2
       history: 0
       confirm: 0
-      abort: 0
       log: console
       execute: console
     action:
@@ -605,8 +598,6 @@ display:
       confirm:
         timeout: 30
         cancel_anymsg: true
-      abort:
-        operator: everyone
 
   display:
     server_name: Mirror

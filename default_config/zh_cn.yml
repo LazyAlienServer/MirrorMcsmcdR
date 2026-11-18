@@ -75,7 +75,6 @@
       sync: 2
       history: 0
       confirm: 0
-      abort: 0
       log: console
       execute: console
     action:
@@ -115,8 +114,6 @@
       confirm:
         timeout: 30
         cancel_anymsg: true
-      abort:
-        operator: everyone
 
   # 显示设置。
   display:

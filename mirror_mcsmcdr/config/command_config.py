@@ -11,7 +11,6 @@ class CommandPermissionConfig(Serializable):
     sync: PermissionRequirement = 2
     history: PermissionRequirement = 0
     confirm: PermissionRequirement = 0
-    abort: PermissionRequirement = 0
     log: PermissionRequirement = "console"
     execute: PermissionRequirement = "console"
 
@@ -53,9 +52,6 @@ class ConfirmActionConfig(Serializable):
     timeout: int = 30
     cancel_anymsg: bool = True
 
-class AbortActionConfig(Serializable):
-    operator: str = "everyone"
-
 class CommandActionConfig(Serializable):
     status: ActionConfig = ActionConfig()
     start: StartActionConfig = StartActionConfig()
@@ -66,7 +62,6 @@ class CommandActionConfig(Serializable):
     sync: SyncActionConfig = SyncActionConfig(require_confirm=True)
     history: HistoryActionConfig = HistoryActionConfig()
     confirm: ConfirmActionConfig = ConfirmActionConfig()
-    abort: AbortActionConfig = AbortActionConfig()
 
     def requires_confirm(self, command: str) -> bool:
         action: ActionConfig = getattr(self, command)

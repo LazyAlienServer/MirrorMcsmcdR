@@ -408,7 +408,6 @@ permission:
     kill: 3
     sync: 2
     confirm: 0
-    abort: 0
     log: "console"
     execute: "console"
 ```
@@ -443,8 +442,6 @@ action:
     confirm:
         timeout: 30
         cancel_anymsg: true
-    abort:
-        operator: "everyone"
 ```
 
 ### General Configuration
@@ -518,9 +515,6 @@ Players can only confirm the commands they have executed
 **cancel_anymsg** `bool`
 - If the player sends a message other than the `confirm` command after executing a command, the command operation will be canceled automatically. In addition, if the player executes another command corresponding to the mirror server after executing a command, the previously executed command will be canceled too.
 
-### abort Configuration
-~This feature is still under development~
-
 <br>
 
 ### display: Display Configuration
@@ -574,7 +568,6 @@ display:
             kill: 3
             sync: 2
             confirm: 0
-            abort: 0
         action:
             status:
                 require_confirm: false
@@ -600,8 +593,6 @@ display:
             confirm:
                 timeout: 30
                 cancel_anymsg: true
-            abort:
-                operator: "everyone"
     display:
         server_name: "Mirror"
 "!!mirror2":
