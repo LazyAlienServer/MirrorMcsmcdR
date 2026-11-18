@@ -256,9 +256,9 @@ mirror_mcsmcdr:
   config_loader:
     merged: "Added the missing keys to the config file"
     created: "Config file missing; created config.yml with default values"
-    legacy_json: "config.json is outdated; converted it to config.yml and kept the original as config.json.bak"
+    legacy_json: "config.json is deprecated; converted it to config.yml and kept the original as config.json.bak"
     unknown_key: "Config §b{prefix}§f: removed unknown key §e{path}§f (value: §7{value}§f)"
-    backup: "The config before the removal is backed up to {path}"
+    backup: "Backed up the old config to {path}"
     unknown_removed: "§eRemoved §b{count} §eunknown config key(s), see the console"
   
   error.unknown: §cUnknown error, please check the console for details
