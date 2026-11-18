@@ -248,5 +248,13 @@ mirror_mcsmcdr:
   process_record:
     unreadable: "无法读取进程记录{path}, 之前启动的镜像服不再被跟踪: {error}"
     unwritable: "无法写入进程记录{path}, 插件重载后将无法跟踪正在运行的镜像服: {error}"
+
+  config_loader:
+    merged: "已自动补全配置文件中缺失的项"
+    created: "配置文件不存在, 使用默认值创建 config.yml"
+    legacy_json: "config.json 格式已过时, 已自动转换为 config.yml, 原文件备份为 config.json.bak"
+    unknown_key: "配置项 §b{prefix}§f: 已移除未知项 §e{path}§f (值: §7{value}§f)"
+    backup: "删除前的配置文件已备份到 {path}"
+    unknown_removed: "§e已从配置文件中删除 §b{count} §e个不认识的项, 详情见控制台"
   
   error.unknown: §c未知错误, 请前往终端查看错误信息

@@ -248,5 +248,13 @@ mirror_mcsmcdr:
   process_record:
     unreadable: "Cannot read the process record {path}; mirrors launched before are no longer tracked: {error}"
     unwritable: "Cannot write the process record {path}; after a plugin reload the running mirror will no longer be tracked: {error}"
+
+  config_loader:
+    merged: "Added the missing keys to the config file"
+    created: "Config file missing; created config.yml with default values"
+    legacy_json: "config.json is outdated; converted it to config.yml and kept the original as config.json.bak"
+    unknown_key: "Config §b{prefix}§f: removed unknown key §e{path}§f (value: §7{value}§f)"
+    backup: "The config before the removal is backed up to {path}"
+    unknown_removed: "§eRemoved §b{count} §eunknown config key(s), see the console"
   
   error.unknown: §cUnknown error, please check the console for details
