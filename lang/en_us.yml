@@ -89,7 +89,7 @@ mirror_mcsmcdr:
     input:
       sent: "§aCommand sent: §f{cmd}"
       failed: "§cFailed to send command"
-      not_running: "§cThe mirror server is not running; cannot send command"
+      not_running: "§c{server_name} is not running; cannot send command"
       unavailable: "§cThis command is only available with the subprocess proxy"
       unknown: "§cThe status of {server_name} is unknown; cannot send command. Check {prefix} status first"
     state:

@@ -89,7 +89,7 @@ mirror_mcsmcdr:
     input:
       sent: "§a命令已发送: §f{cmd}"
       failed: "§c命令发送失败"
-      not_running: "§c镜像服未运行，无法发送命令"
+      not_running: "§c{server_name}未运行，无法发送命令"
       unavailable: "§c此命令仅在使用 subprocess 代理时可用"
       unknown: "§c{server_name}状态未知, 无法发送命令, 请先查看{prefix} status"
     state:
