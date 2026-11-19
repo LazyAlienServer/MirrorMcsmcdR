@@ -29,7 +29,7 @@ mirror_mcsmcdr:
       fail.starting: §b{server_name} §c正在启动，无法重载配置文件 §7({prefix})§c，请等待启动完成或先执行 §7{prefix} kill
     permission_denied: §b{server_name} §c操作权限不足
     console_only: §b{server_name} §c此命令仅可通过终端执行
-    mcsm_disabled: §cMCSM-API未启用
+    mcsm_disabled: §cMCSM-API 未启用
     unavailable: §c配置文件错误，§b{prefix} §c实例已禁用
     backup:
       ready: "§b{prefix}§f: 同步前备份已就绪，§3PrimeBackup§f §bv{version} §f位于 §7{path}"
@@ -98,32 +98,32 @@ mirror_mcsmcdr:
       stopping: 正在停止
       starting: 正在启动
       running: 正在运行
-      mcdr_only: 服务端已停止，MCDR仍在运行
+      mcdr_only: 服务端已停止，MCDR 仍在运行
 
     anomaly:
       orphan_screen: "§c已分离（Java: 未启动；Screen: 已启动）"
       orphan_process: "§c已失去控制台（进程仍在运行）"
-      mcdr_missing: "§c未找到MCDR进程"
+      mcdr_missing: "§c未找到 MCDR 进程"
 
     detail:
       line: "§e详情§7: §f{detail}"
-      panel: 状态由MCSManager报告
+      panel: 状态由 MCSManager 报告
       foreign_listener: 端口被不是插件启动的进程占用，可使用 §7{prefix} kill -f §f结束这些进程
       start_pending: 启动指令已发送，正在等待服务端打开端口
       port_closed: 服务端进程在运行但端口未打开，若一直如此请检查配置中的 §7'port'§f，或使用 §7{prefix} kill §f终止
       stop_pending: 关闭指令已发送，正在等待进程退出
       console_closing: 控制台正在关闭
-      mcdr_only: MCDR可能空闲或正在退出，可使用 §7{prefix} start §f在其中启动服务端，§7{prefix} stop §f让MCDR退出，或 §7{prefix} kill §f终止MCDR
+      mcdr_only: MCDR 可能空闲或正在退出，可使用 §7{prefix} start §f在其中启动服务端，§7{prefix} stop §f让 MCDR 退出，或 §7{prefix} kill §f终止 MCDR
       orphan_screen: 启动命令已结束但终端仍在，可使用 §7{prefix} kill §f关闭终端
       orphan_process: 插件已无法向进程发送命令，若等待后进程仍未退出，请使用 §7{prefix} kill -f §f强制终止
-      mcdr_missing: 服务端在运行但MCDR已退出或无法识别，可使用 §7{prefix} kill §f终止
+      mcdr_missing: 服务端在运行但 MCDR 已退出或无法识别，可使用 §7{prefix} kill §f终止
 
     outcome:
       path_not_found: 未找到有效的启动目录，请检查是否已创建正常的 §b{server_name} §f服务端和插件配置文件是否配置正确
-      force_required: Screen已不存在，若等待后进程仍未退出，请使用 §7{prefix} kill -f §f强制终止残留进程
+      force_required: Screen 已不存在，若等待后进程仍未退出，请使用 §7{prefix} kill -f §f强制终止残留进程
       timeout: 进程未在限定时间内退出，请使用 §7{prefix} kill -f §f强制终止
       no_target: 没有可以终止的进程
-      unreadable_listener: 端口被一个无法读取PID的进程占用（可能属于其他用户），未终止任何进程
+      unreadable_listener: 端口被一个无法读取 PID 的进程占用（可能属于其他用户），未终止任何进程
       console_input_failed: 无法向 §b{server_name} §f的控制台输入指令，请稍后重试
 
     status:
@@ -203,18 +203,18 @@ mirror_mcsmcdr:
         output: "§3PrimeBackup §7输出的最后几行:\n§f{output}"
         reason:
           mcdr_path_required: "§7'terminal'§c 未启用时必须填写 §7'sync.backup.mcdr_path'"
-          mcdr_path_not_found: "§c镜像服的MCDR目录不存在"
-          mcdr_config_unreadable: "§c无法读取镜像服的MCDR配置文件"
-          mcdr_config_invalid: "§c镜像服的MCDR配置文件中 §4'{option}'§c 的值无效"
-          plugin_not_found: "§c镜像服MCDR的插件目录中没有 §3PrimeBackup §c插件"
-          plugin_duplicated: "§c镜像服MCDR中有多个 §3PrimeBackup §c插件"
-          plugin_too_old: "§c镜像服的 §3PrimeBackup §c版本为 {version}，至少需要1.13.0"
+          mcdr_path_not_found: "§c镜像服的 MCDR 目录不存在"
+          mcdr_config_unreadable: "§c无法读取镜像服的 MCDR 配置文件"
+          mcdr_config_invalid: "§c镜像服的 MCDR 配置文件中 §4'{option}'§c 的值无效"
+          plugin_not_found: "§c镜像服 MCDR 的插件目录中没有 §3PrimeBackup §c插件"
+          plugin_duplicated: "§c镜像服 MCDR 中有多个 §3PrimeBackup §c插件"
+          plugin_too_old: "§c镜像服的 §3PrimeBackup §c版本为 {version}，至少需要 1.13.0"
           pb_config_unreadable: "§c无法读取镜像服的 §3PrimeBackup §c配置文件"
           pb_config_invalid: "§c镜像服的 §3PrimeBackup §c配置文件中 §4'{option}'§c 的值无效"
           database_not_found: "§c镜像服的 §3PrimeBackup §c数据库不存在"
-          pathspec_missing: "§c未安装 §3PrimeBackup §c所需的Python包pathspec"
+          pathspec_missing: "§c未安装 §3PrimeBackup §c所需的 Python 包 pathspec"
           mirror_not_stopped: "§b{server_name} §c当前状态为 {status}，而不是已停止"
-          probe_failed: "§3PrimeBackup §c命令行工具退出码为 {code}，请检查其Python依赖是否已安装"
+          probe_failed: "§3PrimeBackup §c命令行工具退出码为 {code}，请检查其 Python 依赖是否已安装"
           launch: "§c无法启动 §3PrimeBackup §c命令行工具"
           timeout: "§3PrimeBackup §c未在 {timeout} 秒内完成"
           exit_code: "§3PrimeBackup §c退出码为 {code}"
@@ -238,16 +238,16 @@ mirror_mcsmcdr:
         backup: " §7| §f备份: §b#{backup_id}"
   
   mcsm:
-    disabled: §cMCSM-API未启用
+    disabled: §cMCSM-API 未启用
     error:
-      request: "§cMCSM请求错误，请报告管理员: §4{e}"
-      "400": "[400] 请求参数错误，请尝试前往GitHub提交issue以解决 ({error})"
+      request: "§cMCSM 请求错误，请报告管理员: §4{e}"
+      "400": "[400] 请求参数错误，请尝试前往 GitHub 提交 issue 以解决 ({error})"
       "403": "[403] 请求权限不足，请报告服务器管理员 ({error})"
       "500": "[500] 未知的服务器内部错误 ({error})"
       "503": "[503] 请求过于频繁"
 
   screen:
-    error: "§cScreen错误，请报告管理员: §4{e}"
+    error: "§cScreen 错误，请报告管理员: §4{e}"
 
   process_record:
     unreadable: "§e无法读取进程记录 §7{path}§e，之前启动的镜像服不再被跟踪: §4{error}"
