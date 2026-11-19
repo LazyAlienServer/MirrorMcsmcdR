@@ -36,6 +36,8 @@
 
 ## Upgrading from v1.8.0 or earlier
 
+The new version requires MCDReforged `>=2.16.0`; upgrade it if needed.
+
 Stop the mirror server by hand before upgrading. The new version only knows the processes it started and recorded itself; a mirror server started by an older version is not in the record (see [Mirror server status](#mirror-server-status)).
 
 After upgrading, check the configuration file:
