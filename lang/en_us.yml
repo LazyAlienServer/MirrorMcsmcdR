@@ -172,8 +172,8 @@ mirror_mcsmcdr:
       fail:
         unsupported: The current config does not support the §7kill§f command; configure §7'mcsm'§f or §7'terminal'
       targets:
-        title: "§7{prefix} kill -f will §cforcefully terminate §b{count} §7process(es):"
-        count: "§7{prefix} kill -f will §cforcefully terminate §b{count} §7process(es), §b{foreign} §7of them not started by the plugin"
+        title: "§7{prefix} kill -f §fwill §cforcefully terminate §b{count} §fprocess(es):"
+        count: "§7{prefix} kill -f §fwill §cforcefully terminate §b{count} §fprocess(es), §b{foreign} §fof them not started by the plugin"
 
     sync:
       fail:

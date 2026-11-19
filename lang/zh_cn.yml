@@ -172,8 +172,8 @@ mirror_mcsmcdr:
       fail:
         unsupported: 当前配置文件不支持 §7kill§f 命令，需要配置 §7'mcsm'§f 或 §7'terminal'
       targets:
-        title: "§7{prefix} kill -f 将§c强制终止§7以下 §b{count} §7个进程:"
-        count: "§7{prefix} kill -f 将§c强制终止 §b{count} §7个进程，其中 §b{foreign} §7个不是插件启动的"
+        title: "§7{prefix} kill -f §f将§c强制终止§f以下 §b{count} §f个进程:"
+        count: "§7{prefix} kill -f §f将§c强制终止 §b{count} §f个进程，其中 §b{foreign} §f个不是插件启动的"
 
     sync:
       fail:
