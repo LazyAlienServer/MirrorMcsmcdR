@@ -32,12 +32,40 @@ class Member:
 
 
 @dataclass(frozen=True)
+class Adoption:
+    """
+    How a mirror the plugin found running, rather than launched, is reached.
+
+    Its console belongs to whoever started it: the plugin types into it, but never closes it or ends what runs above the root.
+    """
+
+    # "windows" for the console the root runs in, "screen" for a screen window; None if there is no console to use
+    console: Optional[str]
+    # for screen: the session, by pid and name, and the window the root runs in
+    session_pid: Optional[int] = None
+    session_name: Optional[str] = None
+    window: Optional[str] = None
+
+    def to_json(self) -> dict[str, Any]:
+        return {"console": self.console, "session_pid": self.session_pid, "session_name": self.session_name, "window": self.window}
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> "Adoption":
+        """:raise KeyError, TypeError, ValueError: if ``data`` is not an adoption"""
+        def optional(value: Any, kind: type) -> Any:
+            return None if value is None else kind(value)
+
+        return cls(optional(data["console"], str), optional(data["session_pid"], int), optional(data["session_name"], str), optional(data["window"], str))
+
+
+@dataclass(frozen=True)
 class ProcessRecord:
     """
-    What the plugin launched last, as it is kept across plugin reloads.
+    What the plugin launched or adopted last, as it is kept across plugin reloads.
 
     The launch settings are those of that launch, so that a changed config applies from the next launch on.
     The root is the process the plugin spawned; on Linux and Windows it is also the console the mirror is controlled through.
+    For an adopted mirror, the root is its MCDR, and :attr:`adoption` tells its console.
     """
 
     # counts the launches of this mirror
@@ -51,6 +79,8 @@ class ProcessRecord:
     members: tuple[Member, ...]
     # False once none of them is alive any more
     active: bool
+    # None for a launch of the plugin
+    adoption: Optional[Adoption] = None
 
     def to_json(self) -> dict[str, Any]:
         def member(m: Member) -> dict[str, Any]:
@@ -65,6 +95,7 @@ class ProcessRecord:
             "root": member(self.root),
             "members": [member(m) for m in self.members],
             "state": "active" if self.active else "exited",
+            "adoption": self.adoption.to_json() if self.adoption is not None else None,
         }
 
     @classmethod
@@ -82,6 +113,8 @@ class ProcessRecord:
             member(data["root"]),
             tuple(member(m) for m in data["members"]),
             {"active": True, "exited": False}[data["state"]],
+            # absent from the records of earlier versions, which only launched
+            Adoption.from_json(data["adoption"]) if data.get("adoption") is not None else None,
         )
 
 
@@ -147,6 +180,21 @@ class ProcessTracker:
                 return
             generation = (self._record.generation if self._record is not None else 0) + 1
             self._record = ProcessRecord(generation, backend, launch_path, launch_command, terminal_name, root, (root,), True)
+            self._save()
+
+    def adopt(self, backend: str, launch_path: str, process: psutil.Process, adoption: Adoption) -> None:
+        """
+        Record a mirror that runs outside of any record, with ``process`` as its root; it replaces the previous record.
+
+        Its descendants join at the next observation, as those of a launch do.
+
+        :raise psutil.Error: if the process is gone or cannot be read
+        """
+        with self._lock:
+            root = Member(process.pid, process_utils.start_token(process), self._role_of_root(process))
+            command = " ".join(process.cmdline())
+            generation = (self._record.generation if self._record is not None else 0) + 1
+            self._record = ProcessRecord(generation, backend, launch_path, command, adoption.session_name or "", root, (root,), True, adoption)
             self._save()
 
     def observe(self, listener: PortListener, console: Optional[Callable[[ProcessRecord], Optional[bool]]] = None) -> TreeView:
@@ -241,7 +289,8 @@ class ProcessTracker:
         branch: dict[int, int] = {}
         parents: dict[int, int] = {}
         for live in members:
-            if live.member.role is Role.MCDR:
+            # the console host of an MCDR is neither the server nor another process of it
+            if live.member.role in (Role.MCDR, Role.WRAPPER):
                 continue
             try:
                 parent = parents[live.member.pid] = live.process.ppid()
@@ -278,6 +327,9 @@ class ProcessTracker:
     def _role_of_child(process: psutil.Process, parent: Member, root_pid: int) -> Role:
         if process_utils.is_mcdr(process):
             return Role.MCDR
+        # the console host of an MCDR that has a console of its own, which is the case of one started by hand on Windows
+        if parent.role is Role.MCDR and process_utils.is_console_host(process):
+            return Role.WRAPPER
         if parent.role is Role.MCDR:
             return Role.CHILD
         if parent.role in (Role.SERVER, Role.CHILD):

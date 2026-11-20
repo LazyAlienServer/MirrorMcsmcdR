@@ -8,7 +8,7 @@ from mirror_mcsmcdr.server.backend.base import KillTargets
 from mirror_mcsmcdr.server.backend.child_process import SubprocessProxy
 from mirror_mcsmcdr.server.backend.factory import ProxySettingException, build_backends
 from mirror_mcsmcdr.server.backend.mcsm import MCSManagerProxyError
-from mirror_mcsmcdr.server.controller import ServerController, WaitEnd, WaitResult
+from mirror_mcsmcdr.server.controller import RecoverOutcome, RecoverResult, ServerController, WaitEnd, WaitResult
 from mirror_mcsmcdr.server.status import Capability, ProcessInfo, ServerState, StatusSnapshot
 from mirror_mcsmcdr.server.system_utils.screen_utils import ScreenError
 from mirror_mcsmcdr.server.tracker import ProcessTracker
@@ -22,6 +22,8 @@ __all__ = [
     "ProcessInfo",
     "ProcessTracker",
     "ProxySettingException",
+    "RecoverOutcome",
+    "RecoverResult",
     "ScreenError",
     "ServerController",
     "ServerState",

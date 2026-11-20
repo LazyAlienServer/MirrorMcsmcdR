@@ -10,7 +10,7 @@ from mirror_mcsmcdr.runtime import MirrorRuntime
 from mirror_mcsmcdr.sync.workflow import SyncWorkflow, backup_error_console_lines, describe_backup_error
 from mirror_mcsmcdr.sync.backup import BackupError, BackupWarning, MirrorBackup
 from mirror_mcsmcdr.text_utils import detail_lines, help_msg, rejection_lines, rtr, status_key
-from mirror_mcsmcdr.server import Action, MCSManagerProxyError, ProcessInfo, ProcessTracker, ScreenError, ServerState, StatusSnapshot, WaitEnd
+from mirror_mcsmcdr.server import Action, MCSManagerProxyError, ProcessInfo, ProcessTracker, RecoverOutcome, RecoverResult, ScreenError, ServerState, StatusSnapshot, WaitEnd
 from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
 from mirror_mcsmcdr.command_utils.page_utils import Page
 from mirror_mcsmcdr.command_utils.confirmation_utils import ConfirmationTask, ConfirmationManager
@@ -18,7 +18,7 @@ from mirror_mcsmcdr.command_utils.confirmation_utils import ConfirmationTask, Co
 PAGE_SIZE = 5
 CONSOLE_OPERATOR = "[console]"
 # what has its own confirmation prompt, as command.confirm.prompts.<name>; the rest gets the plain one
-_CONFIRM_PROMPTS = frozenset({"start", "stop", "kill", "forcekill", "sync"})
+_CONFIRM_PROMPTS = frozenset({"start", "stop", "kill", "forcekill", "sync", "recover"})
 
 # A command body; it receives the runtime that is current when it actually runs.
 CommandAction = Callable[[MirrorRuntime], object]
@@ -124,6 +124,9 @@ class MirrorManager:
         builder.literal("-f", lambda _: Literal(("-f", "--force")))
         builder.command(f"{command_prefix} kill -f", lambda source, context: self.kill(source, context, force=True))
         builder.command(f"{command_prefix} sync", self.sync)
+        builder.arg("pid", Integer)
+        builder.command(f"{command_prefix} recover", self.recover)
+        builder.command(f"{command_prefix} recover <pid>", self.recover)
         builder.arg("page", Integer)
         builder.command(f"{command_prefix} history", self.history)
         builder.command(f"{command_prefix} history <page>", self.history)
@@ -474,6 +477,65 @@ class MirrorManager:
             self.server.broadcast(self.rtr("command.start.not_ready", status=status))
             for line in detail_lines(self.rtr, waited.snapshot):
                 source.reply(line)
+
+    def recover(self, source: CommandSource, context: CommandContext) -> None:
+        pid: Optional[int] = context.get("pid")
+        self._run_command(
+            "recover",
+            source,
+            lambda runtime: self._recover(runtime, source, pid),
+            confirm_if=lambda runtime: self._recover_needs_confirm(runtime, source, pid),
+        )
+
+    def _recover_needs_confirm(self, runtime: MirrorRuntime, source: CommandSource, pid: Optional[int]) -> Optional[bool]:
+        """
+        Whether adopting must be confirmed: when the MCDR was not named by its pid, it is shown and has to be.
+
+        :return: None if it would not be adopted, after telling the source why
+        """
+        with self._report_api_error(source):
+            result = runtime.controller.recover(pid, dry_run=True)
+            if not result.ok:
+                self._report_recover_failure(runtime, source, result, pid)
+                return None
+            if pid is not None:
+                return False
+            assert result.picked is not None
+            self._report_processes(runtime, source, (result.picked,), "command.recover.found", title=False)
+            return True
+        return None
+
+    @new_thread(f"{TITLE}-recover")
+    def _recover(self, checked: MirrorRuntime, source: CommandSource, pid: Optional[int]) -> None:
+        # held like a start: a sync must not find the mirror changing hands between its stop and its restart
+        with self._sync_workflow.hold() as held:
+            if not held:
+                prompt = self.rtr("command.recover.fail.syncing", title=False).to_legacy_text()
+                source.reply(self.rtr("command._execute.fail", prompt=prompt))
+                return
+            runtime = self._active_runtime()
+            if runtime is None:
+                source.reply(self.rtr("manager.unavailable"))
+                return
+            if runtime is not checked and not self._check_permission(runtime, source, "recover"):
+                return
+            with self._report_api_error(source):
+                result = runtime.controller.recover(pid)
+                if not result.ok:
+                    self._report_recover_failure(runtime, source, result, pid)
+                    return
+                assert result.picked is not None
+                prompt = self.rtr("command.recover.success", title=False).to_legacy_text()
+                self.server.broadcast(self.rtr("command._execute.success", prompt=prompt))
+                self._report_processes(runtime, source, (result.picked,), "command.recover.adopted", title=False)
+                if not result.console:
+                    source.reply(self.rtr("command.recover.no_console", title=False))
+
+    def _report_recover_failure(self, runtime: MirrorRuntime, source: CommandSource, result: RecoverResult, pid: Optional[int]) -> None:
+        prompt = self.rtr(f"command.recover.fail.{result.outcome.value}", title=False, pid=pid).to_legacy_text()
+        source.reply(self.rtr("command._execute.fail", prompt=prompt))
+        if result.outcome in (RecoverOutcome.AMBIGUOUS, RecoverOutcome.NOT_FOUND) and result.found:
+            self._report_processes(runtime, source, result.found, "command.recover.found", title=False)
 
     def stop(self, source: CommandSource, context: CommandContext) -> None:
         self._run_command("stop", source, lambda runtime: self._execute(runtime, source, Action.STOP), checked=Action.STOP)

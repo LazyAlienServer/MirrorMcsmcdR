@@ -62,6 +62,7 @@ The default command prefix is `!!mirror`.
 | `!!mirror stop`                         | Stop the mirror server                                  |
 | `!!mirror kill`                         | Terminate the mirror server                             |
 | `!!mirror kill -f`                      | Force-terminate the mirror server (terminal proxies) |
+| `!!mirror recover [pid]`                | Adopt a mirror server the plugin did not start (terminal proxies) |
 | `!!mirror sync`                         | Synchronize files                                       |
 | `!!mirror confirm`                      | Confirm a pending operation                             |
 | `!!mirror reload`                       | Hot-reload the mirror configuration                     |
@@ -235,7 +236,7 @@ The recorded processes fall into these groups:
 | stopping | The stop command was sent; waiting for the processes to exit | `kill`, `kill -f` |
 | server stopped, MCDR still running | The server has exited; MCDR is idle or exiting | `start`, `stop`, `kill`, `kill -f`; `sync` with `auto_mcdr_stop` |
 | status unknown | The port is held by a process the plugin did not start | `kill -f` |
-| status unknown | An MCDR the plugin did not start is running in the launch path (see below) | none; stop it by hand |
+| status unknown | An MCDR the plugin did not start is running in the launch path (see below) | `recover` |
 
 In `server stopped, MCDR still running`, `start` and `stop` do not launch another mirror server; they type a command into the console of the MCDR that is still running: `start` types `!!MCDR server start`, which starts the server in that MCDR, and `stop` types `!!MCDR server exit`, which makes MCDR exit. An MCDR that is exiting refuses to start the server; the status then becomes `stopped`.
 
@@ -253,7 +254,22 @@ When the server process is running but the port never opens, the status stays at
 > - While its port is held, the status is `status unknown`, and only `!!mirror kill -f` can end it;
 > - While its port is free (the mirror server is starting or stopping, or the server has stopped inside MCDR), the usual status check does not see it. So once `!!mirror status`, `start` or `sync` finds the status `stopped`, the plugin looks among all processes of the machine for an MCDR whose working directory is `launch_path`. If there is one, the status is `status unknown`, and `start` and `sync` are refused. Only processes of the plugin's own user whose details can be read are looked at; nothing is looked for with `is_mcdr` set to `false`.
 >
-> So start the mirror server through this plugin only.
+> Such a mirror server can be adopted with `!!mirror recover`; see below.
+
+#### Adopting a mirror server
+
+`!!mirror recover` looks among all processes of the machine for an MCDR whose working directory is `launch_path` and that is not in the record, and writes it and the processes it started into the record. From then on the plugin judges its status, and runs `stop`, `kill` and syncs on it, as it does for a mirror server it started itself.
+
+- With exactly one found, the plugin lists it and asks for `!!mirror confirm`; with several found, it lists them, and `!!mirror recover <pid>` picks one. The PID must be one of those listed; no confirmation is asked when a PID is given;
+- Nothing is adopted while the configured port is held by a process outside this MCDR and its children;
+- Nothing is adopted while the record still holds running processes, or while a sync is in progress;
+- The plugin finds the console the MCDR runs in, and types commands into it from then on:
+  - `windows` proxy: the console window of the MCDR;
+  - `linux` proxy: the screen session and window of the MCDR, which may be the user's own session with several windows;
+  - `subprocess` proxy, or an MCDR outside any console or screen: there is no console; after adopting, the status carries `Console lost`, and only `kill -f` can end it.
+- The console does not belong to the plugin: `kill` and `kill -f` end only the MCDR and its children, and leave the user's command prompt window or screen session open.
+
+`recover` requires permission level 3 by default; change it with `command.permission.recover`. It is not offered with MCSManager.
 
 <br>
 
@@ -414,6 +430,7 @@ permission:
     confirm: 0
     log: "console"
     input: "console"
+    recover: 3
 ```
 `int`
 - The minimum MCDR permission level required to execute each command, set to `console` for console available only.

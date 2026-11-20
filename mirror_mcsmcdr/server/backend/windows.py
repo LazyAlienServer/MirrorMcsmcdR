@@ -1,10 +1,12 @@
 import os
 import subprocess
 
+import psutil
+
 from mirror_mcsmcdr.server.action import Action, ActionResult
 from mirror_mcsmcdr.server.backend.base import TerminalProxy
-from mirror_mcsmcdr.server.system_utils.console_utils import send_console_command
-from mirror_mcsmcdr.server.tracker import TreeView
+from mirror_mcsmcdr.server.system_utils.console_utils import has_console, send_console_command
+from mirror_mcsmcdr.server.tracker import Adoption, TreeView
 
 
 class WindowsProxy(TerminalProxy):
@@ -12,8 +14,12 @@ class WindowsProxy(TerminalProxy):
     supports = frozenset(Action)
 
     def _endpoint_alive(self, view: TreeView) -> bool:
-        # the console lives as long as the cmd.exe that opened it
-        return view.root_alive
+        # the console lives as long as the cmd.exe that opened it, and that of an adopted mirror as long as its MCDR
+        adoption = view.record.adoption if view.record is not None else None
+        return view.root_alive and (adoption is None or adoption.console == "windows")
+
+    def _console_of(self, process: psutil.Process) -> Adoption:
+        return Adoption("windows" if has_console(process.pid) else None)
 
     def _launch(self, result: ActionResult) -> ActionResult:
         if not os.path.exists(self.path):

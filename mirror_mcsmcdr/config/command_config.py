@@ -1,5 +1,5 @@
 from mcdreforged.api.all import Serializable
-from typing import Union, Literal
+from typing import Optional, Union, Literal
 
 PermissionRequirement = Union[int, Literal["console"]]
 
@@ -13,6 +13,7 @@ class CommandPermissionConfig(Serializable):
     confirm: PermissionRequirement = 0
     log: PermissionRequirement = "console"
     input: PermissionRequirement = "console"
+    recover: PermissionRequirement = 3
 
     def requirement_of(self, command: str) -> PermissionRequirement:
         return getattr(self, command)
@@ -64,8 +65,9 @@ class CommandActionConfig(Serializable):
     confirm: ConfirmActionConfig = ConfirmActionConfig()
 
     def requires_confirm(self, command: str) -> bool:
-        action: ActionConfig = getattr(self, command)
-        return action.require_confirm
+        # a command without an action config, such as recover, asks for a confirmation by itself where it needs one
+        action: Optional[ActionConfig] = getattr(self, command, None)
+        return action is not None and action.require_confirm
 
 class CommandConfig(Serializable):
     permission: CommandPermissionConfig = CommandPermissionConfig()

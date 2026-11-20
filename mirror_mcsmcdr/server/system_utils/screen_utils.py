@@ -30,8 +30,9 @@ class Screen:
     # Taken before the lock of the instance, never the other way round.
     _create_lock = Lock()
 
-    def __init__(self, name: str, path: str, pid: Optional[int] = None) -> None:
+    def __init__(self, name: str, path: str, pid: Optional[int] = None, window: str = "0") -> None:
         """
+        :param window: the window commands are typed into; a session the plugin creates has only window 0
         :raise ScreenError: if screen cannot address a session of this name
         """
         if not name or len(name.encode()) > self._MAX_NAME_BYTES or any(ord(char) < 0x20 or ord(char) == 0x7F for char in name):
@@ -40,6 +41,7 @@ class Screen:
         self.path = path
         # None until a session is created or given
         self.pid = pid
+        self.window = window
         self._lock = Lock()
         self._parses_remote_commands: Optional[bool] = None
 
@@ -85,7 +87,7 @@ class Screen:
             pid = self._session_pid()
             if pid is None:
                 raise ScreenError(f"Screen {self.name} does not exist")
-            self._send_to(pid, ["-p", "0", "-X", "stuff", text])
+            self._send_to(pid, ["-p", self.window, "-X", "stuff", text])
 
     def quit(self) -> None:
         """

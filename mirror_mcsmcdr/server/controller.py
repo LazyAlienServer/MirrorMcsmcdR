@@ -4,10 +4,12 @@ from enum import Enum
 from threading import Lock
 from typing import Callable, Optional, Sequence
 
+import psutil
+
 from mirror_mcsmcdr.server.action import TERMINATIONS, Action, ActionResult, Intent
 from mirror_mcsmcdr.server.backend.base import KillTargets, ServerBackend, TerminalProxy
 from mirror_mcsmcdr.server.resolver import StatusResolver
-from mirror_mcsmcdr.server.status import Evidence, ServerState, StatusSnapshot
+from mirror_mcsmcdr.server.status import Evidence, ProcessInfo, ServerState, StatusSnapshot
 from mirror_mcsmcdr.server.system_utils import process_utils
 
 
@@ -23,6 +25,38 @@ class WaitResult:
     end: WaitEnd
     # the last status observed
     snapshot: StatusSnapshot
+
+
+class RecoverOutcome(Enum):
+    ADOPTED = "adopted"
+    # no backend tracks processes
+    UNSUPPORTED = "unsupported"
+    # the record still holds live processes
+    TRACKED = "tracked"
+    NONE_FOUND = "none_found"
+    # several MCDR instances were found, and none was picked by pid
+    AMBIGUOUS = "ambiguous"
+    # the pid picked is not among those found
+    NOT_FOUND = "not_found"
+    # the port is held by something outside the MCDR found, which adopting it would leave out
+    FOREIGN_LISTENER = "foreign_listener"
+    # it exited while it was being adopted
+    GONE = "gone"
+
+
+@dataclass(frozen=True)
+class RecoverResult:
+    outcome: RecoverOutcome
+    # the MCDR instances found outside the record
+    found: tuple[ProcessInfo, ...] = ()
+    # the one picked, adopted or to be adopted
+    picked: Optional[ProcessInfo] = None
+    # whether the console of the one adopted was found; False also before it is adopted
+    console: bool = False
+
+    @property
+    def ok(self) -> bool:
+        return self.outcome is RecoverOutcome.ADOPTED
 
 
 class ServerController:
@@ -123,6 +157,41 @@ class ServerController:
         """What a forced kill would end; None if no backend can tell."""
         terminal = self._terminal()
         return terminal.forcekill_targets() if terminal is not None else None
+
+    def recover(self, pid: Optional[int], dry_run: bool = False) -> RecoverResult:
+        """
+        Adopt the mirror's MCDR that runs outside the record, such as one started by hand: from then on it is tracked as if launched.
+
+        :param pid: the one to adopt among those found; None if there is to be exactly one
+        :param dry_run: only tell whether it would be adopted, as ADOPTED if so
+        """
+        with self._action_lock:
+            terminal = self._terminal()
+            if terminal is None:
+                return RecoverResult(RecoverOutcome.UNSUPPORTED)
+            if self.status().evidence.members_alive:
+                return RecoverResult(RecoverOutcome.TRACKED)
+            processes = terminal.find_untracked()
+            found = tuple(process_utils.describe(process, False) for process in processes)
+            if not processes:
+                return RecoverResult(RecoverOutcome.NONE_FOUND)
+            if pid is None and len(processes) > 1:
+                return RecoverResult(RecoverOutcome.AMBIGUOUS, found)
+            process = next((process for process in processes if pid is None or process.pid == pid), None)
+            if process is None:
+                return RecoverResult(RecoverOutcome.NOT_FOUND, found)
+            picked = process_utils.describe(process, dry_run is False)
+            try:
+                if not terminal.holds_port(process):
+                    return RecoverResult(RecoverOutcome.FOREIGN_LISTENER, found, picked)
+                if dry_run:
+                    return RecoverResult(RecoverOutcome.ADOPTED, found, picked)
+                adoption = terminal.adopt(process)
+            except psutil.Error:
+                return RecoverResult(RecoverOutcome.GONE, found, picked)
+            # a start or stop issued before is not what the adopted mirror is doing
+            self._set_intent(None)
+            return RecoverResult(RecoverOutcome.ADOPTED, found, picked, adoption.console is not None)
 
     def _terminal(self) -> Optional[TerminalProxy]:
         """The backend that runs the forced kill, which is the one that tracks the processes."""

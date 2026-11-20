@@ -11,7 +11,7 @@ from mirror_mcsmcdr.server.action import Action, ActionResult
 from mirror_mcsmcdr.server.status import Evidence, ProcessInfo, ServerState
 from mirror_mcsmcdr.server.system_utils import process_utils
 from mirror_mcsmcdr.server.system_utils.port_utils import PortListener
-from mirror_mcsmcdr.server.tracker import ProcessRecord, ProcessTracker, Role, TreeView
+from mirror_mcsmcdr.server.tracker import Adoption, ProcessRecord, ProcessTracker, Role, TreeView
 
 
 class ServerBackend(ABC):
@@ -228,6 +228,32 @@ class TerminalProxy(ServerBackend, ABC):
         # the MCDR this plugin runs in, too: a launch path pointing at its own folder must not make it a mirror
         exclude = {process.pid for process in tracked} | {os.getpid()}
         return process_utils.find_mcdr_in(self.path, exclude)
+
+    def holds_port(self, process: psutil.Process) -> bool:
+        """
+        Whether the port is free or listened on by ``process`` and its descendants only, so that adopting it takes in the whole mirror.
+
+        :raise psutil.Error: if the descendants of ``process`` cannot be read
+        """
+        listeners = self.listener.owners()
+        if None in listeners:
+            return False
+        mirror = {process.pid} | {child.pid for child in process.children(recursive=True)}
+        return listeners <= mirror
+
+    def adopt(self, process: psutil.Process) -> Adoption:
+        """
+        Record ``process``, an MCDR of the mirror that runs outside the record, as the root of the mirror, together with its console.
+
+        :raise psutil.Error: if the process is gone or cannot be read
+        """
+        adoption = self._console_of(process)
+        self.tracker.adopt(self.name, self.path, process, adoption)
+        return adoption
+
+    def _console_of(self, process: psutil.Process) -> Adoption:
+        """The console of a process this backend did not launch, if the backend can type into it."""
+        return Adoption(None)
 
     def forcekill_targets(self) -> KillTargets:
         view = self.tracker.observe(self.listener)

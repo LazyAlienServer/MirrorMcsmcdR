@@ -62,6 +62,7 @@
 | `!!mirror stop`                         | 停止镜像服                          |
 | `!!mirror kill`                         | 终止镜像服                          |
 | `!!mirror kill -f`                      | 强制终止镜像服（terminal 代理） |
+| `!!mirror recover [pid]`                | 接管不是插件启动的镜像服（terminal 代理） |
 | `!!mirror sync`                         | 同步文件                            |
 | `!!mirror confirm`                      | 确认待执行操作                      |
 | `!!mirror reload`                       | 热重载镜像服配置                    |
@@ -231,7 +232,7 @@ terminal:
 | 正在停止 | 已发送关闭指令，正在等待进程退出 | `kill`、`kill -f` |
 | 服务端已停止, MCDR仍在运行 | 服务端已退出，MCDR空闲或正在退出 | `start`、`stop`、`kill`、`kill -f`；开启`auto_mcdr_stop`时可`sync` |
 | 状态未知 | 端口被不是插件启动的进程占用 | `kill -f` |
-| 状态未知 | 启动目录中有不是插件启动的MCDR在运行（见下文） | 无，请手动关闭它 |
+| 状态未知 | 启动目录中有不是插件启动的MCDR在运行（见下文） | `recover` |
 
 `服务端已停止, MCDR仍在运行`时，`start`和`stop`不会再启动一个镜像服，而是向仍在运行的MCDR的控制台输入指令：`start`输入`!!MCDR server start`，在这个MCDR中启动服务端；`stop`输入`!!MCDR server exit`，让MCDR退出。MCDR正在退出时会拒绝启动服务端，此时状态会变为`已停止`。
 
@@ -249,7 +250,22 @@ terminal:
 > - 端口被占用时，状态为`状态未知`，只能用`!!mirror kill -f`终止；
 > - 端口未被占用时（镜像服正在启动、正在停止，或服务端已在MCDR内停止），平时的状态检查看不到它。因此`!!mirror status`、`start`和`sync`判断为`已停止`后，会在本机所有进程中查找工作目录为`launch_path`的MCDR。找到时状态为`状态未知`，`start`和`sync`会被拒绝。只查找与插件属于同一用户、且能读取到信息的进程；`is_mcdr`为`false`时不查找。
 >
-> 因此，请只通过本插件启动镜像服。
+> 这样的镜像服可以用`!!mirror recover`接管，见下文。
+
+#### 接管镜像服
+
+`!!mirror recover`在本机所有进程中查找工作目录为`launch_path`、不在记录中的MCDR，把它和它启动的进程写入记录。接管之后，插件像对待自己启动的镜像服一样判断状态、执行`stop`、`kill`和同步。
+
+- 只找到一个时，插件会列出它，并要求`!!mirror confirm`确认；找到多个时，插件会列出它们，请用`!!mirror recover <pid>`指定其中一个。指定的PID必须在列出的进程之中，指定PID时不需要确认；
+- 配置的端口被这个MCDR及其子进程以外的进程占用时，不会接管；
+- 记录中仍有运行的进程时，或同步进行期间，不会接管；
+- 插件会找到这个MCDR所在的控制台，之后向其中输入指令：
+  - `windows`代理：MCDR所在的控制台窗口；
+  - `linux`代理：MCDR所在的screen会话和窗口，可以是用户自己的、有多个窗口的会话；
+  - `subprocess`代理，或MCDR不在控制台或screen中：没有控制台，接管后状态带有`已失去控制台`，只能用`kill -f`结束。
+- 控制台不属于插件：`kill`和`kill -f`只结束MCDR及其子进程，不关闭用户的命令行窗口或screen会话。
+
+`recover`默认需要权限等级3，可通过`command.permission.recover`修改。MCSManager不提供此指令。
 
 <br>
 
@@ -407,6 +423,7 @@ permission:
   confirm: 0
   log: "console"
   input: "console"
+  recover: 3
 ```
 `int | str`
 - 执行各指令所需的最低MCDR权限等级，或设置为`console`以限制只允许控制台执行
@@ -575,6 +592,7 @@ display:
       confirm: 0
       log: console
       input: console
+      recover: 3
     action:
       status:
         require_confirm: false

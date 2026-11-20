@@ -87,6 +87,11 @@ def is_shell(process: psutil.Process) -> bool:
     return process.name().lower() in _SHELLS
 
 
+def is_console_host(process: psutil.Process) -> bool:
+    """Whether the process hosts the console window of its parent on Windows. :raise psutil.Error: if the name cannot be read"""
+    return process.name().lower() == "conhost.exe"
+
+
 def is_server_of(process: psutil.Process, mcdr: psutil.Process) -> bool:
     """
     Whether ``process``, a child of ``mcdr``, is the server as the config of that MCDR describes it now.

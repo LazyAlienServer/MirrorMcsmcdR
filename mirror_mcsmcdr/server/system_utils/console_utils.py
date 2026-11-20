@@ -28,13 +28,17 @@ class InputRecord(ctypes.Structure):
     _fields_ = [("EventType", wintypes.WORD), ("Event", KeyEvent)]
 
 
-pid, text = int(sys.argv[1]), sys.argv[2] + "\r"
+pid = int(sys.argv[1])
 kernel32.FreeConsole()
 if not kernel32.AttachConsole(pid):
     sys.exit(1)
 console_input = kernel32.CreateFileW("CONIN$", GENERIC_READ_WRITE, FILE_SHARE_READ_WRITE, None, OPEN_EXISTING, 0, None)
 if console_input == wintypes.HANDLE(-1).value:
     sys.exit(1)
+if len(sys.argv) < 3:
+    # only asked whether there is a console to type into
+    sys.exit(0)
+text = sys.argv[2] + "\r"
 records = (InputRecord * (len(text) * 2))()
 for index, char in enumerate(text):
     for offset, key_down in enumerate((True, False)):
@@ -56,10 +60,19 @@ def send_console_command(pid: int, command: str) -> bool:
 
     :return: whether the command was typed; ``False`` if the process is gone or has no console
     """
+    return _run_helper(str(pid), command)
+
+
+def has_console(pid: int) -> bool:
+    """Whether the given process runs in a console that input can be typed into. Windows only."""
+    return _run_helper(str(pid))
+
+
+def _run_helper(*args: str) -> bool:
     assert sys.platform == "win32"
     try:
         return subprocess.run(
-            [sys.executable, "-c", _TYPE_INTO_CONSOLE, str(pid), command],
+            [sys.executable, "-c", _TYPE_INTO_CONSOLE, *args],
             creationflags=subprocess.CREATE_NO_WINDOW,
             timeout=10,
         ).returncode == 0

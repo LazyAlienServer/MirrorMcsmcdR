@@ -48,6 +48,7 @@ mirror_mcsmcdr:
       start: §7{prefix} start §fStart §b{server_name}§f
       stop: §7{prefix} stop §fStop §b{server_name}§f
       kill: §7{prefix} kill [-f|--force] §fKill §b{server_name}§f
+      recover: §7{prefix} recover [pid] §fAdopt a §b{server_name}§f the plugin did not start
       sync: §7{prefix} sync §fSynchronize §b{server_name}§f
       history: §7{prefix} history [page] §fView synchronization history
       reload: §7{prefix} reload §fReload config of §b{server_name}§f
@@ -68,6 +69,7 @@ mirror_mcsmcdr:
         kill: §b{server_name}§f will be killed; §7{prefix} confirm §fto confirm
         forcekill: §fThe processes of §b{server_name}§f listed above will be §cforce-killed§f; §7{prefix} confirm §fto confirm
         sync: §b{server_name}§f will be synced; §7{prefix} confirm §fto confirm
+        recover: §fThe processes listed above will be adopted; §7{prefix} confirm §fto confirm
       cancel: Operation §b{server_name}-{action}§c cancelled
       previous: Previous operation §b{server_name}-{action}§c cancelled
       timeout: Operation §b{server_name}-{action}§c timed out and was cancelled
@@ -92,6 +94,24 @@ mirror_mcsmcdr:
       not_running: "§b{server_name}§c is not running; cannot send command"
       unavailable: "§cThis command is only available with the §7subprocess§c proxy"
       unknown: "§cThe status of §b{server_name}§c is unknown; cannot send command. Check §7{prefix} status§c first"
+    recover:
+      success: adopted
+      no_console: "§eNo console to type commands into was found; only §7{prefix} kill -f§e can end it"
+      found:
+        title: "§eMCDR in the launch path not started by the plugin§7: §b{count}"
+        count: "§eMCDR in the launch path not started by the plugin§7: §b{count}"
+      adopted:
+        title: "§eAdopted processes§7:"
+        count: "§eAdopted §b{count} §fprocess(es)"
+      fail:
+        unsupported: The current config does not support the §7recover§f command; configure §7'terminal'
+        tracked: "the plugin is tracking the processes of §b{server_name}§f; there is nothing to adopt"
+        none_found: there is no MCDR in the launch path that the plugin did not start
+        ambiguous: several MCDR instances were found; pick one with §7{prefix} recover <pid>
+        not_found: PID §b{pid}§f is not an MCDR that can be adopted
+        foreign_listener: the port is held by a process outside this MCDR; nothing was adopted
+        gone: the process has exited; nothing was adopted
+        syncing: syncing; please wait until the sync has finished
     state:
       unknown: status unknown
       stopped: stopped
@@ -109,7 +129,7 @@ mirror_mcsmcdr:
       line: "§eDetail§7: §f{detail}"
       panel: reported by MCSManager
       foreign_listener: "the port is held by processes not started by the plugin; §7{prefix} kill -f§f ends them"
-      untracked: "an MCDR not started by the plugin is running in the launch path; the plugin cannot control it, so stop it by hand first"
+      untracked: "an MCDR not started by the plugin is running in the launch path; §7{prefix} recover§f adopts it"
       start_pending: "starting command sent; waiting for the server to open the port"
       port_closed: "the server process is running but the port is not open; if it stays so, check §7'port'§f in the config, or end it with §7{prefix} kill"
       stop_pending: "stopping command sent; waiting for the processes to exit"
