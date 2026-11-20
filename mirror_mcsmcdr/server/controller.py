@@ -9,7 +9,7 @@ import psutil
 from mirror_mcsmcdr.server.action import TERMINATIONS, Action, ActionResult, Intent
 from mirror_mcsmcdr.server.backend.base import KillTargets, ServerBackend, TerminalProxy
 from mirror_mcsmcdr.server.resolver import StatusResolver
-from mirror_mcsmcdr.server.status import Evidence, ProcessInfo, ServerState, StatusSnapshot
+from mirror_mcsmcdr.server.status import Evidence, Origin, ProcessInfo, ServerState, StatusSnapshot
 from mirror_mcsmcdr.server.system_utils import process_utils
 
 
@@ -108,7 +108,7 @@ class ServerController:
         if scan and evidence.panel_state is None and evidence.port_listening is not None and not evidence.members_alive:
             terminal = self._terminal()
             if terminal is not None:
-                untracked = tuple(process_utils.describe(process, False) for process in terminal.find_untracked())
+                untracked = tuple(process_utils.describe(process, Origin.UNTRACKED) for process in terminal.find_untracked())
                 evidence = replace(evidence, untracked=untracked)
         snapshot = StatusResolver.resolve(evidence, intent.action if intent is not None else None)
         if intent is not None and snapshot.state is not self._PENDING_STATES[intent.action]:
@@ -172,7 +172,7 @@ class ServerController:
             if self.status().evidence.members_alive:
                 return RecoverResult(RecoverOutcome.TRACKED)
             processes = terminal.find_untracked()
-            found = tuple(process_utils.describe(process, False) for process in processes)
+            found = tuple(process_utils.describe(process, Origin.UNTRACKED) for process in processes)
             if not processes:
                 return RecoverResult(RecoverOutcome.NONE_FOUND)
             if pid is None and len(processes) > 1:
@@ -180,7 +180,7 @@ class ServerController:
             process = next((process for process in processes if pid is None or process.pid == pid), None)
             if process is None:
                 return RecoverResult(RecoverOutcome.NOT_FOUND, found)
-            picked = process_utils.describe(process, False)
+            picked = process_utils.describe(process, Origin.PICKED)
             try:
                 if not terminal.holds_port(process):
                     return RecoverResult(RecoverOutcome.FOREIGN_LISTENER, found, picked)
@@ -191,7 +191,7 @@ class ServerController:
                 return RecoverResult(RecoverOutcome.GONE, found, picked)
             # a start or stop issued before is not what the adopted mirror is doing
             self._set_intent(None)
-            return RecoverResult(RecoverOutcome.ADOPTED, found, picked, adoption.console is not None)
+            return RecoverResult(RecoverOutcome.ADOPTED, found, replace(picked, origin=Origin.ADOPTED), adoption.console is not None)
 
     def _terminal(self) -> Optional[TerminalProxy]:
         """The backend that runs the forced kill, which is the one that tracks the processes."""

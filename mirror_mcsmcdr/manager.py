@@ -10,7 +10,7 @@ from mirror_mcsmcdr.runtime import MirrorRuntime
 from mirror_mcsmcdr.sync.workflow import SyncWorkflow, backup_error_console_lines, describe_backup_error
 from mirror_mcsmcdr.sync.backup import BackupError, BackupWarning, MirrorBackup
 from mirror_mcsmcdr.text_utils import detail_lines, help_msg, rejection_lines, rtr, status_key
-from mirror_mcsmcdr.server import Action, MCSManagerProxyError, ProcessInfo, ProcessTracker, RecoverOutcome, RecoverResult, ScreenError, ServerState, StatusSnapshot, WaitEnd
+from mirror_mcsmcdr.server import Action, MCSManagerProxyError, Origin, ProcessInfo, ProcessTracker, RecoverOutcome, RecoverResult, ScreenError, ServerState, StatusSnapshot, WaitEnd
 from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
 from mirror_mcsmcdr.command_utils.page_utils import Page
 from mirror_mcsmcdr.command_utils.confirmation_utils import ConfirmationTask, ConfirmationManager
@@ -387,14 +387,13 @@ class MirrorManager:
         for info in processes:
             self.server.logger.info(self._console_process_line(info))
         protected: set[str] = set(runtime.config.display.protected_process_info)
-        foreign = sum(not info.in_record for info in processes)
+        foreign = sum(info.origin is Origin.UNTRACKED for info in processes)
         if {"name", "pid"} <= protected:
             source.reply(self.rtr(f"{key}.count", title, count=len(processes), foreign=foreign, **kwargs))
             return
         source.reply(self.rtr(f"{key}.title", title, count=len(processes), **kwargs))
         for info in processes:
-            item = "item" if info.in_record else "item_foreign"
-            source.reply(self.rtr(f"command.process.{item}", title=False, process=self._process_text(info, protected)))
+            source.reply(self.rtr(f"command.process.item.{info.origin.value}", title=False, process=self._process_text(info, protected)))
 
     def _console_process_line(self, info: ProcessInfo) -> RTextBase:
         """Everything about a process, command line included: for the console only."""
@@ -404,7 +403,7 @@ class MirrorManager:
             name=info.name or "?",
             pid=info.pid if info.pid is not None else "?",
             cmdline=info.cmdline,
-            origin=self.rtr(f"command.process.{'in_record' if info.in_record else 'not_in_record'}", title=False),
+            origin=self.rtr(f"command.process.origin.{info.origin.value}", title=False),
         )
 
     def _single_process_text(self, info: Optional[ProcessInfo], protected: set[str]) -> str:

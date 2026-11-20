@@ -53,6 +53,18 @@ class Detail(Enum):
     MCDR_MISSING = "mcdr_missing"
 
 
+class Origin(Enum):
+    """How a process came to be reported, as far as the record goes."""
+
+    # in the record, after the plugin launched it
+    LAUNCHED = "launched"
+    # in the record, after the plugin adopted it
+    ADOPTED = "adopted"
+    # not in the record yet, about to be adopted
+    PICKED = "picked"
+    UNTRACKED = "untracked"
+
+
 @dataclass(frozen=True)
 class ProcessInfo:
     """A process as it is reported; the command line is for the console only."""
@@ -61,7 +73,7 @@ class ProcessInfo:
     pid: Optional[int]
     name: str
     cmdline: str
-    in_record: bool
+    origin: Origin
 
 
 @dataclass(frozen=True)

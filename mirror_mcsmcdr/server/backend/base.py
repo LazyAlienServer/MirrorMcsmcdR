@@ -8,7 +8,7 @@ import psutil
 
 from mirror_mcsmcdr.config.proxy_config import TerminalConfig
 from mirror_mcsmcdr.server.action import Action, ActionResult
-from mirror_mcsmcdr.server.status import Evidence, ProcessInfo, ServerState
+from mirror_mcsmcdr.server.status import Evidence, Origin, ProcessInfo, ServerState
 from mirror_mcsmcdr.server.system_utils import process_utils
 from mirror_mcsmcdr.server.system_utils.port_utils import PortListener
 from mirror_mcsmcdr.server.tracker import Adoption, ProcessRecord, ProcessTracker, Role, TreeView
@@ -175,6 +175,7 @@ class TerminalProxy(ServerBackend, ABC):
         if server is None:
             server = next((live for live in reversed(view.members) if live.member.role in server_roles), None)
         mcdr = next((live for live in view.members if live.member.role is Role.MCDR), None) if self.is_mcdr else None
+        origin = self._member_origin(view)
         return Evidence(
             port_listening=bool(view.listeners),
             foreign_listeners=tuple(self._describe_listener(pid) for pid in view.foreign_listeners()),
@@ -185,9 +186,9 @@ class TerminalProxy(ServerBackend, ABC):
             # a launch by another backend cannot be controlled from this one
             endpoint_alive=view.record is not None and view.record.backend == self.name and self._endpoint_alive(view),
             port=self.listener.port,
-            mcdr_process=process_utils.describe(mcdr.process, True) if mcdr is not None else None,
-            server_process=process_utils.describe(server.process, True) if server is not None else None,
-            child_processes=tuple(process_utils.describe(live.process, True) for live in view.members if live.member.role is Role.CHILD),
+            mcdr_process=process_utils.describe(mcdr.process, origin) if mcdr is not None else None,
+            server_process=process_utils.describe(server.process, origin) if server is not None else None,
+            child_processes=tuple(process_utils.describe(live.process, origin) for live in view.members if live.member.role is Role.CHILD),
             others_count=sum(live.member.role is Role.OTHER and live is not server for live in view.members) if self.is_mcdr else 0,
         )
 
@@ -257,7 +258,8 @@ class TerminalProxy(ServerBackend, ABC):
 
     def forcekill_targets(self) -> KillTargets:
         view = self.tracker.observe(self.listener)
-        targets = [(process_utils.describe(live.process, True), live.process) for live in view.members]
+        origin = self._member_origin(view)
+        targets = [(process_utils.describe(live.process, origin), live.process) for live in view.members]
         unreadable = False
         for pid in view.foreign_listeners():
             try:
@@ -269,7 +271,7 @@ class TerminalProxy(ServerBackend, ABC):
             if process is None:
                 unreadable = True
                 continue
-            targets.append((process_utils.describe(process, False), process))
+            targets.append((process_utils.describe(process, Origin.UNTRACKED), process))
         return KillTargets(view.record, tuple(targets), unreadable)
 
     def _forcekill(self, result: ActionResult) -> ActionResult:
@@ -302,10 +304,14 @@ class TerminalProxy(ServerBackend, ABC):
         return errors
 
     @staticmethod
+    def _member_origin(view: TreeView) -> Origin:
+        return Origin.ADOPTED if view.record is not None and view.record.adoption is not None else Origin.LAUNCHED
+
+    @staticmethod
     def _describe_listener(pid: Optional[int]) -> ProcessInfo:
         if pid is None:
-            return ProcessInfo(None, "", "", False)
+            return ProcessInfo(None, "", "", Origin.UNTRACKED)
         try:
-            return process_utils.describe(psutil.Process(pid), False)
+            return process_utils.describe(psutil.Process(pid), Origin.UNTRACKED)
         except psutil.Error:
-            return ProcessInfo(pid, "", "", False)
+            return ProcessInfo(pid, "", "", Origin.UNTRACKED)

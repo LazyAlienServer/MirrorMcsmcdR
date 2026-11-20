@@ -7,7 +7,7 @@ from typing import Collection, Optional
 import psutil
 
 from mirror_mcsmcdr.mcdr_config import CONFIG_FILE, MCDRConfigError, read_mcdr_config
-from mirror_mcsmcdr.server.status import ProcessInfo
+from mirror_mcsmcdr.server.status import Origin, ProcessInfo
 
 # python, python3, python3.12, pythonw, pypy3 and their .exe forms
 _PYTHON = re.compile(r"^(python|pythonw|pypy)(\d+(\.\d+)*)?(\.exe)?$")
@@ -190,7 +190,7 @@ def _same_path(a: str, b: str) -> bool:
     return _normalized(a) == _normalized(b)
 
 
-def describe(process: psutil.Process, in_record: bool) -> ProcessInfo:
+def describe(process: psutil.Process, origin: Origin) -> ProcessInfo:
     """What can be said about a process; what cannot be read is left empty."""
     try:
         name = process.name()
@@ -200,4 +200,4 @@ def describe(process: psutil.Process, in_record: bool) -> ProcessInfo:
         cmdline = " ".join(process.cmdline())
     except psutil.Error:
         cmdline = ""
-    return ProcessInfo(process.pid, name, cmdline, in_record)
+    return ProcessInfo(process.pid, name, cmdline, origin)

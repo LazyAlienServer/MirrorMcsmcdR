@@ -177,11 +177,17 @@ mirror_mcsmcdr:
       count: "§b{count} §f个"
 
     process:
-      item: "§7- §f{process}"
-      item_foreign: "§7- §f{process} §c（不是插件启动的）"
+      item:
+        launched: "§7- §f{process}"
+        adopted: "§7- §f{process} §e（已接管）"
+        picked: "§7- §f{process} §e（即将接管）"
+        untracked: "§7- §f{process} §c（未跟踪）"
       unreadable: "无法读取的进程"
-      in_record: 插件启动的进程
-      not_in_record: 不是插件启动的进程
+      origin:
+        launched: 插件启动的进程
+        adopted: 插件接管的进程
+        picked: 即将接管的进程
+        untracked: 插件未跟踪的进程
       console: "§b{prefix}§f: {name} (PID §b{pid}§f)，{origin}，命令行: §7{cmdline}"
 
     start:

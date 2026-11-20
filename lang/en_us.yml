@@ -177,11 +177,17 @@ mirror_mcsmcdr:
       count: "§b{count}"
 
     process:
-      item: "§7- §f{process}"
-      item_foreign: "§7- §f{process} §c(not started by the plugin)"
+      item:
+        launched: "§7- §f{process}"
+        adopted: "§7- §f{process} §e(adopted)"
+        picked: "§7- §f{process} §e(to be adopted)"
+        untracked: "§7- §f{process} §c(not tracked)"
       unreadable: "a process that cannot be read"
-      in_record: started by the plugin
-      not_in_record: not started by the plugin
+      origin:
+        launched: started by the plugin
+        adopted: adopted by the plugin
+        picked: about to be adopted
+        untracked: not tracked by the plugin
       console: "§b{prefix}§f: {name} (PID §b{pid}§f), {origin}, command line: §7{cmdline}"
 
     start:
