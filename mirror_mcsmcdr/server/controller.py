@@ -180,7 +180,7 @@ class ServerController:
             process = next((process for process in processes if pid is None or process.pid == pid), None)
             if process is None:
                 return RecoverResult(RecoverOutcome.NOT_FOUND, found)
-            picked = process_utils.describe(process, dry_run is False)
+            picked = process_utils.describe(process, False)
             try:
                 if not terminal.holds_port(process):
                     return RecoverResult(RecoverOutcome.FOREIGN_LISTENER, found, picked)
