@@ -17,3 +17,5 @@ class TerminalConfig(Serializable):
     is_mcdr: bool = True
     proxy_type: Optional[Literal["windows", "linux", "subprocess"]] = None
     console_log: bool = False
+    # adopt the mirror's MCDR found running outside the record when the plugin loads
+    auto_recover: bool = True

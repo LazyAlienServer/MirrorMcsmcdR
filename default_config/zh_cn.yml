@@ -34,6 +34,8 @@
     proxy_type:
     # 子进程控制台输出是否默认显示。
     console_log: false
+    # 插件加载时，若记录中没有运行的进程，而启动目录中恰好有一个不是插件启动的 MCDR，是否自动接管它；为 false 时只提示。
+    auto_recover: true
 
   # 文件同步设置。
   sync:

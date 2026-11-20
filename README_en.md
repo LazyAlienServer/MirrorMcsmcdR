@@ -38,7 +38,7 @@
 
 The new version requires MCDReforged `>=2.16.0`; upgrade it if needed.
 
-Stop the mirror server by hand before upgrading. The new version only knows the processes it started and recorded itself; a mirror server started by an older version is not in the record (see [Mirror server status](#mirror-server-status)).
+A mirror server started by an older version is not in the new version's record (see [Mirror server status](#mirror-server-status)). It can keep running through the upgrade: the plugin adopts it when it loads (see [Adopting a mirror server](#adopting-a-mirror-server)). When it cannot be adopted automatically, the plugin says so in the console and in the game; adopt it with `!!mirror recover` then, or stop it by hand. With `is_mcdr` set to `false` the plugin does not look for the mirror server; stop it by hand before upgrading.
 
 After upgrading, check the configuration file:
 - The `rcon` section is removed, and an old `rcon` section is ignored. Use MCSManager to control a mirror server on another host;
@@ -163,6 +163,7 @@ terminal:
   is_mcdr: true
   proxy_type:
   console_log: false
+  auto_recover: true
 ```
 When `proxy_type` is `linux`, the plugin creates a new screen; when it is `windows`, it creates a new command prompt; and when it is `subprocess`, it starts the mirror server as a child process inside MCDR. The screen or terminal created by the Linux/Windows proxies is closed automatically after the mirror server stops.
 
@@ -212,6 +213,9 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 
 **console_log** `bool`
 - Whether to output the subprocess proxy's mirror server console logs to the MCDR console by default. This option only applies to the `subprocess` proxy.
+
+**auto_recover** `bool`
+- Whether the plugin, when it loads with no running process in its record, adopts an MCDR it did not start that runs in the launch path. Defaults to `true`. It adopts only when it finds exactly one, and the configured port is free or listened on by that MCDR and its children; it then lists the processes in the console and tells the game once. Otherwise, and with `false`, it only reports what it found; `!!mirror recover` adopts it by hand. See [Adopting a mirror server](#adopting-a-mirror-server).
 
 #### Mirror server status
 
@@ -268,6 +272,8 @@ When the server process is running but the port never opens, the status stays at
   - `linux` proxy: the screen session and window of the MCDR, which may be the user's own session with several windows;
   - `subprocess` proxy, or an MCDR outside any console or screen: there is no console; after adopting, the status carries `Console lost`, and only `kill -f` can end it.
 - The console does not belong to the plugin: `kill` and `kill -f` end only the MCDR and its children, and leave the user's command prompt window or screen session open.
+
+The plugin also looks once when it loads, and adopts or only reports what it finds according to [`auto_recover`](#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line).
 
 `recover` requires permission level 3 by default; change it with `command.permission.recover`. It is not offered with MCSManager.
 
@@ -572,6 +578,7 @@ display:
         is_mcdr: true
         proxy_type: null
         console_log: false
+        auto_recover: true
     sync:
         world:
             - "world"

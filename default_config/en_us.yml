@@ -34,6 +34,8 @@
     proxy_type:
     # Whether subprocess console output is shown by default.
     console_log: false
+    # Whether the plugin, when it loads with no running process in its record, adopts the one MCDR it finds running in the launch path; false only reports it.
+    auto_recover: true
 
   # File synchronization settings.
   sync:

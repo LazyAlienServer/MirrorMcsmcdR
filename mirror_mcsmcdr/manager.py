@@ -109,7 +109,8 @@ class MirrorManager:
 
         server.logger.info(rtr("manager.load", prefix=command_prefix))
         self._register_commands(reload_method)
-        self._apply_config(config)
+        if self._apply_config(config) and self._runtime is not None:
+            self._recover_on_load(self._runtime)
 
     def _register_commands(self, reload_method: Callable[[str], bool]) -> None:
         command_prefix = self.command_prefix
@@ -384,14 +385,7 @@ class MirrorManager:
         :param kwargs: for the first line
         """
         for info in processes:
-            self.server.logger.info(self.rtr(
-                "command.process.console",
-                title=False,
-                name=info.name or "?",
-                pid=info.pid if info.pid is not None else "?",
-                cmdline=info.cmdline,
-                origin=self.rtr(f"command.process.{'in_record' if info.in_record else 'not_in_record'}", title=False),
-            ))
+            self.server.logger.info(self._console_process_line(info))
         protected: set[str] = set(runtime.config.display.protected_process_info)
         foreign = sum(not info.in_record for info in processes)
         if {"name", "pid"} <= protected:
@@ -401,6 +395,17 @@ class MirrorManager:
         for info in processes:
             item = "item" if info.in_record else "item_foreign"
             source.reply(self.rtr(f"command.process.{item}", title=False, process=self._process_text(info, protected)))
+
+    def _console_process_line(self, info: ProcessInfo) -> RTextBase:
+        """Everything about a process, command line included: for the console only."""
+        return self.rtr(
+            "command.process.console",
+            title=False,
+            name=info.name or "?",
+            pid=info.pid if info.pid is not None else "?",
+            cmdline=info.cmdline,
+            origin=self.rtr(f"command.process.{'in_record' if info.in_record else 'not_in_record'}", title=False),
+        )
 
     def _single_process_text(self, info: Optional[ProcessInfo], protected: set[str]) -> str:
         if info is None:
@@ -536,6 +541,29 @@ class MirrorManager:
         source.reply(self.rtr("command._execute.fail", prompt=prompt))
         if result.outcome in (RecoverOutcome.AMBIGUOUS, RecoverOutcome.NOT_FOUND) and result.found:
             self._report_processes(runtime, source, result.found, "command.recover.found", title=False)
+
+    @new_thread(f"{TITLE}-recover")
+    def _recover_on_load(self, runtime: MirrorRuntime) -> None:
+        """
+        Look for the mirror's MCDR running outside the record, as one started by hand or by an older version is,
+        and adopt it if the config allows and nothing makes it doubtful; otherwise only tell about it.
+        """
+        auto = runtime.config.terminal.auto_recover
+        try:
+            result = runtime.controller.recover(None, dry_run=not auto)
+        except Exception as e:
+            self.server.logger.warning(self.rtr("command.recover.auto.error", title=False, e=e), exc_info=e)
+            return
+        if self._unloaded or result.outcome in (RecoverOutcome.UNSUPPORTED, RecoverOutcome.TRACKED, RecoverOutcome.NONE_FOUND):
+            return
+        adopted = auto and result.ok
+        reason = "adopted" if adopted else ("found" if result.ok else result.outcome.value)
+        self.server.logger.warning(self.rtr(f"command.recover.auto.console.{reason}", title=False))
+        for info in (result.picked,) if result.picked is not None and result.ok else result.found:
+            self.server.logger.warning(self._console_process_line(info))
+        if adopted and not result.console:
+            self.server.logger.warning(self.rtr("command.recover.no_console", title=False))
+        self.server.broadcast(self.rtr(f"command.recover.auto.{'adopted' if adopted else 'found'}"))
 
     def stop(self, source: CommandSource, context: CommandContext) -> None:
         self._run_command("stop", source, lambda runtime: self._execute(runtime, source, Action.STOP), checked=Action.STOP)

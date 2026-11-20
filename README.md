@@ -38,7 +38,7 @@
 
 新版本要求MCDReforged`>=2.16.0`，请注意升级。
 
-升级前请先手动停止镜像服。新版本只认识自己启动并记录的进程，旧版本启动的镜像服不在记录中（见[镜像服状态](#镜像服状态)）。
+旧版本启动的镜像服不在新版本的记录中（见[镜像服状态](#镜像服状态)）。升级时镜像服可以保持运行：插件加载时会自动接管它（见[接管镜像服](#接管镜像服)）。无法自动接管时，插件会在控制台和游戏内提示，此时请用`!!mirror recover`手动接管，或手动停止镜像服。`is_mcdr`为`false`时，插件不会查找镜像服，请在升级前手动停止它。
 
 升级后请检查配置文件：
 - `rcon`配置已删除，旧配置中的`rcon`会被忽略。需要跨主机控制镜像服时，请使用MCSManager；
@@ -159,6 +159,7 @@ terminal:
   is_mcdr: true
   proxy_type: 
   console_log: false
+  auto_recover: true
 ```
 当`proxy_type`为`linux`时，插件会创建一个新的screen；为`windows`时，会创建一个新的命令行终端；为`subprocess`时，会在MCDR进程内启动镜像服子进程。镜像服停止后，Linux/Windows代理创建的screen/终端会自动关闭。
 
@@ -208,6 +209,9 @@ terminal:
 
 **console_log** `bool`
 - 是否默认将`subprocess`代理的镜像服控制台日志输出到MCDR控制台。此配置仅对`subprocess`代理生效。
+
+**auto_recover** `bool`
+- 插件加载时，如果记录中没有运行的进程，而启动目录中有不是插件启动的MCDR，是否自动接管它，默认为`true`。只有恰好找到一个、且配置的端口空闲或由它及其子进程监听时，插件才会接管，并在控制台列出进程、在游戏内提示一次。其他情况下，以及设置为`false`时，插件只提示，可以用`!!mirror recover`手动接管。见[接管镜像服](#接管镜像服)。
 
 #### 镜像服状态
 
@@ -264,6 +268,8 @@ terminal:
   - `linux`代理：MCDR所在的screen会话和窗口，可以是用户自己的、有多个窗口的会话；
   - `subprocess`代理，或MCDR不在控制台或screen中：没有控制台，接管后状态带有`已失去控制台`，只能用`kill -f`结束。
 - 控制台不属于插件：`kill`和`kill -f`只结束MCDR及其子进程，不关闭用户的命令行窗口或screen会话。
+
+插件加载时也会查找一次，并按[`auto_recover`](#terminal-通过命令行启动镜像服终端的配置)自动接管或只提示。
 
 `recover`默认需要权限等级3，可通过`command.permission.recover`修改。MCSManager不提供此指令。
 
@@ -569,6 +575,7 @@ display:
     is_mcdr: true
     proxy_type:
     console_log: false
+    auto_recover: true
 
   sync:
     world:

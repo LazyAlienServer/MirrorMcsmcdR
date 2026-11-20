@@ -103,6 +103,16 @@ mirror_mcsmcdr:
       adopted:
         title: "§e已接管的进程§7:"
         count: "§e已接管 §b{count} §f个进程"
+      auto:
+        adopted: "§e已自动接管不是插件启动的 §b{server_name}§e，详情见控制台"
+        found: "§e发现不是插件启动的 §b{server_name}§e，未自动接管，可使用 §7{prefix} recover §e接管，详情见控制台"
+        error: "§c查找不是插件启动的 §b{server_name} §c时出错: {e}"
+        console:
+          adopted: "已自动接管启动目录中不是插件启动的 MCDR:"
+          found: "启动目录中有不是插件启动的 MCDR，terminal.auto_recover 为 false，未自动接管:"
+          ambiguous: "启动目录中有多个不是插件启动的 MCDR，未自动接管，请使用 {prefix} recover <pid> 指定:"
+          foreign_listener: "启动目录中有不是插件启动的 MCDR，但端口被它以外的进程占用，未自动接管:"
+          gone: "启动目录中不是插件启动的 MCDR 在接管时退出了:"
       fail:
         unsupported: 当前配置文件不支持 §7recover§f 命令，需要配置 §7'terminal'
         tracked: 插件正在跟踪 §b{server_name} §f的进程，无需接管

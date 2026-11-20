@@ -103,6 +103,16 @@ mirror_mcsmcdr:
       adopted:
         title: "§eAdopted processes§7:"
         count: "§eAdopted §b{count} §fprocess(es)"
+      auto:
+        adopted: "§eAdopted a §b{server_name}§e the plugin did not start; see the console for details"
+        found: "§eFound a §b{server_name}§e the plugin did not start and did not adopt it; §7{prefix} recover§e adopts it. See the console for details"
+        error: "§cError while looking for a §b{server_name}§c the plugin did not start: {e}"
+        console:
+          adopted: "Adopted the MCDR in the launch path that the plugin did not start:"
+          found: "An MCDR the plugin did not start runs in the launch path; terminal.auto_recover is false, so it was not adopted:"
+          ambiguous: "Several MCDR instances the plugin did not start run in the launch path; none was adopted, pick one with {prefix} recover <pid>:"
+          foreign_listener: "An MCDR the plugin did not start runs in the launch path, but the port is held by a process outside it; it was not adopted:"
+          gone: "The MCDR the plugin did not start exited while it was being adopted:"
       fail:
         unsupported: The current config does not support the §7recover§f command; configure §7'terminal'
         tracked: "the plugin is tracking the processes of §b{server_name}§f; there is nothing to adopt"
