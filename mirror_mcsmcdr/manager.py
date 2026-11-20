@@ -334,7 +334,7 @@ class MirrorManager:
 
     def _status(self, runtime: MirrorRuntime, source: CommandSource) -> None:
         with self._report_api_error(source):
-            snapshot = runtime.controller.status()
+            snapshot = runtime.controller.status(scan=True)
             if snapshot.evidence.empty:
                 prompt = self.rtr("command.status.unsupported", title=False).to_legacy_text()
                 self.server.broadcast(self.rtr("command._execute.fail", prompt=prompt))
@@ -364,6 +364,8 @@ class MirrorManager:
             else:
                 port_state = "listening" if evidence.port_listening else "closed"
                 source.reply(self.rtr(f"command.status.port.{port_state}", title=False, port=evidence.port))
+            if evidence.untracked:
+                self._report_processes(runtime, source, evidence.untracked, "command.status.untracked", title=False)
         for line in detail_lines(self.rtr, snapshot):
             source.reply(line)
 

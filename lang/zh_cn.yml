@@ -109,6 +109,7 @@ mirror_mcsmcdr:
       line: "§e详情§7: §f{detail}"
       panel: 状态由 MCSManager 报告
       foreign_listener: 端口被不是插件启动的进程占用，可使用 §7{prefix} kill -f §f结束这些进程
+      untracked: 启动目录中有不是插件启动的 MCDR 正在运行，插件无法控制它，请先手动关闭
       start_pending: 启动指令已发送，正在等待服务端打开端口
       port_closed: 服务端进程在运行但端口未打开，若一直如此请检查配置中的 §7'port'§f，或使用 §7{prefix} kill §f终止
       stop_pending: 关闭指令已发送，正在等待进程退出
@@ -138,6 +139,9 @@ mirror_mcsmcdr:
       foreign:
         title: "§e端口 §b{port}§7: §c被以下 §b{count} §c个不是插件启动的进程占用:"
         count: "§e端口 §b{port}§7: §c被 §b{count} §c个不是插件启动的进程占用"
+      untracked:
+        title: "§e启动目录中的 MCDR§7: §c以下 §b{count} §c个进程不是插件启动的:"
+        count: "§e启动目录中的 MCDR§7: §b{count} §c个进程不是插件启动的"
       not_running: 未运行
       running: 运行中
       count: "§b{count} §f个"

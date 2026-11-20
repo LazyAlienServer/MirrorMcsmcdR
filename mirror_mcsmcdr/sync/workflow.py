@@ -130,7 +130,8 @@ class SyncWorkflow:
         if not config.ensure_server_closed:
             return True
         controller = runtime.controller
-        snapshot = controller.status()
+        # a mirror running outside the record would have its files changed under it
+        snapshot = controller.status(scan=True)
         if snapshot.safe_to_modify():
             return True
         # a running server is restarted after the sync; an MCDR without a server is only told to exit, nothing was running
@@ -185,7 +186,7 @@ class SyncWorkflow:
             raise self._refuse("failed" if isinstance(e, BackupFailed) else "unavailable", e) from e
 
     def _ensure_stopped(self, runtime: MirrorRuntime) -> None:
-        snapshot = runtime.controller.status()
+        snapshot = runtime.controller.status(scan=True)
         if not snapshot.safe_to_modify():
             raise BackupUnavailable("mirror_not_stopped", status=self._tr(status_key(snapshot), title=False).to_legacy_text())
 

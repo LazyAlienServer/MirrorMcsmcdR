@@ -2,7 +2,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Collection, Optional
 
 import psutil
 
@@ -139,8 +139,50 @@ def _shell_runs(cmdline: list[str], command: str) -> bool:
     return cmdline == ["/bin/sh", "-c", command]
 
 
+def find_mcdr_in(path: str, exclude: Collection[int]) -> list[psutil.Process]:
+    """
+    The MCDR instances of this user that run with ``path`` as their working directory, looked for among all processes.
+
+    Only the outermost of a chain counts: an entry point launcher and the interpreter it starts are one instance.
+    A process whose working directory, owner or arguments cannot be read is passed over.
+
+    :param exclude: pids not to look at
+    """
+    target = _normalized(path)
+    owner = _owner(psutil.Process())
+    found: dict[int, psutil.Process] = {}
+    # by name first: the working directory and the arguments are read from the process itself, which is slow on Windows
+    for process in psutil.process_iter(["name"]):
+        name = (process.info["name"] or "").lower()
+        if process.pid in exclude or not (_PYTHON.match(name) or name in _MCDR_SCRIPTS):
+            continue
+        try:
+            if _normalized(process.cwd()) == target and _owner(process) == owner and is_mcdr(process):
+                found[process.pid] = process
+        except psutil.Error:
+            continue
+    outermost = []
+    for process in found.values():
+        try:
+            if process.ppid() in found:
+                continue
+        except psutil.Error:
+            continue
+        outermost.append(process)
+    return outermost
+
+
+def _owner(process: psutil.Process) -> object:
+    """:raise psutil.Error: if the owner cannot be read"""
+    return process.uids().real if sys.platform.startswith("linux") else process.username()
+
+
+def _normalized(path: str) -> str:
+    return os.path.normcase(os.path.realpath(path))
+
+
 def _same_path(a: str, b: str) -> bool:
-    return os.path.normcase(os.path.realpath(a)) == os.path.normcase(os.path.realpath(b))
+    return _normalized(a) == _normalized(b)
 
 
 def describe(process: psutil.Process, in_record: bool) -> ProcessInfo:

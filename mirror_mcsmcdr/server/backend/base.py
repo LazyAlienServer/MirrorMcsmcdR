@@ -1,3 +1,4 @@
+import os
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -213,6 +214,20 @@ class TerminalProxy(ServerBackend, ABC):
 
         :return: whether the console took it
         """
+
+    def find_untracked(self) -> list[psutil.Process]:
+        """
+        The mirror's MCDR instances that run on this machine but are not in the record, such as one started by hand.
+
+        Every process of the machine is looked at, so this is for a decision, not for a watch.
+        Nothing is looked for when the mirror is not run by MCDR.
+        """
+        if not self.is_mcdr:
+            return []
+        tracked, _ = self.tracker.live_processes()
+        # the MCDR this plugin runs in, too: a launch path pointing at its own folder must not make it a mirror
+        exclude = {process.pid for process in tracked} | {os.getpid()}
+        return process_utils.find_mcdr_in(self.path, exclude)
 
     def forcekill_targets(self) -> KillTargets:
         view = self.tracker.observe(self.listener)

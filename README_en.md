@@ -235,6 +235,7 @@ The recorded processes fall into these groups:
 | stopping | The stop command was sent; waiting for the processes to exit | `kill`, `kill -f` |
 | server stopped, MCDR still running | The server has exited; MCDR is idle or exiting | `start`, `stop`, `kill`, `kill -f`; `sync` with `auto_mcdr_stop` |
 | status unknown | The port is held by a process the plugin did not start | `kill -f` |
+| status unknown | An MCDR the plugin did not start is running in the launch path (see below) | none; stop it by hand |
 
 In `server stopped, MCDR still running`, `start` and `stop` do not launch another mirror server; they type a command into the console of the MCDR that is still running: `start` types `!!MCDR server start`, which starts the server in that MCDR, and `stop` types `!!MCDR server exit`, which makes MCDR exit. An MCDR that is exiting refuses to start the server; the status then becomes `stopped`.
 
@@ -250,7 +251,7 @@ When the server process is running but the port never opens, the status stays at
 > [!WARNING]
 > A mirror server this plugin did not start (started by hand, or by an older version of the plugin) is not in the record:
 > - While its port is held, the status is `status unknown`, and only `!!mirror kill -f` can end it;
-> - While its port is free (the mirror server is starting or stopping, or the server has stopped inside MCDR), the status shows `stopped`. `start` then starts a second mirror server, and `sync` writes straight into the world in use.
+> - While its port is free (the mirror server is starting or stopping, or the server has stopped inside MCDR), the usual status check does not see it. So once `!!mirror status`, `start` or `sync` finds the status `stopped`, the plugin looks among all processes of the machine for an MCDR whose working directory is `launch_path`. If there is one, the status is `status unknown`, and `start` and `sync` are refused. Only processes of the plugin's own user whose details can be read are looked at; nothing is looked for with `is_mcdr` set to `false`.
 >
 > So start the mirror server through this plugin only.
 

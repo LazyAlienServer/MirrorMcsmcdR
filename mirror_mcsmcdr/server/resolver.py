@@ -25,6 +25,9 @@ class StatusResolver:
 
         if evidence.port_listening is None:
             state = ServerState.UNKNOWN
+        elif evidence.untracked and not evidence.members_alive:
+            # the mirror runs, but not under the plugin, whether the port is open yet or not
+            state, detail = ServerState.UNKNOWN, Detail.UNTRACKED
         elif evidence.foreign_listeners:
             # the port is held by something the plugin did not launch
             state, detail = ServerState.UNKNOWN, Detail.FOREIGN_LISTENER

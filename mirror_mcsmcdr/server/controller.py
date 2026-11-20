@@ -1,5 +1,5 @@
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from threading import Lock
 from typing import Callable, Optional, Sequence
@@ -8,6 +8,7 @@ from mirror_mcsmcdr.server.action import TERMINATIONS, Action, ActionResult, Int
 from mirror_mcsmcdr.server.backend.base import KillTargets, ServerBackend, TerminalProxy
 from mirror_mcsmcdr.server.resolver import StatusResolver
 from mirror_mcsmcdr.server.status import Evidence, ServerState, StatusSnapshot
+from mirror_mcsmcdr.server.system_utils import process_utils
 
 
 class WaitEnd(Enum):
@@ -53,7 +54,11 @@ class ServerController:
             if self._intent is intent:
                 self._intent = None
 
-    def status(self) -> StatusSnapshot:
+    def status(self, scan: bool = False) -> StatusSnapshot:
+        """
+        :param scan: also look among all processes for the mirror's MCDR running outside the record, while nothing tracked is alive.
+            It costs a look at every process of the machine: for decisions only, never while waiting
+        """
         # read before observing, so that evidence never gets combined with an intent issued after it
         intent = self._intent
         if intent is not None and time.monotonic() >= intent.expires_at:
@@ -66,6 +71,11 @@ class ServerController:
             # the panel settles the status on its own; the remaining backends need not be reachable
             if evidence.panel_state is not None:
                 break
+        if scan and evidence.panel_state is None and evidence.port_listening is not None and not evidence.members_alive:
+            terminal = self._terminal()
+            if terminal is not None:
+                untracked = tuple(process_utils.describe(process, False) for process in terminal.find_untracked())
+                evidence = replace(evidence, untracked=untracked)
         snapshot = StatusResolver.resolve(evidence, intent.action if intent is not None else None)
         if intent is not None and snapshot.state is not self._PENDING_STATES[intent.action]:
             self._settle(intent)
@@ -78,8 +88,9 @@ class ServerController:
 
     def _judge(self, action: Action) -> tuple[ActionResult, Optional[ServerBackend]]:
         """The verdict on ``action`` for the status now, and the backend that would carry it out."""
-        # judged with the pending start or stop still in view: while starting, that is all some backends have
-        result = ActionResult.check(action, self.status())
+        # judged with the pending start or stop still in view: while starting, that is all some backends have.
+        # A start looks for a mirror running outside the record, which a launch would run beside.
+        result = ActionResult.check(action, self.status(scan=action is Action.START))
         backend = next((backend for backend in self.backends if action in backend.supports), None)
         if backend is None:
             return result.reject(ActionResult.Outcome.UNSUPPORTED), None
@@ -110,8 +121,13 @@ class ServerController:
 
     def forcekill_targets(self) -> Optional[KillTargets]:
         """What a forced kill would end; None if no backend can tell."""
+        terminal = self._terminal()
+        return terminal.forcekill_targets() if terminal is not None else None
+
+    def _terminal(self) -> Optional[TerminalProxy]:
+        """The backend that runs the forced kill, which is the one that tracks the processes."""
         backend = next((backend for backend in self.backends if Action.FORCEKILL in backend.supports), None)
-        return backend.forcekill_targets() if isinstance(backend, TerminalProxy) else None
+        return backend if isinstance(backend, TerminalProxy) else None
 
     def wait_until(
         self,

@@ -109,6 +109,7 @@ mirror_mcsmcdr:
       line: "§eDetail§7: §f{detail}"
       panel: reported by MCSManager
       foreign_listener: "the port is held by processes not started by the plugin; §7{prefix} kill -f§f ends them"
+      untracked: "an MCDR not started by the plugin is running in the launch path; the plugin cannot control it, so stop it by hand first"
       start_pending: "starting command sent; waiting for the server to open the port"
       port_closed: "the server process is running but the port is not open; if it stays so, check §7'port'§f in the config, or end it with §7{prefix} kill"
       stop_pending: "stopping command sent; waiting for the processes to exit"
@@ -138,6 +139,9 @@ mirror_mcsmcdr:
       foreign:
         title: "§ePort §b{port}§7: §cheld by the following §b{count} §cprocess(es) not started by the plugin:"
         count: "§ePort §b{port}§7: §cheld by §b{count} §cprocess(es) not started by the plugin"
+      untracked:
+        title: "§eMCDR in the launch path§7: §cthe following §b{count} §cprocess(es) not started by the plugin:"
+        count: "§eMCDR in the launch path§7: §b{count} §cprocess(es) not started by the plugin"
       not_running: not running
       running: running
       count: "§b{count}"
