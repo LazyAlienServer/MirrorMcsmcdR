@@ -36,6 +36,8 @@
     console_log: false
     # Whether the plugin, when it loads with no running process in its record, adopts the one MCDR it finds running in the launch path; false only reports it.
     auto_recover: true
+    # With is_mcdr set to false, the names of the Java processes an untracked server is looked for as; a regular expression, case-insensitive.
+    java_name: '^javaw?\d*(\.exe)?$'
 
   # File synchronization settings.
   sync:

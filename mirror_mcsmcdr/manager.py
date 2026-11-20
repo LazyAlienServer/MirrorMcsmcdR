@@ -92,6 +92,8 @@ class MirrorManager:
         self.server = server
         self.command_prefix = command_prefix
         self.server_name = config.display.server_name
+        # what is looked for outside the record, as the messages about it name it
+        self._server_type = "mcdr" if config.terminal.is_mcdr else "server"
         # outlives the runtimes: what was launched stays tracked across config reloads
         self._tracker = ProcessTracker(
             Path(server.get_data_folder()) / command_prefix / "process.json",
@@ -142,7 +144,8 @@ class MirrorManager:
         builder.register(self.server)
 
     def rtr(self, key: str, title: bool = True, **kwargs: Any) -> RTextBase:
-        return rtr(key, title, prefix=self.command_prefix, server_name=self.server_name, **kwargs)
+        server_type = rtr(f"command.recover.server_type.{self._server_type}", title=False).to_plain_text()
+        return rtr(key, title, prefix=self.command_prefix, server_name=self.server_name, server_type=server_type, **kwargs)
 
     def _apply_config(self, config: MirrorConfig) -> bool:
         """Build a runtime from the config and make it current; on failure the previous state is left untouched."""
@@ -154,6 +157,7 @@ class MirrorManager:
             self.server.logger.error(e, exc_info=e)
             return False
         self.server_name = config.display.server_name
+        self._server_type = "mcdr" if config.terminal.is_mcdr else "server"
         self._runtime = runtime
         self._available = True
         for error in runtime.proxy_errors:
@@ -546,8 +550,10 @@ class MirrorManager:
         """
         Look for the mirror's MCDR running outside the record, as one started by hand or by an older version is,
         and adopt it if the config allows and nothing makes it doubtful; otherwise only tell about it.
+        A plain server is never adopted here: a Java process in the launch path says less than an MCDR does.
         """
-        auto = runtime.config.terminal.auto_recover
+        plain = not runtime.config.terminal.is_mcdr
+        auto = runtime.config.terminal.auto_recover and not plain
         try:
             result = runtime.controller.recover(None, dry_run=not auto)
         except Exception as e:
@@ -556,7 +562,7 @@ class MirrorManager:
         if self._unloaded or result.outcome in (RecoverOutcome.UNSUPPORTED, RecoverOutcome.TRACKED, RecoverOutcome.NONE_FOUND):
             return
         adopted = auto and result.ok
-        reason = "adopted" if adopted else ("found" if result.ok else result.outcome.value)
+        reason = "adopted" if adopted else (("plain" if plain else "found") if result.ok else result.outcome.value)
         self.server.logger.warning(self.rtr(f"command.recover.auto.console.{reason}", title=False))
         for info in (result.picked,) if result.picked is not None and result.ok else result.found:
             self.server.logger.warning(self._console_process_line(info))

@@ -2,7 +2,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Collection, Optional
+from typing import Callable, Collection, Optional
 
 import psutil
 
@@ -153,16 +153,34 @@ def find_mcdr_in(path: str, exclude: Collection[int]) -> list[psutil.Process]:
 
     :param exclude: pids not to look at
     """
+    def named(name: str) -> bool:
+        name = name.lower()
+        return bool(_PYTHON.match(name)) or name in _MCDR_SCRIPTS
+
+    return _find_in(path, exclude, named, is_mcdr)
+
+
+def find_java_in(path: str, exclude: Collection[int], name: re.Pattern[str]) -> list[psutil.Process]:
+    """
+    The Java processes of this user that run with ``path`` as their working directory, as :func:`find_mcdr_in` finds MCDR.
+
+    :param name: what the name of the process has to match, searched for in it as it is
+    """
+    return _find_in(path, exclude, lambda process_name: name.search(process_name) is not None, lambda _: True)
+
+
+def _find_in(
+    path: str, exclude: Collection[int], named: Callable[[str], bool], matches: Callable[[psutil.Process], bool],
+) -> list[psutil.Process]:
     target = _normalized(path)
     owner = _owner(psutil.Process())
     found: dict[int, psutil.Process] = {}
     # by name first: the working directory and the arguments are read from the process itself, which is slow on Windows
     for process in psutil.process_iter(["name"]):
-        name = (process.info["name"] or "").lower()
-        if process.pid in exclude or not (_PYTHON.match(name) or name in _MCDR_SCRIPTS):
+        if process.pid in exclude or not named(process.info["name"] or ""):
             continue
         try:
-            if _normalized(process.cwd()) == target and _owner(process) == owner and is_mcdr(process):
+            if _normalized(process.cwd()) == target and _owner(process) == owner and matches(process):
                 found[process.pid] = process
         except psutil.Error:
             continue

@@ -38,7 +38,7 @@
 
 The new version requires MCDReforged `>=2.16.0`; upgrade it if needed.
 
-A mirror server started by an older version is not in the new version's record (see [Mirror server status](#mirror-server-status)). It can keep running through the upgrade: the plugin adopts it when it loads (see [Adopting a mirror server](#adopting-a-mirror-server)). When it cannot be adopted automatically, the plugin says so in the console and in the game; adopt it with `!!mirror recover` then, or stop it by hand. With `is_mcdr` set to `false` the plugin does not look for the mirror server; stop it by hand before upgrading.
+A mirror server started by an older version is not in the new version's record (see [Mirror server status](#mirror-server-status)). It can keep running through the upgrade: the plugin adopts it when it loads (see [Adopting a mirror server](#adopting-a-mirror-server)). When it cannot be adopted automatically, the plugin says so in the console and in the game; adopt it with `!!mirror recover` then, or stop it by hand. With `is_mcdr` set to `false` the plugin only reports it and never adopts it automatically; adopt it with `!!mirror recover`.
 
 After upgrading, check the configuration file:
 - The `rcon` section is removed, and an old `rcon` section is ignored. Use MCSManager to control a mirror server on another host;
@@ -164,6 +164,7 @@ terminal:
   proxy_type:
   console_log: false
   auto_recover: true
+  java_name: '^javaw?\d*(\.exe)?$'
 ```
 When `proxy_type` is `linux`, the plugin creates a new screen; when it is `windows`, it creates a new command prompt; and when it is `subprocess`, it starts the mirror server as a child process inside MCDR. The screen or terminal created by the Linux/Windows proxies is closed automatically after the mirror server stops.
 
@@ -215,7 +216,10 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 - Whether to output the subprocess proxy's mirror server console logs to the MCDR console by default. This option only applies to the `subprocess` proxy.
 
 **auto_recover** `bool`
-- Whether the plugin, when it loads with no running process in its record, adopts an MCDR it did not start that runs in the launch path. Defaults to `true`. It adopts only when it finds exactly one, and the configured port is free or listened on by that MCDR and its children; it then lists the processes in the console and tells the game once. Otherwise, and with `false`, it only reports what it found; `!!mirror recover` adopts it by hand. See [Adopting a mirror server](#adopting-a-mirror-server).
+- Whether the plugin, when it loads with no running process in its record, adopts an MCDR it did not start that runs in the launch path. Defaults to `true`. It adopts only when it finds exactly one, and the configured port is free or listened on by that MCDR and its children; it then lists the processes in the console and tells the game once. Otherwise, and with `false`, it only reports what it found; `!!mirror recover` adopts it by hand. With `is_mcdr` set to `false`, nothing is ever adopted automatically. See [Adopting a mirror server](#adopting-a-mirror-server).
+
+**java_name** `str`
+- With `is_mcdr` set to `false`, the plugin looks for an untracked server in the launch path among the processes whose name matches this regular expression, case-insensitively. The default matches `java`, `javaw`, `java17`, `java21.exe` and the like. Change it if the Java executable goes by another name.
 
 #### Mirror server status
 
@@ -240,7 +244,7 @@ The recorded processes fall into these groups:
 | stopping | The stop command was sent; waiting for the processes to exit | `kill`, `kill -f` |
 | server stopped, MCDR still running | The server has exited; MCDR is idle or exiting | `start`, `stop`, `kill`, `kill -f`; `sync` with `auto_mcdr_stop` |
 | status unknown | The port is held by a process the plugin did not start | `kill -f` |
-| status unknown | An MCDR the plugin did not start is running in the launch path (see below) | `recover` |
+| status unknown | An MCDR the plugin did not start (a Java process with `is_mcdr` set to `false`) is running in the launch path (see below) | `recover` |
 
 In `server stopped, MCDR still running`, `start` and `stop` do not launch another mirror server; they type a command into the console of the MCDR that is still running: `start` types `!!MCDR server start`, which starts the server in that MCDR, and `stop` types `!!MCDR server exit`, which makes MCDR exit. An MCDR that is exiting refuses to start the server; the status then becomes `stopped`.
 
@@ -256,13 +260,15 @@ When the server process is running but the port never opens, the status stays at
 > [!WARNING]
 > A mirror server this plugin did not start (started by hand, or by an older version of the plugin) is not in the record:
 > - While its port is held, the status is `status unknown`, and only `!!mirror kill -f` can end it;
-> - While its port is free (the mirror server is starting or stopping, or the server has stopped inside MCDR), the usual status check does not see it. So once `!!mirror status`, `start` or `sync` finds the status `stopped`, the plugin looks among all processes of the machine for an MCDR whose working directory is `launch_path`. If there is one, the status is `status unknown`, and `start` and `sync` are refused. Only processes of the plugin's own user whose details can be read are looked at; nothing is looked for with `is_mcdr` set to `false`.
+> - While its port is free (the mirror server is starting or stopping, or the server has stopped inside MCDR), the usual status check does not see it. So once `!!mirror status`, `start` or `sync` finds the status `stopped`, the plugin looks among all processes of the machine for an MCDR whose working directory is `launch_path` (a Java process with `is_mcdr` set to `false`). If there is one, the status is `status unknown`, and `start` and `sync` are refused. Only processes of the plugin's own user whose details can be read are looked at.
 >
 > Such a mirror server can be adopted with `!!mirror recover`; see below.
 
 #### Adopting a mirror server
 
 `!!mirror recover` looks among all processes of the machine for an MCDR whose working directory is `launch_path` and that is not in the record, and writes it and the processes it started into the record. From then on the plugin judges its status, and runs `stop`, `kill` and syncs on it, as it does for a mirror server it started itself.
+
+With `is_mcdr` set to `false`, the plugin looks for a Java process whose working directory is `launch_path` instead, with a name as [`java_name`](#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) gives. A process that only listens on the configured port, with another working directory, is never adopted: with a wrong port, it may be another server. Such a mirror server is not adopted when the plugin loads.
 
 - With exactly one found, the plugin lists it and asks for `!!mirror confirm`; with several found, it lists them, and `!!mirror recover <pid>` picks one. The PID must be one of those listed; no confirmation is asked when a PID is given;
 - Nothing is adopted while the configured port is held by a process outside this MCDR and its children;
@@ -579,6 +585,7 @@ display:
         proxy_type: null
         console_log: false
         auto_recover: true
+        java_name: '^javaw?\d*(\.exe)?$'
     sync:
         world:
             - "world"

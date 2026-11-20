@@ -34,11 +34,11 @@ class RecoverOutcome(Enum):
     # the record still holds live processes
     TRACKED = "tracked"
     NONE_FOUND = "none_found"
-    # several MCDR instances were found, and none was picked by pid
+    # several were found, and none was picked by pid
     AMBIGUOUS = "ambiguous"
     # the pid picked is not among those found
     NOT_FOUND = "not_found"
-    # the port is held by something outside the MCDR found, which adopting it would leave out
+    # the port is held by something outside the one found, which adopting it would leave out
     FOREIGN_LISTENER = "foreign_listener"
     # it exited while it was being adopted
     GONE = "gone"
@@ -47,7 +47,7 @@ class RecoverOutcome(Enum):
 @dataclass(frozen=True)
 class RecoverResult:
     outcome: RecoverOutcome
-    # the MCDR instances found outside the record
+    # the MCDR instances (Java processes for a plain server) found outside the record
     found: tuple[ProcessInfo, ...] = ()
     # the one picked, adopted or to be adopted
     picked: Optional[ProcessInfo] = None
@@ -90,7 +90,7 @@ class ServerController:
 
     def status(self, scan: bool = False) -> StatusSnapshot:
         """
-        :param scan: also look among all processes for the mirror's MCDR running outside the record, while nothing tracked is alive.
+        :param scan: also look among all processes for the mirror running outside the record, while nothing tracked is alive.
             It costs a look at every process of the machine: for decisions only, never while waiting
         """
         # read before observing, so that evidence never gets combined with an intent issued after it
@@ -160,7 +160,8 @@ class ServerController:
 
     def recover(self, pid: Optional[int], dry_run: bool = False) -> RecoverResult:
         """
-        Adopt the mirror's MCDR that runs outside the record, such as one started by hand: from then on it is tracked as if launched.
+        Adopt the mirror's MCDR (a plain server's Java process) that runs outside the record, such as one started by hand:
+        from then on it is tracked as if launched.
 
         :param pid: the one to adopt among those found; None if there is to be exactly one
         :param dry_run: only tell whether it would be adopted, as ADOPTED if so

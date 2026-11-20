@@ -65,7 +65,7 @@ class ProcessRecord:
 
     The launch settings are those of that launch, so that a changed config applies from the next launch on.
     The root is the process the plugin spawned; on Linux and Windows it is also the console the mirror is controlled through.
-    For an adopted mirror, the root is its MCDR, and :attr:`adoption` tells its console.
+    For an adopted mirror, the root is its MCDR (the Java process of a plain server), and :attr:`adoption` tells its console.
     """
 
     # counts the launches of this mirror

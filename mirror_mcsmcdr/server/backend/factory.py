@@ -1,4 +1,5 @@
 import platform
+import re
 from typing import Callable, Dict, List, Sequence, Tuple
 
 from mcdreforged.api.all import Serializable
@@ -38,6 +39,8 @@ def _build_terminal(config: TerminalConfig, tracker: ProcessTracker) -> Terminal
     except ScreenError as e:
         # the only thing a screen can refuse before it is used is its name
         raise ProxySettingException("terminal", ["terminal_name"]) from e
+    except re.error as e:
+        raise ProxySettingException("terminal", ["java_name"]) from e
 
 
 def build_backends(config: MirrorConfig, tracker: ProcessTracker) -> Tuple[List[ServerBackend], List[ProxySettingException]]:

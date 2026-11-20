@@ -19,3 +19,5 @@ class TerminalConfig(Serializable):
     console_log: bool = False
     # adopt the mirror's MCDR found running outside the record when the plugin loads
     auto_recover: bool = True
+    # with is_mcdr false: the names of the Java processes looked for outside the record, as a regular expression
+    java_name: str = r"^javaw?\d*(\.exe)?$"

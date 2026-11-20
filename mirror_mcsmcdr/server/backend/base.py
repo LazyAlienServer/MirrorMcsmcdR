@@ -1,4 +1,5 @@
 import os
+import re
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -83,10 +84,12 @@ class TerminalProxy(ServerBackend, ABC):
     name: ClassVar[str]
 
     def __init__(self, config: TerminalConfig, tracker: ProcessTracker) -> None:
+        """:raise re.error: if ``java_name`` is no regular expression"""
         self.terminal_name = config.terminal_name or "Mirror"
         self.path = config.launch_path
         self.command = config.launch_command
         self.is_mcdr = config.is_mcdr
+        self.java_name = re.compile(config.java_name, re.IGNORECASE)
         assert config.port is not None
         self.listener = PortListener(config.port)
         self.tracker = tracker
@@ -218,17 +221,17 @@ class TerminalProxy(ServerBackend, ABC):
 
     def find_untracked(self) -> list[psutil.Process]:
         """
-        The mirror's MCDR instances that run on this machine but are not in the record, such as one started by hand.
+        The mirror's MCDR instances, or its Java processes when it is not run by MCDR,
+        that run on this machine but are not in the record, such as one started by hand.
 
         Every process of the machine is looked at, so this is for a decision, not for a watch.
-        Nothing is looked for when the mirror is not run by MCDR.
         """
-        if not self.is_mcdr:
-            return []
         tracked, _ = self.tracker.live_processes()
         # the MCDR this plugin runs in, too: a launch path pointing at its own folder must not make it a mirror
         exclude = {process.pid for process in tracked} | {os.getpid()}
-        return process_utils.find_mcdr_in(self.path, exclude)
+        if self.is_mcdr:
+            return process_utils.find_mcdr_in(self.path, exclude)
+        return process_utils.find_java_in(self.path, exclude, self.java_name)
 
     def holds_port(self, process: psutil.Process) -> bool:
         """

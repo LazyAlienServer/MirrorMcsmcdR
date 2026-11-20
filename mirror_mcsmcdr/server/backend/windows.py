@@ -14,7 +14,7 @@ class WindowsProxy(TerminalProxy):
     supports = frozenset(Action)
 
     def _endpoint_alive(self, view: TreeView) -> bool:
-        # the console lives as long as the cmd.exe that opened it, and that of an adopted mirror as long as its MCDR
+        # the console lives as long as the cmd.exe that opened it, and that of an adopted mirror as long as its root
         adoption = view.record.adoption if view.record is not None else None
         return view.root_alive and (adoption is None or adoption.console == "windows")
 

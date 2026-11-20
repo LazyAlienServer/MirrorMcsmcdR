@@ -48,7 +48,7 @@ mirror_mcsmcdr:
       start: §7{prefix} start §fStart §b{server_name}§f
       stop: §7{prefix} stop §fStop §b{server_name}§f
       kill: §7{prefix} kill [-f|--force] §fKill §b{server_name}§f
-      recover: §7{prefix} recover [pid] §fAdopt a §b{server_name}§f the plugin did not start
+      recover: §7{prefix} recover [pid] §fAdopt an untracked §b{server_name}§f
       sync: §7{prefix} sync §fSynchronize §b{server_name}§f
       history: §7{prefix} history [page] §fView synchronization history
       reload: §7{prefix} reload §fReload config of §b{server_name}§f
@@ -95,31 +95,35 @@ mirror_mcsmcdr:
       unavailable: "§cThis command is only available with the §7subprocess§c proxy"
       unknown: "§cThe status of §b{server_name}§c is unknown; cannot send command. Check §7{prefix} status§c first"
     recover:
+      server_type:
+        mcdr: MCDR
+        server: server
       success: adopted
       no_console: "§eNo console to type commands into was found; only §7{prefix} kill -f§e can end it"
       found:
-        title: "§eMCDR in the launch path not started by the plugin§7: §b{count}"
-        count: "§eMCDR in the launch path not started by the plugin§7: §b{count}"
+        title: "§eUntracked {server_type} in the launch path§7: §b{count}"
+        count: "§eUntracked {server_type} in the launch path§7: §b{count}"
       adopted:
         title: "§eAdopted processes§7:"
         count: "§eAdopted §b{count} §fprocess(es)"
       auto:
-        adopted: "§eAdopted a §b{server_name}§e the plugin did not start; see the console for details"
-        found: "§eFound a §b{server_name}§e the plugin did not start and did not adopt it; §7{prefix} recover§e adopts it. See the console for details"
-        error: "§cError while looking for a §b{server_name}§c the plugin did not start: {e}"
+        adopted: "§eAdopted an untracked §b{server_name}§e; see the console for details"
+        found: "§eFound an untracked §b{server_name}§e and did not adopt it; §7{prefix} recover§e adopts it. See the console for details"
+        error: "§cError while looking for an untracked §b{server_name}§c: {e}"
         console:
-          adopted: "Adopted the MCDR in the launch path that the plugin did not start:"
-          found: "An MCDR the plugin did not start runs in the launch path; terminal.auto_recover is false, so it was not adopted:"
-          ambiguous: "Several MCDR instances the plugin did not start run in the launch path; none was adopted, pick one with {prefix} recover <pid>:"
-          foreign_listener: "An MCDR the plugin did not start runs in the launch path, but the port is held by a process outside it; it was not adopted:"
-          gone: "The MCDR the plugin did not start exited while it was being adopted:"
+          adopted: "Adopted the untracked {server_type} in the launch path:"
+          found: "An untracked {server_type} runs in the launch path; terminal.auto_recover is false, so it was not adopted:"
+          plain: "An untracked server runs in the launch path; with is_mcdr set to false it is never adopted automatically:"
+          ambiguous: "Several untracked {server_type} processes run in the launch path; none was adopted, pick one with {prefix} recover <pid>:"
+          foreign_listener: "An untracked {server_type} runs in the launch path, but the port is held by a process outside it; it was not adopted:"
+          gone: "The untracked {server_type} exited while it was being adopted:"
       fail:
         unsupported: The current config does not support the §7recover§f command; configure §7'terminal'
         tracked: "the plugin is tracking the processes of §b{server_name}§f; there is nothing to adopt"
-        none_found: there is no MCDR in the launch path that the plugin did not start
-        ambiguous: several MCDR instances were found; pick one with §7{prefix} recover <pid>
-        not_found: PID §b{pid}§f is not an MCDR that can be adopted
-        foreign_listener: the port is held by a process outside this MCDR; nothing was adopted
+        none_found: there is no untracked {server_type} in the launch path
+        ambiguous: several untracked {server_type} processes were found; pick one with §7{prefix} recover <pid>
+        not_found: PID §b{pid}§f is not an untracked {server_type} that can be adopted
+        foreign_listener: the port is held by a process outside this {server_type}; nothing was adopted
         gone: the process has exited; nothing was adopted
         syncing: syncing; please wait until the sync has finished
     state:
@@ -139,7 +143,7 @@ mirror_mcsmcdr:
       line: "§eDetail§7: §f{detail}"
       panel: reported by MCSManager
       foreign_listener: "the port is held by processes not started by the plugin; §7{prefix} kill -f§f ends them"
-      untracked: "an MCDR not started by the plugin is running in the launch path; §7{prefix} recover§f adopts it"
+      untracked: "an untracked {server_type} is running in the launch path; §7{prefix} recover§f adopts it"
       start_pending: "starting command sent; waiting for the server to open the port"
       port_closed: "the server process is running but the port is not open; if it stays so, check §7'port'§f in the config, or end it with §7{prefix} kill"
       stop_pending: "stopping command sent; waiting for the processes to exit"
@@ -170,8 +174,8 @@ mirror_mcsmcdr:
         title: "§ePort §b{port}§7: §cheld by the following §b{count} §cprocess(es) not started by the plugin:"
         count: "§ePort §b{port}§7: §cheld by §b{count} §cprocess(es) not started by the plugin"
       untracked:
-        title: "§eMCDR in the launch path§7: §cthe following §b{count} §cprocess(es) not started by the plugin:"
-        count: "§eMCDR in the launch path§7: §b{count} §cprocess(es) not started by the plugin"
+        title: "§eUntracked {server_type} in the launch path§7: §cthe following §b{count} §cprocess(es):"
+        count: "§eUntracked {server_type} in the launch path§7: §b{count} §cprocess(es)"
       not_running: not running
       running: running
       count: "§b{count}"

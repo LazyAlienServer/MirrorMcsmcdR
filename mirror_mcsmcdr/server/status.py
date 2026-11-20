@@ -39,7 +39,7 @@ class Detail(Enum):
     # whatever the panel reports
     PANEL = "panel"
     FOREIGN_LISTENER = "foreign_listener"
-    # nothing tracked is alive, but an MCDR the record does not hold runs in the launch path
+    # nothing tracked is alive, but an MCDR (a Java process for a plain server) the record does not hold runs in the launch path
     UNTRACKED = "untracked"
     START_PENDING = "start_pending"
     # the server is there without a start of the plugin pending, yet the port stays closed
@@ -102,7 +102,8 @@ class Evidence:
     # what MCDR launched while the server is not told apart from the rest
     child_processes: Optional[tuple[ProcessInfo, ...]] = None
     others_count: Optional[int] = None
-    # MCDR instances in the launch path that the record does not hold; looked for only on request, while nothing tracked is alive
+    # MCDR instances (Java processes for a plain server) in the launch path that the record does not hold;
+    # looked for only on request, while nothing tracked is alive
     untracked: Optional[tuple[ProcessInfo, ...]] = None
 
     def merge(self, other: "Evidence") -> "Evidence":

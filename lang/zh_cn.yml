@@ -48,7 +48,7 @@ mirror_mcsmcdr:
       start: §7{prefix} start §f启动 §b{server_name}§f
       stop: §7{prefix} stop §f停止 §b{server_name}§f
       kill: §7{prefix} kill [-f|--force] §f终止 §b{server_name}§f
-      recover: §7{prefix} recover [pid] §f接管不是插件启动的 §b{server_name}§f
+      recover: §7{prefix} recover [pid] §f接管未跟踪的 §b{server_name}§f
       sync: §7{prefix} sync §f同步 §b{server_name}§f
       history: §7{prefix} history [page] §f查看同步历史
       reload: §7{prefix} reload §f重载 §b{server_name} §f配置文件
@@ -95,31 +95,36 @@ mirror_mcsmcdr:
       unavailable: "§c此命令仅在使用 §7subprocess§c 代理时可用"
       unknown: "§b{server_name} §c状态未知，无法发送命令，请先查看 §7{prefix} status"
     recover:
+      # " MCDR" carries the space it needs after a Chinese character; whatever follows {server_type} is punctuation
+      server_type:
+        mcdr: " MCDR"
+        server: 服务端
       success: 已接管
       no_console: "§e未找到可以输入指令的控制台，只能使用 §7{prefix} kill -f §e结束它"
       found:
-        title: "§e启动目录中不是插件启动的 MCDR§7: §b{count} §f个"
-        count: "§e启动目录中不是插件启动的 MCDR§7: §b{count} §f个"
+        title: "§e启动目录中未跟踪的{server_type}§7: §b{count} §f个"
+        count: "§e启动目录中未跟踪的{server_type}§7: §b{count} §f个"
       adopted:
         title: "§e已接管的进程§7:"
         count: "§e已接管 §b{count} §f个进程"
       auto:
-        adopted: "§e已自动接管不是插件启动的 §b{server_name}§e，详情见控制台"
-        found: "§e发现不是插件启动的 §b{server_name}§e，未自动接管，可使用 §7{prefix} recover §e接管，详情见控制台"
-        error: "§c查找不是插件启动的 §b{server_name} §c时出错: {e}"
+        adopted: "§e已自动接管未跟踪的 §b{server_name}§e，详情见控制台"
+        found: "§e发现未跟踪的 §b{server_name}§e，未自动接管，可使用 §7{prefix} recover §e接管，详情见控制台"
+        error: "§c查找未跟踪的 §b{server_name} §c时出错: {e}"
         console:
-          adopted: "已自动接管启动目录中不是插件启动的 MCDR:"
-          found: "启动目录中有不是插件启动的 MCDR，terminal.auto_recover 为 false，未自动接管:"
-          ambiguous: "启动目录中有多个不是插件启动的 MCDR，未自动接管，请使用 {prefix} recover <pid> 指定:"
-          foreign_listener: "启动目录中有不是插件启动的 MCDR，但端口被它以外的进程占用，未自动接管:"
-          gone: "启动目录中不是插件启动的 MCDR 在接管时退出了:"
+          adopted: "已自动接管启动目录中未跟踪的{server_type}:"
+          found: "启动目录中有未跟踪的{server_type}，terminal.auto_recover 为 false，未自动接管:"
+          plain: "启动目录中有未跟踪的服务端，is_mcdr 为 false 时不会自动接管:"
+          ambiguous: "启动目录中有多个未跟踪的{server_type}，未自动接管，请使用 {prefix} recover <pid> 指定:"
+          foreign_listener: "启动目录中有未跟踪的{server_type}，但端口被它以外的进程占用，未自动接管:"
+          gone: "启动目录中未跟踪的{server_type}，在接管时退出了:"
       fail:
         unsupported: 当前配置文件不支持 §7recover§f 命令，需要配置 §7'terminal'
         tracked: 插件正在跟踪 §b{server_name} §f的进程，无需接管
-        none_found: 启动目录中没有不是插件启动的 MCDR
-        ambiguous: 找到多个 MCDR，请使用 §7{prefix} recover <pid> §f指定其中一个
-        not_found: PID §b{pid} §f不是可以接管的 MCDR
-        foreign_listener: 端口被这个 MCDR 以外的进程占用，未接管
+        none_found: 启动目录中没有未跟踪的{server_type}
+        ambiguous: 找到多个{server_type}，请使用 §7{prefix} recover <pid> §f指定其中一个
+        not_found: PID §b{pid} §f不是可以接管的{server_type}
+        foreign_listener: 端口被其他进程占用（不属于这个{server_type}），未接管
         gone: 进程已退出，未接管
         syncing: 正在同步，请等待同步完成
     state:
@@ -139,7 +144,7 @@ mirror_mcsmcdr:
       line: "§e详情§7: §f{detail}"
       panel: 状态由 MCSManager 报告
       foreign_listener: 端口被不是插件启动的进程占用，可使用 §7{prefix} kill -f §f结束这些进程
-      untracked: 启动目录中有不是插件启动的 MCDR 正在运行，可使用 §7{prefix} recover §f接管它
+      untracked: 启动目录中有正在运行的未跟踪{server_type}，可使用 §7{prefix} recover §f接管它
       start_pending: 启动指令已发送，正在等待服务端打开端口
       port_closed: 服务端进程在运行但端口未打开，若一直如此请检查配置中的 §7'port'§f，或使用 §7{prefix} kill §f终止
       stop_pending: 关闭指令已发送，正在等待进程退出
@@ -170,8 +175,8 @@ mirror_mcsmcdr:
         title: "§e端口 §b{port}§7: §c被以下 §b{count} §c个不是插件启动的进程占用:"
         count: "§e端口 §b{port}§7: §c被 §b{count} §c个不是插件启动的进程占用"
       untracked:
-        title: "§e启动目录中的 MCDR§7: §c以下 §b{count} §c个进程不是插件启动的:"
-        count: "§e启动目录中的 MCDR§7: §b{count} §c个进程不是插件启动的"
+        title: "§e启动目录中未跟踪的{server_type}§7: §c以下 §b{count} §c个进程:"
+        count: "§e启动目录中未跟踪的{server_type}§7: §b{count} §c个进程"
       not_running: 未运行
       running: 运行中
       count: "§b{count} §f个"

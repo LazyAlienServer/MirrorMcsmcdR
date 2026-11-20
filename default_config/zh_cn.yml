@@ -36,6 +36,8 @@
     console_log: false
     # 插件加载时，若记录中没有运行的进程，而启动目录中恰好有一个不是插件启动的 MCDR，是否自动接管它；为 false 时只提示。
     auto_recover: true
+    # is_mcdr 为 false 时，查找未跟踪服务端所认的 Java 进程名，正则表达式，不区分大小写。
+    java_name: '^javaw?\d*(\.exe)?$'
 
   # 文件同步设置。
   sync:
