@@ -85,7 +85,7 @@ class MirrorRuntime:
             return None
         # a plain server has no MCDR, so no PrimeBackup of its own
         mcdr_path = config.root_path if config.is_mcdr else None
-        return MirrorBackup(mcdr_path, list(config.sync.world), lambda: sync_targets(config), list(config.sync.ignore_files), backup.timeout)
+        return MirrorBackup(mcdr_path, list(config.sync.world), list(config.sync.ignore_files), backup.timeout)
 
     @property
     def subprocess_terminal(self) -> Optional[SubprocessProxy]:

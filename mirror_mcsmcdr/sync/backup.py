@@ -12,7 +12,7 @@ import sys
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Optional, Sequence
 
 import psutil
 
@@ -69,6 +69,13 @@ class BackupError(Exception):
 class BackupUnavailable(BackupError):
     """The backup cannot be made, so it is not attempted."""
 
+    @classmethod
+    def from_mcdr_config(cls, error: MCDRConfigError) -> "BackupUnavailable":
+        """For the mirror's MCDR config that cannot be read, or holds something MCDR does not accept."""
+        if error.error is None:
+            return cls("mcdr_config_invalid", path=str(error.path), option="/")
+        return cls("mcdr_config_unreadable", path=str(error.path), error=str(error.error))
+
 
 class BackupFailed(BackupError):
     """The command line tool ran but did not report a backup."""
@@ -117,11 +124,10 @@ class MirrorBackup:
     Nothing is cached: every call reads the mirror's files again, so a result is only as current as the call.
     """
 
-    def __init__(self, mcdr_path: Optional[str], worlds: list[str], targets: Callable[[], list[str]], ignore_files: list[str], timeout: float) -> None:
+    def __init__(self, mcdr_path: Optional[str], worlds: list[str], ignore_files: list[str], timeout: float) -> None:
         """
         :param mcdr_path: the mirror's MCDR directory, None for a plain server, which has none
         :param worlds: the worlds of the sync, as configured
-        :param targets: gives the target directories of the sync; may raise :class:`MCDRConfigError`
         :param ignore_files: the file names the sync does not copy
         :param timeout: seconds a backup may take
         """
@@ -129,14 +135,18 @@ class MirrorBackup:
             raise ValueError("sync.backup.timeout must be positive")
         self.mcdr_path = mcdr_path
         self.worlds = worlds
-        self.targets = targets
         self.ignore_files = ignore_files
         self.timeout = timeout
 
     # ---------- resolution ----------
 
-    def resolve(self) -> ResolvedBackup:
-        """Locate the mirror's PrimeBackup: its plugin, its config, its storage, the directory it backs up, and the targets of the sync."""
+    def resolve(self, targets: Sequence[str]) -> ResolvedBackup:
+        """
+        Locate the mirror's PrimeBackup: its plugin, its config, its storage and the directory it backs up.
+
+        :param targets: the directories the sync copies into. A sync passes those it copies into,
+            so that what is backed up and checked is what gets overwritten
+        """
         if not self.mcdr_path:
             raise BackupUnavailable("plain_server")
         mcdr_path = Path(os.path.abspath(self.mcdr_path))
@@ -158,10 +168,6 @@ class MirrorBackup:
         if not (storage_path / _DB_FILE_NAME).is_file():
             raise BackupUnavailable("database_not_found", path=str(storage_path / _DB_FILE_NAME))
         source_path = self._source_path(mcdr_path, mcdr_config, backup_config, plugin_config_path)
-        try:
-            targets = tuple(self.targets())
-        except MCDRConfigError as e:
-            raise self._config_error(e) from e
 
         return ResolvedBackup(
             mcdr_path=str(mcdr_path),
@@ -171,7 +177,7 @@ class MirrorBackup:
             backup_config=backup_config,
             storage_path=str(storage_path),
             source_path=str(source_path),
-            targets=targets,
+            targets=tuple(targets),
         )
 
     @classmethod
@@ -179,13 +185,7 @@ class MirrorBackup:
         try:
             return read_mcdr_config(mcdr_path / CONFIG_FILE)
         except MCDRConfigError as e:
-            raise cls._config_error(e) from e
-
-    @staticmethod
-    def _config_error(error: MCDRConfigError) -> BackupUnavailable:
-        if error.error is None:
-            return BackupUnavailable("mcdr_config_invalid", path=str(error.path), option="/")
-        return BackupUnavailable("mcdr_config_unreadable", path=str(error.path), error=str(error.error))
+            raise BackupUnavailable.from_mcdr_config(e) from e
 
     @staticmethod
     def _plugin_directories(mcdr_path: Path, mcdr_config: dict[str, Any]) -> list[Path]:

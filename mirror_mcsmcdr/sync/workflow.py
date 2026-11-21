@@ -112,7 +112,7 @@ class SyncWorkflow:
             if not self._ensure_server_closed(runtime, source, on_server_stopped):
                 return
             if runtime.backup is not None:
-                backup_id = self._back_up(runtime.backup, operator)
+                backup_id = self._back_up(runtime.backup, targets, operator)
                 if backup_id is not None:
                     self._server.broadcast(self._tr("command.sync.backup.done", backup_id=backup_id))
             record = self._sync_world(runtime, source_path, targets, started_at, operator, backup_id)
@@ -209,15 +209,16 @@ class SyncWorkflow:
             source.reply(line)
         return False
 
-    def _back_up(self, backup: MirrorBackup, operator: str) -> Optional[int]:
+    def _back_up(self, backup: MirrorBackup, targets: list[str], operator: str) -> Optional[int]:
         """
         Back the mirror up with its PrimeBackup, located from scratch: nothing found earlier is trusted.
 
+        :param targets: those the sync copies into, so that what is backed up is what gets overwritten
         :return: the id of the backup, None if no target holds any of the worlds yet
         :raise _SyncRefused: there is no backup, so there must be no sync
         """
         try:
-            resolved = backup.resolve()
+            resolved = backup.resolve(targets)
             if not backup.has_existing_world(resolved):
                 self._server.broadcast(self._tr("command.sync.backup.skipped"))
                 return None
