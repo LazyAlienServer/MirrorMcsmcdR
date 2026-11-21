@@ -135,6 +135,7 @@ is_mcdr: true
 - 镜像服所在的目录，相对于本服务端的MCDR根目录，也可以使用绝对路径，不能为空。
   - terminal代理在此目录下执行`launch_command`，`!!mirror recover`在此目录中查找镜像服；
   - `is_mcdr`为`true`时，它是镜像服MCDR的目录（其`config.yml`所在目录）。`sync.target`留空时，同步目标为此目录下镜像服MCDR的`working_directory`；同步前备份在此目录中查找镜像服的PrimeBackup；
+    - 推导同步目标和查找PrimeBackup时，插件只读取此目录下的`config.yml`。如果镜像服MCDR是用其他配置文件启动的（例如`launch_command`为`python -m mcdreforged start --config custom.yml`），请填写`sync.target`；同步前备份可能找错PrimeBackup，这种情况下不支持同步前备份；
   - `is_mcdr`为`false`时，它是服务端自己的目录。`sync.target`留空时，同步目标就是它本身。
 
 **is_mcdr** `bool`

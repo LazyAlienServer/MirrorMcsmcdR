@@ -138,6 +138,7 @@ is_mcdr: true
 - The directory of the mirror server, relative to the MCDR root of this server, or absolute. It must not be empty.
   - The terminal proxies run `launch_command` in it, and `!!mirror recover` looks for the mirror server in it;
   - With `is_mcdr` set to `true`, it is the mirror's MCDR directory, the one that contains its `config.yml`. An empty `sync.target` then means the mirror MCDR's `working_directory` under it, and the pre-sync backup looks for the mirror's PrimeBackup in it;
+    - To derive the sync target and to locate PrimeBackup, the plugin reads only the `config.yml` in it. If the mirror MCDR is started with another config file (e.g. `launch_command` is `python -m mcdreforged start --config custom.yml`), set `sync.target`; the pre-sync backup may locate the wrong PrimeBackup, so it is not supported in this case;
   - With `is_mcdr` set to `false`, it is the server's own directory, and an empty `sync.target` means this directory itself.
 
 **is_mcdr** `bool`
