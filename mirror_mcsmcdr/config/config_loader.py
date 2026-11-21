@@ -55,7 +55,11 @@ class MultiConfigLoader:
             first_prefix = template_prefix
             parent_config = MirrorConfig()
             user_config = {first_prefix: parent_config.serialize()}
-            needs_save = False
+            first_data = user_config[first_prefix]
+            # written out with its annotations, also over a file without any entry
+            needs_save = True
+            if source_path is not None:
+                self.server.logger.info(self._rtr("merged"))
         self.parent_config = parent_config
         self.user_config = user_config
 
@@ -170,7 +174,8 @@ class MultiConfigLoader:
 
         yaml = YAML(typ='safe')
         with path.open('r', encoding='utf8') as file:
-            return yaml.load(file), path
+            # a blank or comment-only file parses as None; it is taken as no entries, so the defaults apply
+            return yaml.load(file) or {}, path
 
     @staticmethod
     def _create_yaml() -> YAML:
