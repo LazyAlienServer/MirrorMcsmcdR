@@ -151,7 +151,7 @@ terminal:
 同样的，配置完成后，你需要将`enable`设置为`true`，以真正地启用终端控制。
 
 > [!IMPORTANT]
-> 插件只认识自己启动的镜像服进程。请只通过`!!mirror start`启动镜像服，并让`launch_command`在前台运行镜像服，不要用`nohup ... &`、`start`之类的写法让它脱离。详见[README-镜像服状态](../README.md#镜像服状态)。
+> 插件跟踪的是自己启动的镜像服进程。请通过`!!mirror start`启动镜像服，并让`launch_command`在前台运行镜像服，不要用`nohup ... &`、`start`之类的写法让它脱离。不是插件启动的镜像服（例如手动启动的）可以用`!!mirror recover`接管。详见[README-镜像服状态](../README.md#镜像服状态)和[README-接管镜像服](../README.md#接管镜像服)。
 
 跳至[存档同步](#存档同步)来进行下一步
 

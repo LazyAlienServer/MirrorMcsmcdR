@@ -153,7 +153,7 @@ When `proxy_type` is `linux`, the plugin creates a screen session; when it is `w
 Similarly, after the configuration is completed, you need to set `enable` to `true` to truly enable terminal control.
 
 > [!IMPORTANT]
-> The plugin only knows the mirror server processes it started itself. Start the mirror server with `!!mirror start` only, and let `launch_command` run it in the foreground; do not detach it with `nohup ... &`, `start` or the like. See [README - Mirror server status](../README_en.md#mirror-server-status).
+> The plugin tracks the mirror server processes it started itself. Start the mirror server with `!!mirror start`, and let `launch_command` run it in the foreground; do not detach it with `nohup ... &`, `start` or the like. A mirror server the plugin did not start, such as one started by hand, can be adopted with `!!mirror recover`. See [README - Mirror server status](../README_en.md#mirror-server-status) and [README - Adopting a mirror server](../README_en.md#adopting-a-mirror-server).
 
 Jump to [Save Synchronization](#save-synchronization) for the next step.
 
