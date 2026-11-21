@@ -47,7 +47,8 @@
 - `command.action.sync.max_attempt_times`已删除。同步自动停服后，最多等待`command.action.stop.timeout`秒（默认60秒，以前默认15秒）；
 - `command.action.sync.check_status_interval`移到了`command.action.check_status_interval`。旧位置的值会被忽略，恢复为默认值`5`；
 - `!!mirror execute`改名为`!!mirror input`，旧指令不再可用。权限配置`command.permission.execute`随之改为`command.permission.input`，旧的`execute`会被忽略，恢复为默认值`console`；
-- `terminal.launch_path`改为顶层的[`root_path`](#root_path--is_mcdr-镜像服目录与类型)，`terminal.is_mcdr`改为顶层的`is_mcdr`，`sync.backup.mcdr_path`已删除（备份改用`root_path`）。旧的项会被忽略，`root_path`恢复为默认值`./Mirror`，请**手动修改**；
+- `terminal.launch_path`改为顶层的[`root_path`](#root_path--is_mcdr-镜像服目录与类型)，`terminal.is_mcdr`改为顶层的`is_mcdr`，`sync.backup.mcdr_path`已删除（备份改用`root_path`）。旧的项会被忽略，`root_path`恢复为默认值`./Mirror`，`is_mcdr`恢复为默认值`true`，请**手动修改**。以前设置了`terminal.is_mcdr: false`的普通服务端镜像服，要重新设置`is_mcdr: false`（后续镜像服会继承第一个镜像服的值）；
+- `command.permission.abort`和`command.action.abort`已删除，它们从未对应任何指令；
 - `sync.source`和`sync.target`可以留空，分别使用本MCDR的`working_directory`和由`root_path`推导出的目录。原有的值仍然有效。
 
 插件加载配置时，会从配置文件中删除它不认识的项（包括上面已删除的项和拼错的项），并在控制台逐项列出路径和值，同时在游戏内提示一次。删除前，原配置文件会备份为同目录下的`config.yml.<时间>-<内容哈希>.bak`。
