@@ -23,7 +23,7 @@
 - **Highly customizable configuration**: use YAML and write only changed values when configuring multiple mirror servers
 
 > [!NOTE]
-> This plugin does not provide server creation or management functionality. Please use it after creating the mirror server and its MCSManager instance. It also does not provide successful start/stop notifications; consider using a companion plugin such as vchat.
+> This plugin does not provide server creation or management functionality. Please use it after creating the mirror server and its MCSManager instance. It broadcasts `has started` once the mirror server is up, but gives no notice when it has stopped; consider a companion plugin such as vchat for that.
 
 ## Dependencies
 
