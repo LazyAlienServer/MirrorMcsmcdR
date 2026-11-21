@@ -390,6 +390,10 @@ class MirrorManager:
         evidence = snapshot.evidence
         protected: set[str] = set(runtime.config.display.protected_process_info)
         if evidence.port is not None:
+            # in full, as the console gets every process this plugin names
+            for info in (evidence.mcdr_process, *(evidence.child_processes or (evidence.server_process,))):
+                if info is not None:
+                    self.server.logger.info(self._console_process_line(info))
             if evidence.mcdr_alive is not None:
                 source.reply(self.rtr("command.status.mcdr", title=False, process=self._single_process_text(evidence.mcdr_process, protected)))
             if evidence.child_processes:
