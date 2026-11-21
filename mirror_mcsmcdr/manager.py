@@ -336,7 +336,9 @@ class MirrorManager:
         except MCSManagerProxyError as e:
             source.reply(rtr("mcsm.error.request", e=e))
         except ScreenError as e:
-            source.reply(rtr("screen.error", e=e))
+            # it names the screen session, its pid and the arguments screen was run with: for the console only
+            self.server.logger.warning(rtr("screen.error_detail", title=False, e=e))
+            source.reply(rtr("screen.error"))
         except Exception:
             source.reply(rtr("error.unknown"))
             raise

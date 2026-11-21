@@ -297,7 +297,8 @@ mirror_mcsmcdr:
       "503": "[503] 请求过于频繁"
 
   screen:
-    error: "§cScreen 错误，请报告管理员: §4{e}"
+    error: "§cScreen 错误，请报告管理员，详情见控制台"
+    error_detail: "Screen 错误: {e}"
 
   process_record:
     unreadable: "§e无法读取进程记录 §7{path}§e，之前启动的镜像服不再被跟踪: §4{error}"

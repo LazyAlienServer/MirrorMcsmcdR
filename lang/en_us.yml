@@ -296,7 +296,8 @@ mirror_mcsmcdr:
       "503": "[503] Server Unavailable"
 
   screen:
-    error: "§cScreen error, please report this problem to operators: §4{e}"
+    error: "§cScreen error, please report this problem to operators; see the console for details"
+    error_detail: "Screen error: {e}"
 
   process_record:
     unreadable: "§eCannot read the process record §7{path}§e; mirrors launched before are no longer tracked: §4{error}"
