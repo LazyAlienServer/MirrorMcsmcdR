@@ -161,6 +161,7 @@ mirror_mcsmcdr:
       timeout: 进程未在限定时间内退出，请使用 §7{prefix} kill -f §f强制终止
       no_target: 没有可以终止的进程
       unreadable_listener: 端口被一个无法读取 PID 的进程占用（可能属于其他用户），未终止任何进程
+      targets_changed: 要终止的进程在列出后发生了变化，未终止任何进程，请重新执行 §7{prefix} kill -f §f查看
       console_input_failed: 无法向 §b{server_name} §f的控制台输入指令，请稍后重试
 
     status:

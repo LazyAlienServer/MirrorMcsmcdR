@@ -160,6 +160,7 @@ mirror_mcsmcdr:
       timeout: The process did not exit in time. Use §7{prefix} kill -f§f to forcefully terminate it
       no_target: There is no process to terminate
       unreadable_listener: The port is held by a process whose PID cannot be read (possibly of another user); nothing was terminated
+      targets_changed: The processes to terminate changed after they were listed; nothing was terminated. Run §7{prefix} kill -f§f again to review them
       console_input_failed: Cannot send the command to the console of §b{server_name}§f; please try again later
 
     status:

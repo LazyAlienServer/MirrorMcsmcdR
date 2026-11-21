@@ -7,7 +7,7 @@ from typing import Callable, Optional, Sequence
 import psutil
 
 from mirror_mcsmcdr.server.action import TERMINATIONS, Action, ActionResult, Intent
-from mirror_mcsmcdr.server.backend.base import KillTargets, ServerBackend, TerminalProxy
+from mirror_mcsmcdr.server.backend.base import KillTargets, ProcessIdentity, ServerBackend, TerminalProxy
 from mirror_mcsmcdr.server.resolver import StatusResolver
 from mirror_mcsmcdr.server.status import Evidence, Origin, ProcessInfo, ServerState, StatusSnapshot
 from mirror_mcsmcdr.server.system_utils import process_utils
@@ -130,12 +130,13 @@ class ServerController:
             return result.reject(ActionResult.Outcome.UNSUPPORTED), None
         return result, backend
 
-    def execute(self, action: Action) -> ActionResult:
+    def execute(self, action: Action, listed: Optional[frozenset[ProcessIdentity]] = None) -> ActionResult:
+        """:param listed: for a forced kill, the processes shown to the operator beforehand; it ends none but these"""
         with self._action_lock:
             result, backend = self._judge(action)
             if backend is None or not result.accepted:
                 return result
-            result = backend.perform(result)
+            result = backend.perform(result, listed)
             if result.outcome is ActionResult.Outcome.CONSOLE_INPUT_FAILED:
                 again = ActionResult.check(action, self.status())
                 if (again.snapshot.state, again.snapshot.anomalies) == (result.snapshot.state, result.snapshot.anomalies):

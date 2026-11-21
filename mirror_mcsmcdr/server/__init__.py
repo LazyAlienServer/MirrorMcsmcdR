@@ -4,7 +4,7 @@ Observes and controls one mirror server.
 The rest of the plugin imports from here only; the modules below are free to move.
 """
 from mirror_mcsmcdr.server.action import Action, ActionResult
-from mirror_mcsmcdr.server.backend.base import KillTargets
+from mirror_mcsmcdr.server.backend.base import KillTargets, ProcessIdentity
 from mirror_mcsmcdr.server.backend.child_process import SubprocessProxy
 from mirror_mcsmcdr.server.backend.factory import ProxySettingException, build_backends
 from mirror_mcsmcdr.server.backend.mcsm import MCSManagerProxyError
@@ -21,6 +21,7 @@ __all__ = [
     "MCSManagerProxyError",
     "Origin",
     "ProcessInfo",
+    "ProcessIdentity",
     "ProcessTracker",
     "ProxySettingException",
     "RecoverOutcome",

@@ -14,6 +14,9 @@ from mirror_mcsmcdr.server.system_utils import process_utils
 from mirror_mcsmcdr.server.system_utils.port_utils import PortListener
 from mirror_mcsmcdr.server.tracker import Adoption, ProcessRecord, ProcessTracker, Role, TreeView
 
+# a process by its pid and its start token, which tells it from a later one with the same pid
+ProcessIdentity = tuple[int, str]
+
 
 class ServerBackend(ABC):
     """One way to reach the server: it reports what it can observe and carries out the actions it supports."""
@@ -32,10 +35,11 @@ class ServerBackend(ABC):
         """
         time.sleep(timeout)
 
-    def perform(self, result: ActionResult) -> ActionResult:
+    def perform(self, result: ActionResult, listed: Optional[frozenset[ProcessIdentity]] = None) -> ActionResult:
         """
         Carry out ``result.action``, which is one of :attr:`supports` and has passed :meth:`ActionResult.check`.
 
+        :param listed: for a forced kill, the processes shown to the operator beforehand; it ends none but these
         :return: the given result, or a rejection of it if the action could not be carried out
         """
         match result.action:
@@ -46,7 +50,7 @@ class ServerBackend(ABC):
             case Action.KILL:
                 return self._kill(result)
             case Action.FORCEKILL:
-                return self._forcekill(result)
+                return self._forcekill(result, listed)
 
     # A backend overrides the methods of the actions it lists in :attr:`supports`; the others are never called.
 
@@ -59,7 +63,7 @@ class ServerBackend(ABC):
     def _kill(self, result: ActionResult) -> ActionResult:
         raise self._unsupported(result)
 
-    def _forcekill(self, result: ActionResult) -> ActionResult:
+    def _forcekill(self, result: ActionResult, listed: Optional[frozenset[ProcessIdentity]] = None) -> ActionResult:
         raise self._unsupported(result)
 
     def _unsupported(self, result: ActionResult) -> NotImplementedError:
@@ -75,6 +79,16 @@ class KillTargets:
     processes: tuple[tuple[ProcessInfo, psutil.Process], ...]
     # something holds the port whose pid cannot be read, so the port cannot be freed by force
     unreadable: bool
+
+    def identities(self) -> frozenset[ProcessIdentity]:
+        """The targets by identity; one that is gone by now is left out."""
+        found = set()
+        for _, process in self.processes:
+            try:
+                found.add((process.pid, process_utils.start_token(process)))
+            except psutil.Error:
+                pass
+        return frozenset(found)
 
 
 class TerminalProxy(ServerBackend, ABC):
@@ -279,12 +293,15 @@ class TerminalProxy(ServerBackend, ABC):
             targets.append((process_utils.describe(process, Origin.UNTRACKED), process))
         return KillTargets(view.record, tuple(targets), unreadable)
 
-    def _forcekill(self, result: ActionResult) -> ActionResult:
+    def _forcekill(self, result: ActionResult, listed: Optional[frozenset[ProcessIdentity]] = None) -> ActionResult:
         targets = self.forcekill_targets()
         if targets.unreadable:
             return result.reject(ActionResult.Outcome.UNREADABLE_LISTENER)
         if not targets.processes:
             return result.reject(ActionResult.Outcome.NO_TARGET)
+        # those listed that have exited meanwhile are simply not there; anything else would be ended unseen
+        if listed is not None and not targets.identities() <= listed:
+            return result.reject(ActionResult.Outcome.TARGETS_CHANGED)
         # each one is attempted whatever became of the others, and the first failure is reported at the end
         errors = self._end(targets)
         if errors:

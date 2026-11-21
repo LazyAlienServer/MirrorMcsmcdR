@@ -11,7 +11,7 @@ from mirror_mcsmcdr.runtime import MirrorRuntime
 from mirror_mcsmcdr.sync.workflow import SyncWorkflow, backup_error_console_lines, describe_backup_error
 from mirror_mcsmcdr.sync.backup import BackupError, BackupWarning, MirrorBackup
 from mirror_mcsmcdr.text_utils import detail_lines, help_msg, rejection_lines, rtr, status_key
-from mirror_mcsmcdr.server import Action, MCSManagerProxyError, Origin, ProcessInfo, ProcessTracker, RecoverOutcome, RecoverResult, ScreenError, ServerState, StatusSnapshot, WaitEnd
+from mirror_mcsmcdr.server import Action, MCSManagerProxyError, Origin, ProcessIdentity, ProcessInfo, ProcessTracker, RecoverOutcome, RecoverResult, ScreenError, ServerState, StatusSnapshot, WaitEnd
 from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
 from mirror_mcsmcdr.command_utils.page_utils import Page
 from mirror_mcsmcdr.command_utils.confirmation_utils import ConfirmationTask, ConfirmationManager
@@ -329,11 +329,11 @@ class MirrorManager:
             source.reply(rtr("error.unknown"))
             raise
 
-    def _execute(self, runtime: MirrorRuntime, source: CommandSource, action: Action) -> bool:
+    def _execute(self, runtime: MirrorRuntime, source: CommandSource, action: Action, listed: Optional[frozenset[ProcessIdentity]] = None) -> bool:
         # forcing is a flag of the kill command, not a command of its own
         command = "kill" if action is Action.FORCEKILL else action.value
         with self._report_api_error(source):
-            result = runtime.controller.execute(action)
+            result = runtime.controller.execute(action, listed)
             if result.accepted:
                 self.server.broadcast(self.rtr("command._execute.success", prompt=self.rtr(f"command.{command}.success", title=False).to_legacy_text()))
                 return True
@@ -591,18 +591,21 @@ class MirrorManager:
 
     def kill(self, source: CommandSource, context: CommandContext, force: bool = False) -> None:
         action = Action.FORCEKILL if force else Action.KILL
+        # filled by the review: the forced kill ends none but the processes listed then, also once confirmed later
+        listed: list[frozenset[ProcessIdentity]] = []
         self._run_command(
             "kill",
             source,
-            lambda runtime: self._execute(runtime, source, action),
-            confirm_if=(lambda runtime: self._review_forcekill(runtime, source)) if force else None,
+            lambda runtime: self._execute(runtime, source, action, listed[0] if listed else None),
+            confirm_if=(lambda runtime: self._review_forcekill(runtime, source, listed)) if force else None,
             checked=action,
         )
 
-    def _review_forcekill(self, runtime: MirrorRuntime, source: CommandSource) -> Optional[bool]:
+    def _review_forcekill(self, runtime: MirrorRuntime, source: CommandSource, listed: list[frozenset[ProcessIdentity]]) -> Optional[bool]:
         """
         Tell ``source``, before a forced kill is run or confirmed, which processes it would end.
 
+        :param listed: gets the identities of those processes
         :return: False; None if there is nothing it could end, so there is nothing to confirm
         """
         with self._report_api_error(source):
@@ -615,6 +618,7 @@ class MirrorManager:
                 prompt = self.rtr(f"command.outcome.{outcome}", title=False).to_legacy_text()
                 source.reply(self.rtr("command._execute.fail", prompt=prompt))
                 return None
+            listed.append(targets.identities())
             self._report_processes(runtime, source, tuple(info for info, _ in targets.processes), "command.kill.targets")
             return False
         return None

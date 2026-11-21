@@ -43,6 +43,8 @@ class ActionResult:
         NO_TARGET = "no_target"
         # a forced kill was refused: something holds the port whose pid cannot be read
         UNREADABLE_LISTENER = "unreadable_listener"
+        # a forced kill was refused: what it would end is no longer what was listed to the operator
+        TARGETS_CHANGED = "targets_changed"
         # the console did not take the input, although the status still allows the action
         CONSOLE_INPUT_FAILED = "console_input_failed"
 
