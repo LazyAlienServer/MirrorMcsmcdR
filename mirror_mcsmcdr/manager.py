@@ -167,25 +167,37 @@ class MirrorManager:
         for error in runtime.proxy_errors:
             self.server.broadcast(self.rtr("manager.reload.fail.proxy", proxy=error.proxy, keys="', '".join(error.missing_keys)))
         if runtime.backup is not None:
-            self._diagnose_backup(runtime.backup)
+            self._diagnose_backup(runtime, runtime.backup)
         return True
 
-    def _diagnose_backup(self, backup: MirrorBackup) -> None:
-        """Tell the console early what a sync would run into; this decides nothing, each sync checks again."""
+    @new_thread(f"{TITLE}-backup")
+    def _diagnose_backup(self, runtime: MirrorRuntime, backup: MirrorBackup) -> None:
+        """
+        Tell the console early what a sync would run into; this decides nothing, each sync checks again.
+
+        In the background: running the mirror's PrimeBackup may take long, and a reload must not wait for it.
+        Nothing is told once ``runtime`` is no longer current, or after the unload.
+        """
+        def current() -> bool:
+            return not self._unloaded and self._runtime is runtime
+
         try:
             resolved = backup.resolve()
             backup.probe(resolved)
             warnings = backup.warnings(resolved)
         except BackupError as e:
-            self.server.logger.warning(self.rtr("manager.backup.unavailable", title=False, reason=describe_backup_error(self.rtr, e).to_plain_text()))
-            for line in backup_error_console_lines(self.rtr, e):
-                self.server.logger.warning(line)
+            if current():
+                self.server.logger.warning(self.rtr("manager.backup.unavailable", title=False, reason=describe_backup_error(self.rtr, e).to_plain_text()))
+                for line in backup_error_console_lines(self.rtr, e):
+                    self.server.logger.warning(line)
             return
         except Exception as e:
-            self.server.logger.warning(self.rtr("manager.backup.unavailable", title=False, reason=str(e)), exc_info=e)
+            if current():
+                self.server.logger.warning(self.rtr("manager.backup.unavailable", title=False, reason=str(e)), exc_info=e)
             return
-        self.server.logger.info(self.rtr("manager.backup.ready", title=False, version=resolved.plugin_version, path=resolved.plugin_path))
-        self._log_backup_warnings(warnings)
+        if current():
+            self.server.logger.info(self.rtr("manager.backup.ready", title=False, version=resolved.plugin_version, path=resolved.plugin_path))
+            self._log_backup_warnings(warnings)
 
     def _log_backup_warnings(self, warnings: list[BackupWarning]) -> None:
         # they name paths, so they are for the console only
