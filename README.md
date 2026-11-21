@@ -336,7 +336,7 @@ mcdr_root (./)
 - 留空时由[`root_path`](#root_path--is_mcdr-镜像服目录与类型)推导：`is_mcdr`为`true`时，是`root_path`下镜像服MCDR的`working_directory`（每次同步时读取镜像服的`config.yml`，读取失败时同步被拒绝）；`is_mcdr`为`false`时，就是`root_path`。默认配置下为`./Mirror/server`。
 
 **ignore_inexistent_target_path** `bool`
-- 若某个目标服务端目录不存在，当设置为`false`时，将会跳过对该目录的同步。当设置为`true`时，将会新建该目录并继续同步
+- 若某个目标服务端目录不存在，当设置为`false`时，将会跳过对该目录的同步，游戏内只提示跳过的目录数量，目录路径输出到控制台。当设置为`true`时，将会新建该目录并继续同步
 
 **concurrency** `int`
 - 同步时进行哈希计算的线程数

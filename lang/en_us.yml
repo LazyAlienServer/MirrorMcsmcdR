@@ -235,7 +235,8 @@ mirror_mcsmcdr:
         exiting: §b{server_name}§f's MCDR is still running; stopping it automatically and syncing...
         fail: §cAuto-stop failed, §b{server_name} §f{status}
       success: §b{server_name}§a is syncing...
-      skip_dictionary: "§cThese directories of §b{server_name}§c do not exist and were skipped: §f`§7{paths}§f`"
+      skip_dictionary: "§b{count}§c target directories of §b{server_name}§c do not exist and were skipped; see the console"
+      skip_dictionary_path: "Target directory does not exist and was skipped: {path}"
       completed: "§aSync completed! §fTime: §b{time}s §7/ §b{changed_files_count} §ffiles updated"
       identical: §aNo changes detected
       error: "§cAn error occurred while syncing, please check the console for details"

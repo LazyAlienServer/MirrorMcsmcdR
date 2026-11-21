@@ -231,7 +231,10 @@ class SyncWorkflow:
         duration = format_duration(time.time() - started)
 
         if paths_notfound:
-            self._server.broadcast(self._tr("command.sync.skip_dictionary", paths="§f`§7".join(paths_notfound)))
+            # the paths are for the console only; derived ones come from the mirror's own config
+            self._server.broadcast(self._tr("command.sync.skip_dictionary", count=len(paths_notfound)))
+            for path in paths_notfound:
+                self._server.logger.warning(self._tr("command.sync.skip_dictionary_path", title=False, path=path))
         if changed_files_count != 0:
             self._server.broadcast(self._tr("command.sync.completed", time=duration, changed_files_count=changed_files_count))
         else:

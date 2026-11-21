@@ -341,7 +341,7 @@ mcdr_root (./)
 - When empty, it is derived from [`root_path`](#root_path--is_mcdr-mirror-server-directory-and-kind): with `is_mcdr` set to `true`, the mirror MCDR's `working_directory` under `root_path` (read from the mirror's `config.yml` at every sync; if it cannot be read, the sync is refused); with `is_mcdr` set to `false`, `root_path` itself. With the default config it is `./Mirror/server`.
 
 **ignore_inexistent_target_path** `bool`
-- If a target server directory does not exist, it will be skipped when set to `false`. When set to `true`, the directory will be created and synchronization will continue.
+- If a target server directory does not exist, it will be skipped when set to `false`; the game is told how many directories were skipped, and their paths go to the console. When set to `true`, the directory will be created and synchronization will continue.
 
 **concurrency** `int`
 - The number of threads performing hash calculations during synchronization.
