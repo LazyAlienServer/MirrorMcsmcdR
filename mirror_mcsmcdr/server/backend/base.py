@@ -1,4 +1,3 @@
-import os
 import re
 import time
 from abc import ABC, abstractmethod
@@ -243,8 +242,9 @@ class TerminalProxy(ServerBackend, ABC):
         Every process of the machine is looked at, so this is for a decision, not for a watch.
         """
         tracked, _ = self.tracker.live_processes()
-        # the MCDR this plugin runs in, too: a launch path pointing at its own folder must not make it a mirror
-        exclude = {process.pid for process in tracked} | {os.getpid()}
+        # the MCDR this plugin runs in, and what launched it, such as mcdreforged.exe on Windows:
+        # a launch path pointing at its own folder must not make them a mirror
+        exclude = {process.pid for process in tracked} | process_utils.own_lineage()
         if self.is_mcdr:
             return process_utils.find_mcdr_in(self.path, exclude)
         return process_utils.find_java_in(self.path, exclude, self.java_name)

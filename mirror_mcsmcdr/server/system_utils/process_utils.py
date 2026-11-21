@@ -195,6 +195,12 @@ def _find_in(
     return outermost
 
 
+def own_lineage() -> set[int]:
+    """The pids of this process and of its ancestors."""
+    process = psutil.Process()
+    return {process.pid} | {parent.pid for parent in process.parents()}
+
+
 def all_processes() -> Iterator[psutil.Process]:
     """
     Every process there is, each looked up afresh.
