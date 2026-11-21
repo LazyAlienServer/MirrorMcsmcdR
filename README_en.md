@@ -499,7 +499,7 @@ action:
 - The config cannot be reloaded while the mirror server is `starting`. Wait for it, or run `!!mirror kill` first
 - When MCSM is enabled the status comes from MCSM, and this option does not affect it
 - After an automatic stop for a sync (`auto_server_restart`, `auto_mcdr_stop`), the plugin waits up to `stop.timeout` seconds; past that it outputs `automatic shutdown failed` with the current status of the mirror server and tells the sender what it is still waiting for
-- After every start (`!!mirror start`, the restart after a sync, and the start in `server stopped, MCDR still running`), the plugin waits in the background for the mirror server to be `running` and then broadcasts `has started`. If it becomes `stopped` or `status unknown` or shows an anomaly first, or is still not `running` after `start.timeout` seconds, it broadcasts `start not completed` with the current status and tells the sender the details
+- After every start (`!!mirror start`, the restart after a sync, and the start in `server stopped, MCDR still running`), the plugin waits in the background for the mirror server to be `running` and then broadcasts `has started`. If it becomes `stopped` or `status unknown` or shows an anomaly first, or is still not `running` after `start.timeout` seconds, it broadcasts `start not completed` with the current status and tells the sender the details. With MCSManager, `stopped` and `status unknown` (a busy instance) reported by the panel may be temporary, so the plugin keeps waiting until the timeout; after an automatic stop for a sync, it likewise keeps waiting through a `status unknown` from the panel
 
 ### check_status_interval
 **check_status_interval** `int`

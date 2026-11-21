@@ -171,8 +171,9 @@ class SyncWorkflow:
                 StatusSnapshot.safe_to_modify,
                 timeout=action.stop.timeout,
                 interval=action.check_status_interval,
-                # a listener the plugin did not start does not go away by waiting
-                give_up=lambda status: status.state is ServerState.UNKNOWN,
+                # A listener the plugin did not start does not go away by waiting.
+                # A panel reports an instance busy as unknown, which it is only for a while
+                give_up=lambda status: status.state is ServerState.UNKNOWN and status.evidence.panel_state is None,
             )
             snapshot = waited.snapshot
             if waited.end is WaitEnd.REACHED:

@@ -467,9 +467,11 @@ class MirrorManager:
             return self._unloaded or self._latest_start != start
 
         def failed(snapshot: StatusSnapshot) -> bool:
-            # a panel may still report the mirror stopped right after it was asked to start
-            stopped = snapshot.state is ServerState.STOPPED and snapshot.evidence.panel_state is None
-            return stopped or snapshot.state is ServerState.UNKNOWN or bool(snapshot.anomalies)
+            # A panel may still report the mirror stopped right after it was asked to start,
+            # and reports it unknown while the instance is busy
+            if snapshot.evidence.panel_state is not None:
+                return bool(snapshot.anomalies)
+            return snapshot.state in (ServerState.STOPPED, ServerState.UNKNOWN) or bool(snapshot.anomalies)
 
         action = runtime.config.command.action
         with self._report_api_error(source):
