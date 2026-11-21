@@ -41,6 +41,17 @@ def format_duration(seconds: float) -> str:
     return ("%02d:" % h if h else "") + ("%02d:" % m if m else "") + ("%02d" % s if m or h else ("%.02f" % s).zfill(5))
 
 
+def _shown_reason(error: Exception) -> str:
+    """
+    What the history keeps of an unexpected error; ``history`` shows it in game, so no path may be in it.
+
+    Only the kind of error, and for a failed file operation what failed; the whole error goes to the console.
+    """
+    if isinstance(error, OSError) and error.strerror:
+        return f"{type(error).__name__}: {error.strerror}"
+    return type(error).__name__
+
+
 class SaveWorldWaiter:
     """Lets a sync wait until the server console reports that the world has been saved."""
 
@@ -121,7 +132,7 @@ class SyncWorkflow:
         except Exception as e:
             self._server.broadcast(self._tr("command.sync.error"))
             self._server.logger.error(e, exc_info=e)
-            record = SyncRecord(started_at, operator, SyncStatus.FAILED, exception=str(e), backup_id=backup_id)
+            record = SyncRecord(started_at, operator, SyncStatus.FAILED, exception=_shown_reason(e), backup_id=backup_id)
         finally:
             if record is not None:
                 runtime.history.append(record)
