@@ -145,7 +145,8 @@ mirror_mcsmcdr:
       foreign_listener: "the port is held by processes not started by the plugin; §7{prefix} kill -f§f ends them"
       untracked: "an untracked {server_type} is running in the launch path; §7{prefix} recover§f adopts it"
       start_pending: "starting command sent; waiting for the server to open the port"
-      port_closed: "the server process is running but the port is not open; if it stays so, check §7'port'§f in the config, or end it with §7{prefix} kill"
+      port_closed: "the server process is running but the port is not open; it may be starting or exiting. If it stays so, check §7'port'§f in the config, or end it with §7{prefix} kill"
+      port_released: "the server has closed the port and is exiting; if it stays so, end it with §7{prefix} kill"
       stop_pending: "stopping command sent; waiting for the processes to exit"
       console_closing: the console is closing
       mcdr_only: "MCDR may be idle or exiting; §7{prefix} start§f starts the server in it, §7{prefix} stop§f makes MCDR exit, §7{prefix} kill§f ends it"
@@ -225,7 +226,8 @@ mirror_mcsmcdr:
         unsupported: "§cOperation failed / §b{server_name}§c: the current config does not support querying the status; configure §7'mcsm'§c or §7'terminal'"
       hint:
         running: "§fPlease stop §b{server_name}§f first, then sync"
-        starting: "§fPlease wait for §b{server_name}§f to start, then stop it and sync"
+        starting: "§fPlease wait for §b{server_name}§f to finish starting or stopping, then sync"
+        stopping: "§fPlease sync after §b{server_name}§f has stopped"
       auto_restart:
         restarting: §b{server_name}§f is still running; stopping it automatically and syncing...
         exiting: §b{server_name}§f's MCDR is still running; stopping it automatically and syncing...

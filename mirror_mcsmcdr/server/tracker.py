@@ -29,6 +29,8 @@ class Member:
     pid: int
     token: str
     role: Role
+    # whether it has been seen listening on the configured port: a server that closes the port after that is on its way out
+    listened: bool = False
 
 
 @dataclass(frozen=True)
@@ -84,7 +86,7 @@ class ProcessRecord:
 
     def to_json(self) -> dict[str, Any]:
         def member(m: Member) -> dict[str, Any]:
-            return {"pid": m.pid, "token": m.token, "role": m.role.value}
+            return {"pid": m.pid, "token": m.token, "role": m.role.value, "listened": m.listened}
 
         return {
             "generation": self.generation,
@@ -102,7 +104,8 @@ class ProcessRecord:
     def from_json(cls, data: dict[str, Any]) -> "ProcessRecord":
         """:raise KeyError, TypeError, ValueError: if ``data`` is not a record"""
         def member(m: dict[str, Any]) -> Member:
-            return Member(int(m["pid"]), str(m["token"]), Role(m["role"]))
+            # "listened" is absent from the records of earlier versions
+            return Member(int(m["pid"]), str(m["token"]), Role(m["role"]), bool(m.get("listened", False)))
 
         return cls(
             int(data["generation"]),
@@ -145,7 +148,9 @@ class TreeView:
 
     @property
     def root_alive(self) -> bool:
-        return self.record is not None and any(live.member == self.record.root for live in self.members)
+        # by identity: what is learnt about the root later, such as that it listened, does not make it another process
+        root = self.record.root if self.record is not None else None
+        return root is not None and any((live.member.pid, live.member.token) == (root.pid, root.token) for live in self.members)
 
     def foreign_listeners(self) -> list[Optional[int]]:
         members = self.member_pids()
@@ -217,6 +222,10 @@ class ProcessTracker:
                 known = {member.pid for member in record.members}
                 members = self._take_in_descendants(self._revalidate(record.members), record.root.pid)
                 members = self._tell_server_apart(members, {live.member.pid for live in members} - known, listeners)
+                members = [
+                    LiveMember(replace(live.member, listened=True), live.process) if live.member.pid in listeners and not live.member.listened else live
+                    for live in members
+                ]
                 updated = replace(record, members=tuple(live.member for live in members), active=bool(members))
                 if updated != record:
                     self._record = record = updated

@@ -184,6 +184,7 @@ class TerminalProxy(ServerBackend, ABC):
             foreign_listeners=tuple(self._describe_listener(pid) for pid in view.foreign_listeners()),
             mcdr_alive=mcdr_alive,
             server_alive=server_alive,
+            server_listened=any(live.member.listened for live in view.members),
             others_alive=others_alive,
             wrapper_alive=view.alive(Role.WRAPPER),
             # a launch by another backend cannot be controlled from this one

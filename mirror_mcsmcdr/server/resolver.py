@@ -46,8 +46,15 @@ class StatusResolver:
             state, anomaly = ServerState.RUNNING, Anomaly.ORPHAN_PROCESS
         elif evidence.server_alive or (evidence.others_alive and evidence.mcdr_alive is False):
             if not evidence.port_listening:
-                # the port opens a while after the server process is there, and stays closed if it is not the right one
-                state, detail = pending or ServerState.STARTING, pending_detail or Detail.PORT_CLOSED
+                if pending is not None:
+                    state, detail = pending, pending_detail
+                elif evidence.server_listened:
+                    # the server closes the port on its way out, as when it is stopped from its own console
+                    state, detail = ServerState.STOPPING, Detail.PORT_RELEASED
+                else:
+                    # The port opens a while after the server process is there, and stays closed if it is not the right one.
+                    # A server never seen listening may also be on its way out, as one adopted after it closed the port.
+                    state, detail = ServerState.STARTING, Detail.PORT_CLOSED
             elif stopping:
                 state, detail = ServerState.STOPPING, Detail.STOP_PENDING
             else:

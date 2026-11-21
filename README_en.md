@@ -239,9 +239,9 @@ The recorded processes fall into these groups:
 | Status | Meaning | Available actions |
 |--------|---------|-------------------|
 | stopped | Every recorded process has exited, and the port is free | `start`, `sync` |
-| starting | The start command was sent, or the server process is running but the port is not open yet | `kill`, `kill -f` |
+| starting | The start command was sent, or the server process is running but the port is not open, and the plugin has not seen it open | `kill`, `kill -f` |
 | running | The port is held by a recorded process | `stop`, `kill`, `kill -f`; `sync` with `auto_server_restart` |
-| stopping | The stop command was sent; waiting for the processes to exit | `kill`, `kill -f` |
+| stopping | The stop command was sent, or the server closed the port the plugin had seen it open (for example, it was stopped from the mirror's own console); waiting for the processes to exit | `kill`, `kill -f` |
 | server stopped, MCDR still running | The server has exited; MCDR is idle or exiting | `start`, `stop`, `kill`, `kill -f`; `sync` with `auto_mcdr_stop` |
 | status unknown | The port is held by a process the plugin did not start | `kill -f` |
 | status unknown | An MCDR the plugin did not start (a Java process with `is_mcdr` set to `false`) is running in the launch path (see below) | `recover` |
@@ -255,7 +255,7 @@ One of these anomalies may follow the status:
 - **MCDR process not found**: `is_mcdr` is `true` and the server is running, but there is no MCDR process in the record. `kill` and `kill -f` are available;
 - **Detached**: the launch command has ended, but the screen or terminal is left. `kill` and `kill -f` are available.
 
-When the server process is running but the port never opens, the status stays at `starting`. Check that `port` matches the mirror server's `server-port`.
+When the server process is running but the port never opens, the status stays at `starting`. Check that `port` matches the mirror server's `server-port`. A server whose port the plugin has never seen open, such as one adopted after it closed the port, may also be exiting; the details say so.
 
 > [!WARNING]
 > A mirror server this plugin did not start (started by hand, or by an older version of the plugin) is not in the record:

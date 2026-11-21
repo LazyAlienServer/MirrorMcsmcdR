@@ -29,7 +29,7 @@ def help_msg(server_name, prefix):
 _HINTS = {
     "start": {"stopping"},
     "stop": {"starting"},
-    "sync": {"running", "starting"},
+    "sync": {"running", "starting", "stopping"},
 }
 
 

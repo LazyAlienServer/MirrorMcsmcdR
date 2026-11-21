@@ -146,7 +146,8 @@ mirror_mcsmcdr:
       foreign_listener: 端口被不是插件启动的进程占用，可使用 §7{prefix} kill -f §f结束这些进程
       untracked: 启动目录中有正在运行的未跟踪{server_type}，可使用 §7{prefix} recover §f接管它
       start_pending: 启动指令已发送，正在等待服务端打开端口
-      port_closed: 服务端进程在运行但端口未打开，若一直如此请检查配置中的 §7'port'§f，或使用 §7{prefix} kill §f终止
+      port_closed: 服务端进程在运行但端口未打开，可能正在启动或退出；若一直如此，请检查配置中的 §7'port'§f，或使用 §7{prefix} kill §f终止
+      port_released: 服务端已关闭端口，正在退出；若一直如此，可使用 §7{prefix} kill §f终止
       stop_pending: 关闭指令已发送，正在等待进程退出
       console_closing: 控制台正在关闭
       mcdr_only: MCDR 可能空闲或正在退出，可使用 §7{prefix} start §f在其中启动服务端，§7{prefix} stop §f让 MCDR 退出，或 §7{prefix} kill §f终止 MCDR
@@ -226,7 +227,8 @@ mirror_mcsmcdr:
         unsupported: §c操作失败 / §b{server_name} §c当前配置文件不支持获取运行状态，需要配置 §7'mcsm'§c 或 §7'terminal'
       hint:
         running: "§f请先停止 §b{server_name} §f再进行同步"
-        starting: "§f请等待 §b{server_name} §f启动后停止并进行同步"
+        starting: "§f请等待 §b{server_name} §f启动或停止后再进行同步"
+        stopping: "§f请等待 §b{server_name} §f停止后再进行同步"
       auto_restart:
         restarting: §b{server_name} §f未停止，自动关闭 §b{server_name} §f并进行同步...
         exiting: §b{server_name} §f的 MCDR 进程未停止，自动关闭 §b{server_name}§f MCDR 并进行同步...

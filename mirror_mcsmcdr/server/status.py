@@ -42,8 +42,10 @@ class Detail(Enum):
     # nothing tracked is alive, but an MCDR (a Java process for a plain server) the record does not hold runs in the launch path
     UNTRACKED = "untracked"
     START_PENDING = "start_pending"
-    # the server is there without a start of the plugin pending, yet the port stays closed
+    # the server is there without a start of the plugin pending, yet the port stays closed: it is starting, or going unseen
     PORT_CLOSED = "port_closed"
+    # the server had the port open, and has closed it while it runs on: it is on its way out
+    PORT_RELEASED = "port_released"
     STOP_PENDING = "stop_pending"
     # only the terminal is left, and it is going
     CONSOLE_CLOSING = "console_closing"
@@ -87,6 +89,8 @@ class Evidence:
     # the tracked processes alive, by role; None for MCDR when the mirror is not run by MCDR
     mcdr_alive: Optional[bool] = None
     server_alive: Optional[bool] = None
+    # whether a tracked process still alive has been seen listening on the port before
+    server_listened: Optional[bool] = None
     # tracked processes that are neither MCDR, the server, nor what launched them
     others_alive: Optional[bool] = None
     # the terminal and shell the mirror was launched from
