@@ -256,6 +256,7 @@ mirror_mcsmcdr:
           mcdr_config_unreadable: "§ccannot read the mirror's MCDR config"
           mcdr_config_invalid: "§cinvalid value of §4'{option}'§c in the mirror's MCDR config"
           plugin_not_found: "§cno §3PrimeBackup§c plugin in the plugin directories of the mirror's MCDR"
+          plugin_directory_unreadable: "§ccannot read a plugin directory of the mirror's MCDR"
           plugin_duplicated: "§cmore than one §3PrimeBackup§c plugin in the mirror's MCDR"
           plugin_too_old: "§cthe mirror's §3PrimeBackup§c has version {version}, at least 1.13.0 is required"
           pb_config_unreadable: "§ccannot read the mirror's §3PrimeBackup§c config"

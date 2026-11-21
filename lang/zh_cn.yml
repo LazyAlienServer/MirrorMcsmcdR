@@ -257,6 +257,7 @@ mirror_mcsmcdr:
           mcdr_config_unreadable: "§c无法读取镜像服的 MCDR 配置文件"
           mcdr_config_invalid: "§c镜像服的 MCDR 配置文件中 §4'{option}'§c 的值无效"
           plugin_not_found: "§c镜像服 MCDR 的插件目录中没有 §3PrimeBackup §c插件"
+          plugin_directory_unreadable: "§c无法读取镜像服 MCDR 的插件目录"
           plugin_duplicated: "§c镜像服 MCDR 中有多个 §3PrimeBackup §c插件"
           plugin_too_old: "§c镜像服的 §3PrimeBackup §c版本为 {version}，至少需要 1.13.0"
           pb_config_unreadable: "§c无法读取镜像服的 §3PrimeBackup §c配置文件"

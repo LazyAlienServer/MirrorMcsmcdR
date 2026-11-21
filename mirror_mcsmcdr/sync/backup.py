@@ -205,7 +205,12 @@ class MirrorBackup:
         for directory in directories:
             if not directory.is_dir():
                 continue
-            for name in os.listdir(directory):
+            try:
+                names = os.listdir(directory)
+            except OSError as e:
+                # it may hold the plugin, so passing over it could hide a duplicate as well
+                raise BackupUnavailable("plugin_directory_unreadable", path=str(directory), error=str(e)) from e
+            for name in names:
                 plugin = cls._read_plugin(mcdr_path, directory / name)
                 if plugin is None or plugin.plugin_id != PRIME_BACKUP_ID:
                     continue
