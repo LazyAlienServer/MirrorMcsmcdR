@@ -2,6 +2,8 @@ from typing import Iterable, Optional
 
 import psutil
 
+from mirror_mcsmcdr.server.system_utils import process_utils
+
 
 class PortListener:
     """Finds what listens on a local TCP port."""
@@ -20,7 +22,7 @@ class PortListener:
         except psutil.AccessDenied:
             # macOS shows the sockets of the whole system to root only; those of the processes of this user remain
             found = []
-            for process in psutil.process_iter():
+            for process in process_utils.all_processes():
                 try:
                     # named connections() before psutil 6
                     list_connections = getattr(process, "net_connections", None) or process.connections

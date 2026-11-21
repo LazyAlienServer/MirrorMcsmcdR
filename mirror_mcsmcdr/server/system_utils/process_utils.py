@@ -2,7 +2,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Callable, Collection, Optional
+from typing import Callable, Collection, Iterator, Optional
 
 import psutil
 
@@ -176,11 +176,11 @@ def _find_in(
     owner = _owner(psutil.Process())
     found: dict[int, psutil.Process] = {}
     # by name first: the working directory and the arguments are read from the process itself, which is slow on Windows
-    for process in psutil.process_iter(["name"]):
-        if process.pid in exclude or not named(process.info["name"] or ""):
+    for process in all_processes():
+        if process.pid in exclude:
             continue
         try:
-            if _normalized(process.cwd()) == target and _owner(process) == owner and matches(process):
+            if named(process.name()) and _normalized(process.cwd()) == target and _owner(process) == owner and matches(process):
                 found[process.pid] = process
         except psutil.Error:
             continue
@@ -193,6 +193,20 @@ def _find_in(
             continue
         outermost.append(process)
     return outermost
+
+
+def all_processes() -> Iterator[psutil.Process]:
+    """
+    Every process there is, each looked up afresh.
+
+    Not ``psutil.process_iter``: since psutil 6 it hands out the objects of its earlier calls again, without noticing
+    a pid that a new process got in between; such an object still has the old name on Windows, and raises on Linux.
+    """
+    for pid in psutil.pids():
+        try:
+            yield psutil.Process(pid)
+        except psutil.Error:
+            continue
 
 
 def _owner(process: psutil.Process) -> object:
