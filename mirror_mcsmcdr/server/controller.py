@@ -18,6 +18,8 @@ class WaitEnd(Enum):
     # the status is one that waiting longer would not change
     GAVE_UP = "gave_up"
     TIMEOUT = "timeout"
+    # nobody waits for the result any more; the snapshot is the last one taken before
+    CANCELLED = "cancelled"
 
 
 @dataclass(frozen=True)
@@ -219,6 +221,7 @@ class ServerController:
         timeout: float,
         interval: float,
         give_up: Callable[[StatusSnapshot], bool] = lambda _: False,
+        cancelled: Callable[[], bool] = lambda: False,
     ) -> WaitResult:
         """
         Wait until the status satisfies ``until``.
@@ -227,6 +230,7 @@ class ServerController:
         for ``interval`` at most, so that the next status is taken as soon as something has happened.
 
         :param give_up: tells a status that waiting longer would not change
+        :param cancelled: tells, before each status after the first, that nobody waits for the result any more
         """
         # the terminal sees processes exit; the panel has nothing to watch but time
         watcher = next((backend for backend in self.backends if isinstance(backend, TerminalProxy)), self.backends[0])
@@ -241,6 +245,8 @@ class ServerController:
             if remaining <= 0:
                 return WaitResult(WaitEnd.TIMEOUT, snapshot)
             watcher.watch(min(interval, remaining))
+            if cancelled():
+                return WaitResult(WaitEnd.CANCELLED, snapshot)
 
     def is_starting(self) -> bool:
         """Whether a start issued through this controller is still settling."""

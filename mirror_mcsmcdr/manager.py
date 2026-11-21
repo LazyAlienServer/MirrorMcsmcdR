@@ -474,9 +474,12 @@ class MirrorManager:
 
     @new_thread(f"{TITLE}-start")
     def _await_ready(self, runtime: MirrorRuntime, source: CommandSource, start: int) -> None:
-        """Tell everyone whether the start ``start`` brought the mirror up; nothing if a newer start or the unload came first."""
+        """
+        Tell everyone whether the start ``start`` brought the mirror up; nothing if a newer start, the unload,
+        or a reload or disable that retired ``runtime`` came first.
+        """
         def superseded() -> bool:
-            return self._unloaded or self._latest_start != start
+            return self._unloaded or self._latest_start != start or self._active_runtime() is not runtime
 
         def failed(snapshot: StatusSnapshot) -> bool:
             # A panel may still report the mirror stopped right after it was asked to start,
@@ -491,7 +494,8 @@ class MirrorManager:
                 lambda snapshot: snapshot.is_exactly(ServerState.RUNNING),
                 timeout=action.start.timeout,
                 interval=action.check_status_interval,
-                give_up=lambda snapshot: superseded() or failed(snapshot),
+                give_up=failed,
+                cancelled=superseded,
             )
             if superseded():
                 return
