@@ -323,11 +323,10 @@ class MirrorBackup:
         if untargeted:
             found.append(BackupWarning("worlds_not_targeted", {"worlds": ", ".join(untargeted), "targets": ", ".join(patterns)}))
 
-        # a pattern that is a file name of sync.ignore_files means the same on both sides: that name, at any depth
         ignored = [
             pattern
             for pattern in (*self._patterns(resolved, "ignore_patterns", _DEFAULT_IGNORE_PATTERNS), *self._patterns(resolved, "ignored_files", []))
-            if pattern not in self.ignore_files
+            if not self._skipped_by_sync_too(pattern)
         ]
         if ignored:
             found.append(BackupWarning("ignored", {"patterns": ", ".join(ignored)}))
@@ -351,6 +350,18 @@ class MirrorBackup:
         if not isinstance(patterns, list) or not all(isinstance(pattern, str) for pattern in patterns):
             raise BackupUnavailable("pb_config_invalid", path=resolved.config_path, option=f"backup.{key}")
         return [pattern for pattern in patterns if pattern.strip()]
+
+    def _skipped_by_sync_too(self, pattern: str) -> bool:
+        """
+        Whether a PrimeBackup ignore pattern leaves out only what the sync leaves out as well.
+
+        Only a plain name that ``sync.ignore_files`` holds: gitignore matches it at any depth, as the sync matches file names.
+        A path, a wildcard or a negation matches otherwise than the sync does, and the name of a world leaves out all of it.
+        """
+        if pattern not in self.ignore_files or pattern.startswith("!") or any(char in pattern for char in "/*?[\\"):
+            return False
+        world_names = {os.path.normcase(part) for world in self.worlds for part in os.path.normpath(world).split(os.sep)}
+        return os.path.normcase(pattern) not in world_names
 
     def _untargeted_worlds(self, resolved: ResolvedBackup, patterns: list[str]) -> list[str]:
         """The worlds PrimeBackup does not select: it matches gitignore patterns against the entries of its source directory."""
