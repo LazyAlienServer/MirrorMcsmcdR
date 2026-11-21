@@ -3,6 +3,11 @@
 # 添加另一个前缀，例如 "!!mirror2"，以配置另一个镜像服务器。
 
 "!!mirror":
+  # 镜像服目录，相对于本 MCDR。终端在此启动镜像服；is_mcdr 为 true 时，它是镜像服 MCDR 的目录（其 config.yml 所在目录）。
+  root_path: ./Mirror
+  # 镜像服是否由 MCDReforged 运行；普通服务端请设为 false。
+  is_mcdr: true
+
   # MCSManager 连接设置。启用时，terminal 不被使用。
   mcsm:
     # 是否通过 MCSManager 控制镜像服务器。
@@ -20,21 +25,17 @@
   terminal:
     # MCSManager 禁用时，是否启用终端控制。
     enable: false
-    # 镜像服务器启动命令运行的目录。
-    launch_path: ./Mirror
-    # 用于启动镜像服务器的命令。
+    # 用于启动镜像服务器的命令，在 root_path 下运行。
     launch_command: python -m mcdreforged
     # 镜像服务器端口，所有代理都必须填写。
     port:
     # 终端标题、screen 名称或子进程日志前缀。
     terminal_name: Mirror
-    # 镜像服务器本身是否由 MCDReforged 启动。
-    is_mcdr: true
     # 代理类型：linux、windows、subprocess 或 null 以自动选择。
     proxy_type:
     # 子进程控制台输出是否默认显示。
     console_log: false
-    # 插件加载时，若记录中没有运行的进程，而启动目录中恰好有一个不是插件启动的 MCDR，是否自动接管它；为 false 时只提示。
+    # 插件加载时，若记录中没有运行的进程，而 root_path 中恰好有一个不是插件启动的 MCDR，是否自动接管它；为 false 时只提示。
     auto_recover: true
     # is_mcdr 为 false 时，查找未跟踪服务端所认的 Java 进程名，正则表达式，不区分大小写。
     java_name: '^javaw?\d*(\.exe)?$'
@@ -44,11 +45,10 @@
     # 要同步的世界目录。
     world:
       - world
-    # 源服务器目录。
-    source: ./server
-    # 一个或多个目标服务器目录。
-    target:
-      - ./Mirror/server
+    # 源服务器目录；留空时使用本 MCDR 的 working_directory。
+    source: ''
+    # 一个或多个目标服务器目录；留空时使用 root_path 下镜像服 MCDR 的 working_directory（is_mcdr 为 false 时为 root_path 本身）。
+    target: []
     # 是否忽略缺失的目标目录。
     ignore_inexistent_target_path: false
     # 同步工作线程数。
@@ -56,13 +56,11 @@
     # 同步时排除的文件名。
     ignore_files:
       - session.lock
-    # 每次同步前，用镜像服自己的 PrimeBackup（>= 1.13.0）备份镜像服。
+    # 每次同步前，用 root_path 下镜像服自己的 PrimeBackup（>= 1.13.0）备份镜像服。is_mcdr 为 false 时不支持。
     # 启用后，备份不成功就不会复制任何文件。备份按镜像服 PrimeBackup 的现有设置进行。
     backup:
       # 每次同步前是否先备份；想不备份就同步，请改为 false 并重载配置。
       enable: false
-      # 镜像服 MCDR 的目录（其 config.yml 所在目录），相对于本 MCDR。留空时，若启用了 terminal 则使用 terminal.launch_path。
-      mcdr_path: ''
       # 备份最多可用的秒数；超时的备份会被终止，同步被拒绝。
       timeout: 600
       # 镜像服 PrimeBackup 的设置与同步设置不一致、备份可能不完整时，是否必须确认后才同步。

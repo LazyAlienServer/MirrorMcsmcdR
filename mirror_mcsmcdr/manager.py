@@ -93,7 +93,7 @@ class MirrorManager:
         self.command_prefix = command_prefix
         self.server_name = config.display.server_name
         # what is looked for outside the record, as the messages about it name it
-        self._server_type = "mcdr" if config.terminal.is_mcdr else "server"
+        self._server_type = "mcdr" if config.is_mcdr else "server"
         # outlives the runtimes: what was launched stays tracked across config reloads
         self._tracker = ProcessTracker(
             Path(server.get_data_folder()) / command_prefix / "process.json",
@@ -150,14 +150,15 @@ class MirrorManager:
     def _apply_config(self, config: MirrorConfig) -> bool:
         """Build a runtime from the config and make it current; on failure the previous state is left untouched."""
         try:
-            runtime = MirrorRuntime.build(config, Path(self.server.get_data_folder()) / self.command_prefix, self._tracker)
+            data_path = Path(self.server.get_data_folder()) / self.command_prefix
+            runtime = MirrorRuntime.build(config, data_path, self._tracker, self.server.get_mcdr_config()["working_directory"])
         except Exception as e:
             if self.server.is_server_startup():
                 self.server.say(self.rtr("manager.reload.fail"))
             self.server.logger.error(e, exc_info=e)
             return False
         self.server_name = config.display.server_name
-        self._server_type = "mcdr" if config.terminal.is_mcdr else "server"
+        self._server_type = "mcdr" if config.is_mcdr else "server"
         self._runtime = runtime
         self._available = True
         for error in runtime.proxy_errors:
@@ -552,7 +553,7 @@ class MirrorManager:
         and adopt it if the config allows and nothing makes it doubtful; otherwise only tell about it.
         A plain server is never adopted here: a Java process in the launch path says less than an MCDR does.
         """
-        plain = not runtime.config.terminal.is_mcdr
+        plain = not runtime.config.is_mcdr
         auto = runtime.config.terminal.auto_recover and not plain
         try:
             result = runtime.controller.recover(None, dry_run=not auto)

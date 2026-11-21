@@ -46,7 +46,9 @@
 - `subprocess`代理现在也必须配置`terminal.port`，未配置时terminal代理不可用；
 - `command.action.sync.max_attempt_times`已删除。同步自动停服后，最多等待`command.action.stop.timeout`秒（默认60秒，以前默认15秒）；
 - `command.action.sync.check_status_interval`移到了`command.action.check_status_interval`。旧位置的值会被忽略，恢复为默认值`5`；
-- `!!mirror execute`改名为`!!mirror input`，旧指令不再可用。权限配置`command.permission.execute`随之改为`command.permission.input`，旧的`execute`会被忽略，恢复为默认值`console`。
+- `!!mirror execute`改名为`!!mirror input`，旧指令不再可用。权限配置`command.permission.execute`随之改为`command.permission.input`，旧的`execute`会被忽略，恢复为默认值`console`；
+- `terminal.launch_path`改为顶层的[`root_path`](#root_path--is_mcdr-镜像服目录与类型)，`terminal.is_mcdr`改为顶层的`is_mcdr`，`sync.backup.mcdr_path`已删除（备份改用`root_path`）。旧的项会被忽略，`root_path`恢复为默认值`./Mirror`，请**手动修改**；
+- `sync.source`和`sync.target`可以留空，分别使用本MCDR的`working_directory`和由`root_path`推导出的目录。原有的值仍然有效。
 
 插件加载配置时，会从配置文件中删除它不认识的项（包括上面已删除的项和拼错的项），并在控制台逐项列出路径和值，同时在游戏内提示一次。删除前，原配置文件会备份为同目录下的`config.yml.<时间>-<内容哈希>.bak`。
 
@@ -80,6 +82,8 @@
 
 ```yaml
 "!!mirror":
+  root_path: # 镜像服目录
+  is_mcdr: # 镜像服是否由MCDR运行
   mcsm: # MCSManager配置
   terminal: # 通过命令行启动镜像服终端的配置
   sync: # 存档同步配置
@@ -119,6 +123,24 @@
 
 <br>
 
+### root_path / is_mcdr: 镜像服目录与类型
+```yaml
+root_path: "./Mirror"
+is_mcdr: true
+```
+
+**root_path** `str`
+- 镜像服所在的目录，相对于本服务端的MCDR根目录，也可以使用绝对路径，不能为空。
+  - terminal代理在此目录下执行`launch_command`，`!!mirror recover`在此目录中查找镜像服；
+  - `is_mcdr`为`true`时，它是镜像服MCDR的目录（其`config.yml`所在目录）。`sync.target`留空时，同步目标为此目录下镜像服MCDR的`working_directory`；同步前备份在此目录中查找镜像服的PrimeBackup；
+  - `is_mcdr`为`false`时，它是服务端自己的目录。`sync.target`留空时，同步目标就是它本身。
+
+**is_mcdr** `bool`
+- 镜像服是否由MCDReforged运行，默认为`true`，普通服务端请设为`false`。设为`false`时，不支持[同步前备份](#syncbackup-同步前备份)，插件也不会在加载时自动接管未跟踪的服务端。
+- 它还决定terminal代理如何停止和终止镜像服：Linux代理设置为`true`时，`stop`会向screen输入`!!MCDR server stop_exit`，`kill`在端口已开放时输入`!!MCDR server kill`，否则关闭screen；设置为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。Windows代理设置为`true`时，`stop`会向命令提示符窗口输入`!!MCDR server stop_exit`，设置为`false`时会输入Minecraft的`stop`命令，`kill`始终强制终止监听端口的进程；镜像服仍在启动、端口尚未开放时，则终止插件启动的全部进程。subprocess代理设置为`true`时，`stop`会发送`!!MCDR server stop_exit`，设置为`false`时会发送Minecraft的`stop`命令，`kill`会直接终止子进程。
+
+<br>
+
 ### mcsm: MCSManager配置
 此配置部分若有疑问，请参见[MCSManager官方文档](https://docs.mcsmanager.com/#/zh-cn/apis/readme)
 ```yaml
@@ -152,11 +174,9 @@ mcsm:
 ```yaml
 terminal:
   enable: false
-  launch_path: "./Mirror"
   launch_command: "python -m mcdreforged"
   port: 
   terminal_name: "Mirror"
-  is_mcdr: true
   proxy_type: 
   console_log: false
   auto_recover: true
@@ -166,11 +186,11 @@ terminal:
 
 > [!NOTE]
 > 如果你无法通过此命令启动镜像服，尝试按以下步骤检查。其中`terminal_name` `launch_command`都为配置文件中对应key的值
-> 1. 在`launch_path`下执行`launch_command`，并确认能够使镜像服正常启动
+> 1. 在`root_path`下执行`launch_command`，并确认能够使镜像服正常启动
 > 2. Linux用户检查是否安装了`screen`，Windows用户检查终端中输入`python`是否能正常启动Python
 > 3. 若以上两项都不能解决，则在当前服务端的MCDR根目录下执行Linux或Windows代理对应的完整命令，并检查命令回显
->   - Linux `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
->   - Windows `cd /d "{launch_path}"&&start cmd.exe /S /C "title {terminal_name}&&{launch_command}"`
+>   - Linux `cd "{root_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
+>   - Windows `cd /d "{root_path}"&&start cmd.exe /S /C "title {terminal_name}&&{launch_command}"`
 
 其中，`linux`代理通过screen控制镜像服；`windows`代理的`stop`会向监听镜像服端口的进程所在的命令提示符窗口输入停止命令，`kill`会强制终止该进程；`subprocess`代理通过子进程标准输入输出进行控制。所有代理都需要正确配置`port`。MCSM仍可作为替代控制方式。
 
@@ -180,9 +200,6 @@ terminal:
 **enable** `bool`
 - 是否启用终端，当MCSM未启用且此选项为`true`时将通过终端启动镜像服。
 
-**launch_path** `str`
-- 执行启动命令的路径，通常为镜像服所在的目录。
-
 **launch_command** `str`
 - 需要执行的启动命令，若简单的启动命令无法满足需求，你可以创建一个`.bat`（或`.sh`）文件，并将启动命令写在该文件中，然后执行该文件。Linux代理下命令过长（约700字节以上）时会被拒绝，同样请改用脚本文件。
 
@@ -191,9 +208,6 @@ terminal:
 
 **terminal_name** `str`
 - 新命令行终端的标题、新screen的名称，或subprocess代理日志输出使用的前缀。作为screen名称时不能超过64字节，也不能包含控制字符。
-
-**is_mcdr** `bool`
-- 是否通过MCDReforged启动镜像服，默认为`true`。Linux代理设置为`true`时，`stop`会向screen输入`!!MCDR server stop_exit`，`kill`在端口已开放时输入`!!MCDR server kill`，否则关闭screen；设置为`false`时，`stop`会输入Minecraft的`stop`命令，`kill`会直接执行强制终止。Windows代理设置为`true`时，`stop`会向命令提示符窗口输入`!!MCDR server stop_exit`，设置为`false`时会输入Minecraft的`stop`命令，`kill`始终强制终止监听端口的进程；镜像服仍在启动、端口尚未开放时，则终止插件启动的全部进程。subprocess代理设置为`true`时，`stop`会发送`!!MCDR server stop_exit`，设置为`false`时会发送Minecraft的`stop`命令，`kill`会直接终止子进程。
 
 > [!IMPORTANT]
 > `!!mirror kill -f`和`!!mirror kill --force`适用于所有terminal代理。它会强制终止插件启动并记录的全部进程（Linux代理随后关闭screen）；状态未知时，还会终止占用配置端口、但不是插件启动的进程。执行前会向执行者列出这些进程。若端口被无法读取PID的进程（例如其他用户的进程）占用，则不终止任何进程。请确认`port`配置正确，避免终止其他服务。
@@ -212,10 +226,10 @@ terminal:
 - 是否默认将`subprocess`代理的镜像服控制台日志输出到MCDR控制台。此配置仅对`subprocess`代理生效。
 
 **auto_recover** `bool`
-- 插件加载时，如果记录中没有运行的进程，而启动目录中有不是插件启动的MCDR，是否自动接管它，默认为`true`。只有恰好找到一个、且配置的端口空闲或由它及其子进程监听时，插件才会接管，并在控制台列出进程、在游戏内提示一次。其他情况下，以及设置为`false`时，插件只提示，可以用`!!mirror recover`手动接管。`is_mcdr`为`false`时，插件从不自动接管。见[接管镜像服](#接管镜像服)。
+- 插件加载时，如果记录中没有运行的进程，而`root_path`中有不是插件启动的MCDR，是否自动接管它，默认为`true`。只有恰好找到一个、且配置的端口空闲或由它及其子进程监听时，插件才会接管，并在控制台列出进程、在游戏内提示一次。其他情况下，以及设置为`false`时，插件只提示，可以用`!!mirror recover`手动接管。`is_mcdr`为`false`时，插件从不自动接管。见[接管镜像服](#接管镜像服)。
 
 **java_name** `str`
-- `is_mcdr`为`false`时，插件在启动目录中查找未跟踪的服务端，只看进程名与此正则表达式匹配的进程，不区分大小写。默认值匹配`java`、`javaw`、`java17`、`java21.exe`等。把Java可执行文件改成了其他名字时，请相应修改。
+- `is_mcdr`为`false`时，插件在`root_path`中查找未跟踪的服务端，只看进程名与此正则表达式匹配的进程，不区分大小写。默认值匹配`java`、`javaw`、`java17`、`java21.exe`等。把Java可执行文件改成了其他名字时，请相应修改。
 
 #### 镜像服状态
 
@@ -240,7 +254,7 @@ terminal:
 | 正在停止 | 已发送关闭指令，或服务端关闭了插件见过它打开的端口（例如在镜像服自己的控制台中停服），正在等待进程退出 | `kill`、`kill -f` |
 | 服务端已停止, MCDR仍在运行 | 服务端已退出，MCDR空闲或正在退出 | `start`、`stop`、`kill`、`kill -f`；开启`auto_mcdr_stop`时可`sync` |
 | 状态未知 | 端口被不是插件启动的进程占用 | `kill -f` |
-| 状态未知 | 启动目录中有不是插件启动的MCDR（`is_mcdr`为`false`时为Java进程）在运行（见下文） | `recover` |
+| 状态未知 | `root_path`中有不是插件启动的MCDR（`is_mcdr`为`false`时为Java进程）在运行（见下文） | `recover` |
 
 `服务端已停止, MCDR仍在运行`时，`start`和`stop`不会再启动一个镜像服，而是向仍在运行的MCDR的控制台输入指令：`start`输入`!!MCDR server start`，在这个MCDR中启动服务端；`stop`输入`!!MCDR server exit`，让MCDR退出。MCDR正在退出时会拒绝启动服务端，此时状态会变为`已停止`。
 
@@ -256,15 +270,15 @@ terminal:
 > [!WARNING]
 > 不是本插件启动的镜像服（例如手动启动的，或旧版本插件启动的）不在记录中：
 > - 端口被占用时，状态为`状态未知`，只能用`!!mirror kill -f`终止；
-> - 端口未被占用时（镜像服正在启动、正在停止，或服务端已在MCDR内停止），平时的状态检查看不到它。因此`!!mirror status`、`start`和`sync`判断为`已停止`后，会在本机所有进程中查找工作目录为`launch_path`的MCDR（`is_mcdr`为`false`时查找Java进程）。找到时状态为`状态未知`，`start`和`sync`会被拒绝。只查找与插件属于同一用户、且能读取到信息的进程。
+> - 端口未被占用时（镜像服正在启动、正在停止，或服务端已在MCDR内停止），平时的状态检查看不到它。因此`!!mirror status`、`start`和`sync`判断为`已停止`后，会在本机所有进程中查找工作目录为`root_path`的MCDR（`is_mcdr`为`false`时查找Java进程）。找到时状态为`状态未知`，`start`和`sync`会被拒绝。只查找与插件属于同一用户、且能读取到信息的进程。
 >
 > 这样的镜像服可以用`!!mirror recover`接管，见下文。
 
 #### 接管镜像服
 
-`!!mirror recover`在本机所有进程中查找工作目录为`launch_path`、不在记录中的MCDR，把它和它启动的进程写入记录。接管之后，插件像对待自己启动的镜像服一样判断状态、执行`stop`、`kill`和同步。
+`!!mirror recover`在本机所有进程中查找工作目录为`root_path`、不在记录中的MCDR，把它和它启动的进程写入记录。接管之后，插件像对待自己启动的镜像服一样判断状态、执行`stop`、`kill`和同步。
 
-`is_mcdr`为`false`时，插件查找的是工作目录为`launch_path`的Java进程，进程名由[`java_name`](#terminal-通过命令行启动镜像服终端的配置)决定。只监听配置端口、工作目录不是`launch_path`的进程不会被接管：端口配置错误时，它可能是别的服务端。这样的镜像服不会在加载时自动接管。
+`is_mcdr`为`false`时，插件查找的是工作目录为`root_path`的Java进程，进程名由[`java_name`](#terminal-通过命令行启动镜像服终端的配置)决定。只监听配置端口、工作目录不是`root_path`的进程不会被接管：端口配置错误时，它可能是别的服务端。这样的镜像服不会在加载时自动接管。
 
 - 只找到一个时，插件会列出它，并要求`!!mirror confirm`确认；找到多个时，插件会列出它们，请用`!!mirror recover <pid>`指定其中一个。指定的PID必须在列出的进程之中，指定PID时不需要确认；
 - 配置的端口被这个MCDR及其子进程以外的进程占用时，不会接管；
@@ -286,16 +300,14 @@ terminal:
 sync:
   world:
     - "world"
-  source: "./server"
-  target:
-    - "./Mirror/server"
+  source: ""
+  target: []
   ignore_inexistent_target_path: false
   concurrency: 4
   ignore_files:
     - "session.lock"
   backup:
     enable: false
-    mcdr_path: ""
     timeout: 600
     confirm_on_warning: true
 ```
@@ -317,10 +329,11 @@ mcdr_root (./)
 - 需要同步的目录，当存档有多个世界文件时需要添加
 
 **source** `str`
-- 源服务端目录，通常应为MCDR的[工作目录](https://mcdreforged.readthedocs.io/zh-cn/latest/configuration.html#working-directory)，即默认情况下的`server`目录。文件由`source/world` 同步至==> `target/world`
+- 源服务端目录。留空时使用本MCDR的[工作目录](https://mcdreforged.readthedocs.io/zh-cn/latest/configuration.html#working-directory)（`working_directory`，默认为`server`），通常无需填写。文件由`source/world` 同步至==> `target/world`
 
 **target** `str, list`
-- 目标服务端目录, 只有一个目录时可只写字符串, 多个目录需为列表。将会为每个目标目录都同步一份源目录的文件。默认情况下镜像服的MCDR工作目录位于当前MCDR的根目录下的`Mirror`目录。
+- 目标服务端目录, 只有一个目录时可只写字符串, 多个目录需为列表。将会为每个目标目录都同步一份源目录的文件。
+- 留空时由[`root_path`](#root_path--is_mcdr-镜像服目录与类型)推导：`is_mcdr`为`true`时，是`root_path`下镜像服MCDR的`working_directory`（每次同步时读取镜像服的`config.yml`，读取失败时同步被拒绝）；`is_mcdr`为`false`时，就是`root_path`。默认配置下为`./Mirror/server`。
 
 **ignore_inexistent_target_path** `bool`
 - 若某个目标服务端目录不存在，当设置为`false`时，将会跳过对该目录的同步。当设置为`true`时，将会新建该目录并继续同步
@@ -341,7 +354,6 @@ mcdr_root (./)
 sync:
   backup:
     enable: false
-    mcdr_path: ""
     timeout: 600
     confirm_on_warning: true
 ```
@@ -353,12 +365,9 @@ sync:
 - **备份有多完整，取决于镜像服 PrimeBackup 的设置。** 它应当与同步设置等价。不一致时，插件会给出警告，默认要求确认（见 `confirm_on_warning`），然后按现有设置备份。确认的人即接受：同步覆盖的内容中有一部分不在备份里。
 
 **enable** `bool`
-- 每次同步前是否先备份。默认关闭；为 `false` 时插件不会读取镜像服的任何文件，同步行为与没有此功能时相同。
-
-**mcdr_path** `str`
-- 镜像服 MCDR 的目录，即其 `config.yml` 所在的目录。与 `sync.target` 一样，相对于本服务端的 MCDR 根目录。留空时，若 `terminal.enable` 为 `true` 则使用 `terminal.launch_path`，否则必须填写。
-- `terminal.is_mcdr` 为 `false` 时，`launch_path` 是服务端自己的目录，而不是 MCDR 的目录，留空会导致所有同步被拒绝。此时请把 `mcdr_path` 填为装有镜像服 PrimeBackup 的 MCDR 目录；没有这样的目录时，请关闭 `enable`。
-- 从镜像服文件中读取的路径（`plugin_directories`、`working_directory`，以及 PrimeBackup 的 `storage_root` 和 `source_root`）都相对于 `mcdr_path`，与镜像服 MCDR 自己的解析方式一致。
+- 每次同步前是否先备份。默认关闭；为 `false` 时插件不会读取镜像服 PrimeBackup 的任何文件，同步行为与没有此功能时相同。
+- 镜像服的PrimeBackup在[`root_path`](#root_path--is_mcdr-镜像服目录与类型)中查找。从镜像服文件中读取的路径（`plugin_directories`、`working_directory`，以及 PrimeBackup 的 `storage_root` 和 `source_root`）都相对于 `root_path`，与镜像服 MCDR 自己的解析方式一致。
+- `is_mcdr` 为 `false` 时不支持同步前备份：普通服务端没有MCDR，也就没有自己的PrimeBackup。此时开启 `enable` 会让所有同步被拒绝，加载时控制台也会警告，请关闭 `enable`。
 
 **timeout** `int`
 - 备份最多可用的秒数。超时的备份会被终止，同步被拒绝。
@@ -566,6 +575,9 @@ display:
 
 ```yaml
 '!!mirror':
+  root_path: ./Mirror
+  is_mcdr: true
+
   mcsm:
     enable: true
     url: http://127.0.0.1:23333/
@@ -575,11 +587,9 @@ display:
 
   terminal:
     enable: false
-    launch_path: ./Mirror
     launch_command: python -m mcdreforged
     port:
     terminal_name: Mirror
-    is_mcdr: true
     proxy_type:
     console_log: false
     auto_recover: true
@@ -588,9 +598,8 @@ display:
   sync:
     world:
     - world
-    source: ./server
-    target:
-    - ./Mirror/server
+    source: ''
+    target: []
     ignore_inexistent_target_path: false
     concurrency: 4
     ignore_files:
@@ -641,25 +650,23 @@ display:
     server_name: Mirror
 
 '!!mirror2':
+  root_path: ./Mirror2
   mcsm:
     uuid: 83011??????????49c1133fc08a41b80
-  sync:
-    target:
-    - ./Mirror2/server
   display:
     server_name: Mirror2
 
 '!!mirror3':
+  root_path: ./Mirror3
   mcsm.enable: false
-  sync.target:
-    - ./Mirror3/server
   terminal:
     enable: true
-    launch_path: ./Mirror3
     port: 30002
     terminal_name: Mirror3
   display.server_name: Mirror3
 ```
+
+后续条目会继承第一个条目的`root_path`，因此每个镜像服都要填写自己的`root_path`。
 
 ## 致谢
 

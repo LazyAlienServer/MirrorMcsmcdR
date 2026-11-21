@@ -10,6 +10,9 @@ class DisplayConfig(Serializable):
     protected_process_info: List[Literal['name', 'pid']] = []
 
 class MirrorConfig(Serializable):
+    # the mirror's directory: where the terminal launches it, and with is_mcdr the mirror's MCDR directory
+    root_path: str = "./Mirror"
+    is_mcdr: bool = True
     mcsm: MCSMConfig = MCSMConfig()
     terminal: TerminalConfig = TerminalConfig()
     sync: SynchronizationConfig = SynchronizationConfig()

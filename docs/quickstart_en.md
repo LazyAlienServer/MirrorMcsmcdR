@@ -40,6 +40,8 @@ The configuration file is mainly composed as follows:
 
 ```yaml
 !!mirror:
+    root_path: # Directory of the mirror server
+    is_mcdr: # Whether the mirror server is run by MCDR
     mcsm: # MCSManager configuration
     terminal: # Configuration for starting the mirror server terminal through the command line
     sync: # Save synchronization configuration
@@ -51,7 +53,7 @@ The configuration file is mainly composed as follows:
 
 ### Brief Explanation
 
-`mcsm` and `terminal` are used to control the mirror server, such as obtaining status, starting, and stopping the mirror server.
+`root_path` and `is_mcdr` tell where the mirror server is and what it is; `mcsm` and `terminal` are used to control the mirror server, such as obtaining status, starting, and stopping the mirror server.
 
 `sync` is for synchronizing saves; it takes effect when using the `!!mirror sync` command to synchronize the survival server to the mirror server (i.e., controlling the logic of synchronizing saves from the source server to the target server).
 
@@ -63,6 +65,8 @@ The configuration file is mainly composed as follows:
 
 Here is an overview of the configuration, which aims to give you a general understanding of the configuration items that need to be set. At the end of each step, there will also be a link to guide you to the next configuration step.
 
+First, configure the directory of the mirror server, jump to [Mirror Server Directory](#mirror-server-directory).
+
 If you have used the [MCSManager](https://github.com/MCSManager/MCSManager) panel, please jump to [Configuring the Mirror Server through MCSM](#configuring-the-mirror-server-through-mcsm).
 
 If you have not used the panel, please jump to [Controlling the Mirror Server through the Terminal](#controlling-the-mirror-server-through-the-terminal).
@@ -70,6 +74,31 @@ If you have not used the panel, please jump to [Controlling the Mirror Server th
 Then, you need to configure the save synchronization, jump to [Save Synchronization](#save-synchronization).
 
 Finally, you can optionally configure command permissions, behavior, and display settings, jump to [Command and Display Suggestions](#command-and-display-suggestions) to view some reminders and suggestions.
+
+### Mirror Server Directory
+
+```yaml
+root_path: ./Mirror
+is_mcdr: true
+```
+
+Assuming this is your directory structure:
+```
+mcdr_root
+ ├─ config
+ ├─ logs
+ ├─ plugins
+ ├─ server
+ └─ Mirror
+     ├─ config.yml
+     └─ server
+```
+
+`root_path` should be the root directory of your mirror server. In the example, the mirror server is located in `mcdr_root/Mirror`, so `root_path` is `./Mirror`, where `./` represents the MCDR server root directory where the plugin is located. Of course, you can also use absolute paths. Note that the path separator in the path should be `/` or `\\`, not a single `\`.
+
+`is_mcdr` defaults to `true`, meaning the mirror server is run by MCDReforged; `root_path` is then the directory of the mirror MCDR's `config.yml`. For a plain server without MCDR, set it to `false`; `root_path` is then the server's own directory (where `server.properties` is).
+
+The plugin starts and looks for the mirror server in `root_path`, and derives the sync target from it, so the sync target usually needs no setting of its own.
 
 ### Configuring the Mirror Server through MCSM
 
@@ -103,35 +132,20 @@ Jump to [Save Synchronization](#save-synchronization) for the next step.
 ```yaml
 terminal:
     enable: false
-    launch_path: ./Mirror
     launch_command: python -m mcdreforged
     port:
     terminal_name: Mirror
-    is_mcdr: true
     proxy_type:
     console_log: false
 ```
 
-Assuming this is your directory structure:
-```
-mcdr_root
- ├─ config
- ├─ logs
- ├─ plugins
- ├─ server
- └─ Mirror
-     └─ server
-```
-
-The plugin will run the `launch_command` startup command in the `launch_path` directory, and `launch_path` should be the root directory of your mirror server.
-
-In the example, the mirror server is located in `mcdr_root/Mirror` and is started by `MCDReforged`, then `launch_path` is `./Mirror`, `launch_command` is `python -m mcdreforged`, where `./` represents the MCDR server root directory where the plugin is located. Of course, you can also use absolute paths. Note that the path separator in the path should be `/` or `\\`, not a single `\`.
+The plugin will run the `launch_command` startup command in the `root_path` directory. In the example of [Mirror Server Directory](#mirror-server-directory), the mirror server is started by `MCDReforged`, so `launch_command` is `python -m mcdreforged`.
 
 `port` is the port of the mirror server, that is, the `server-port` item in the `server.properties` file of the mirror server. It should be an integer and does not need to be wrapped in `"xxx"`.
 
 When `proxy_type` is `linux`, the plugin creates a screen session; when it is `windows`, it creates a new command prompt; and when it is `subprocess`, it starts the mirror server as a child process inside MCDR. `terminal_name` is the title of the command prompt, the name of the screen, or the prefix used for subprocess log output.
 
-`is_mcdr` and `proxy_type` generally do not need to be modified. `is_mcdr` defaults to `true`, meaning the mirror server is started by MCDReforged. When `proxy_type` is `null`, the plugin automatically selects `linux` or `windows` based on the operating system. When set to `subprocess`, the mirror server runs as an MCDR child process, and `console_log` controls whether its console logs are output by default. See [README-Configuring the Mirror Server Terminal through the Command Line](../README_en.md#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) for details.
+`proxy_type` generally does not need to be modified. When it is `null`, the plugin automatically selects `linux` or `windows` based on the operating system. When set to `subprocess`, the mirror server runs as an MCDR child process, and `console_log` controls whether its console logs are output by default. See [README-Configuring the Mirror Server Terminal through the Command Line](../README_en.md#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) for details.
 
 > [!NOTE]
 > When using the `subprocess` proxy to start another MCDR instance, set `advanced_console: false` in the mirror server MCDR's `config.yml`.
@@ -149,9 +163,8 @@ Jump to [Save Synchronization](#save-synchronization) for the next step.
 sync:
     world:
         - world
-    source: ./server
-    target:
-        - ./Mirror/server
+    source: ''
+    target: []
     ignore_inexistent_target_path: false
     concurrency: 4
     ignore_files:
@@ -175,7 +188,9 @@ Similarly, in the example, the mirror server is located in `mcdr_root/Mirror`. T
 
 The plugin will synchronize each world folder contained in each `world` in the `source` directory to the corresponding world folder in the `target` directory. By default, it will synchronize the files in `mcdr_root/server/world` to `mcdr_root/Mirror/server/world`.
 
-In general, there is no need to change `world` and `source`. `target` is the target directory, and if the mirror server is started by MCDR, it should be the working directory of the mirror server's MCDR, usually the `server` directory of the mirror server. In the example, it is `./Mirror/server`. A simple way to find it is that the `target` directory is the directory where `server.properties` is located.
+In general, there is no need to change `world`, `source` or `target`:
+- An empty `source` means the working directory of this MCDR (`working_directory`, `server` by default);
+- An empty `target` is derived from `root_path`: with `is_mcdr` set to `true`, the working directory of the mirror server's MCDR, `./Mirror/server` in the example; with `is_mcdr` set to `false`, `root_path` itself. Set `target` for an unusual directory layout, or to sync into several directories. A simple check is that the `target` directory is the directory where `server.properties` is located.
 
 `ignore_files` are files that are not synchronized, and generally, there is no need to change them. If the `carpet` module is loaded, you can add `carpet.conf`. If the `Plusls-Carpet-Addition(PCA)` module is loaded, you can add `pca.conf`.
 
@@ -201,6 +216,7 @@ Control mirror server 2 through `!!mirror2`, and set the instance id of `!!mirro
     # Configuration file for the first mirror server
 "!!mirror2":
     # Configuration file for the second mirror server, only write the changed values
+    root_path: ./Mirror2
     mcsm:
         uuid: abc123
     display:
@@ -208,5 +224,7 @@ Control mirror server 2 through `!!mirror2`, and set the instance id of `!!mirro
 "!!mirror3":
     # Configuration file for the third mirror server, only write the changed values
 ```
+
+Later mirror servers inherit `root_path` from the first one, so every mirror server needs its own `root_path`.
 
 See [Multi-mirror Server Configuration File Example](../README_en.md#example-of-multi-mirror-server-configuration-file) for details.

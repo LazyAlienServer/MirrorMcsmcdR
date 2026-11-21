@@ -7,7 +7,7 @@ from typing import ClassVar, Iterable, Optional
 
 import psutil
 
-from mirror_mcsmcdr.config.proxy_config import TerminalConfig
+from mirror_mcsmcdr.config.mirror_config import MirrorConfig
 from mirror_mcsmcdr.server.action import Action, ActionResult
 from mirror_mcsmcdr.server.status import Evidence, Origin, ProcessInfo, ServerState
 from mirror_mcsmcdr.server.system_utils import process_utils
@@ -83,15 +83,16 @@ class TerminalProxy(ServerBackend, ABC):
     # the backend as the record names it
     name: ClassVar[str]
 
-    def __init__(self, config: TerminalConfig, tracker: ProcessTracker) -> None:
+    def __init__(self, config: MirrorConfig, tracker: ProcessTracker) -> None:
         """:raise re.error: if ``java_name`` is no regular expression"""
-        self.terminal_name = config.terminal_name or "Mirror"
-        self.path = config.launch_path
-        self.command = config.launch_command
+        terminal = config.terminal
+        self.terminal_name = terminal.terminal_name or "Mirror"
+        self.path = config.root_path
+        self.command = terminal.launch_command
         self.is_mcdr = config.is_mcdr
-        self.java_name = re.compile(config.java_name, re.IGNORECASE)
-        assert config.port is not None
-        self.listener = PortListener(config.port)
+        self.java_name = re.compile(terminal.java_name, re.IGNORECASE)
+        assert terminal.port is not None
+        self.listener = PortListener(terminal.port)
         self.tracker = tracker
 
     # how often the recorded processes are looked at while watching, for an exit and for the port

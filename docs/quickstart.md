@@ -40,6 +40,8 @@
 
 ```yaml
 !!mirror:
+  root_path: # 镜像服目录
+  is_mcdr: # 镜像服是否由MCDR运行
   mcsm: # MCSManager配置
   terminal: # 通过命令行启动镜像服终端的配置
   sync: # 存档同步配置
@@ -51,7 +53,7 @@
 
 ### 简要说明
 
-其中，`mcsm` `terminal`用于控制镜像服，例如获取状态、开启和关闭镜像服。
+其中，`root_path`和`is_mcdr`说明镜像服在哪里、是什么，`mcsm` `terminal`用于控制镜像服，例如获取状态、开启和关闭镜像服。
 
 而`sync`用于同步存档，当使用`!!mirror sync`指令将生存服同步到镜像服时，它将发挥作用（即控制由源服务端同步存档至目标服务端存档的逻辑）。
 
@@ -63,6 +65,8 @@
 
 这里是一个配置概要，目的是让你大致了解有哪些配置项需要配置。在每一步的末尾，同样会附有跳转以引导你进行下一项的配置。
 
+首先，配置镜像服的目录，跳至[镜像服目录](#镜像服目录)。
+
 如果你使用了[MCSManager](https://github.com/MCSManager/MCSManager)面板，那么请跳至[通过MCSM配置镜像服](#通过mcsm配置镜像服)。
 
 如果你没有使用面板，那么请跳至[通过终端控制镜像服](#通过终端控制镜像服)。
@@ -70,6 +74,30 @@
 然后，你需要对存档同步进行配置，跳至[存档同步](#存档同步)。
 
 最后，你可以选择性的配置指令权限、行为与显示配置，跳至[指令与显示建议]()以查看一些提醒与建议。
+
+### 镜像服目录
+
+```yaml
+root_path: ./Mirror
+is_mcdr: true
+```
+
+假设这是你的目录结构：
+```
+mcdr_root
+ ├─ config
+ ├─ logs
+ ├─ plugins
+ ├─ server
+ └─ Mirror
+     ├─ config.yml
+     └─ server
+```
+`root_path`应当是你的镜像服的根目录。在示例中，镜像服位于`mcdr_root/Mirror`，则`root_path`为`./Mirror`，其中`./`所代表的目录就是插件所在的MCDR服务端根目录。当然，你也可以使用绝对路径。注意路径中的路径分隔符应为`/`或`\\`，而不是单独的`\`。
+
+`is_mcdr`默认为`true`，表示镜像服由MCDReforged运行，此时`root_path`就是镜像服MCDR的`config.yml`所在的目录。镜像服是不带MCDR的普通服务端时，请设为`false`，`root_path`则为服务端自己的目录（`server.properties`所在的目录）。
+
+插件通过`root_path`启动和查找镜像服，并由它推导出同步的目标目录，因此一般不需要再单独填写同步目标。
 
 ### 通过MCSM配置镜像服
 
@@ -102,34 +130,20 @@ mcsm:
 ```yaml
 terminal:
   enable: false
-  launch_path: ./Mirror
   launch_command: python -m mcdreforged
   port:
   terminal_name: Mirror
-  is_mcdr: true
   proxy_type:
   console_log: false
 ```
 
-假设这是你的目录结构：
-```
-mcdr_root
- ├─ config
- ├─ logs
- ├─ plugins
- ├─ server
- └─ Mirror
-     └─ server
-```
-那么，插件将在`launch_path`目录下运行`launch_command`启动命令，`launch_path`应当是你的镜像服的根目录。
-
-在示例中，镜像服位于`mcdr_root/Mirror`，且通过`MCDReforged`启动，则`launch_path`为`./Mirror`，`launch_command`为`python -m mcdreforged`，其中`./`所代表的目录就是插件所在的MCDR服务端根目录。当然，你也可以使用绝对路径。注意路径中的路径分隔符应为`/`或`\\`，而不是单独的`\`。
+插件将在`root_path`目录下运行`launch_command`启动命令。在[镜像服目录](#镜像服目录)的示例中，镜像服通过`MCDReforged`启动，则`launch_command`为`python -m mcdreforged`。
 
 `port`为镜像服的端口，即镜像服的`server.properties`文件中的`server-port`项。它应当是一个整数，无需用`"xxx"`包裹。
 
 当`proxy_type`为`linux`时，插件会创建screen；为`windows`时会创建新的命令行终端；为`subprocess`时会在MCDR进程内启动镜像服子进程。`terminal_name`即为命令行终端的标题、screen的名称，或subprocess日志输出的前缀。
 
-`is_mcdr`与`proxy_type`一般无需修改。`is_mcdr`默认为`true`，表示镜像服由MCDReforged启动；`proxy_type`默认为`null`时，插件会根据操作系统自动选择`linux`或`windows`。设置为`subprocess`时，镜像服会作为MCDR子进程启动，并可通过`console_log`配置是否默认输出控制台日志。有关这些配置的详细信息参见[README-通过命令行启动镜像服终端](../README.md#terminal-通过命令行启动镜像服终端的配置)。
+`proxy_type`一般无需修改。默认为`null`时，插件会根据操作系统自动选择`linux`或`windows`。设置为`subprocess`时，镜像服会作为MCDR子进程启动，并可通过`console_log`配置是否默认输出控制台日志。有关这些配置的详细信息参见[README-通过命令行启动镜像服终端](../README.md#terminal-通过命令行启动镜像服终端的配置)。
 
 > [!NOTE]
 > 使用 `subprocess` 代理启动镜像服 MCDR 实例时，请在镜像服 MCDR 的 `config.yml` 中将 `advanced_console` 设置为 `false`。
@@ -147,9 +161,8 @@ mcdr_root
 sync:
   world:
     - world
-  source: ./server
-  target:
-    - ./Mirror/server
+  source: ''
+  target: []
   ignore_inexistent_target_path: false
   concurrency: 4
   ignore_files:
@@ -172,7 +185,9 @@ mcdr_root
 
 插件将把`source`源目录中的每个`world`中所包含的世界文件夹同步到`target`目标目录中的对应的世界文件夹。在默认配置下，它将把`mcdr_root/server/world`中的文件同步至`mcdr_root/Mirror/server/world`。
 
-通常情况下，`world`与`source`无需更改。`target`为目标目录，如果镜像服是通过MCDR启动的，那么它应当是镜像服MCDR的工作目录，通常为镜像服的`server`目录。在示例中它就是`./Mirror/server`。一个简单的寻找方法是，`target`目标目录就是`server.properties`所在的目录。
+通常情况下，`world`、`source`和`target`都无需更改：
+- `source`留空时，使用本MCDR的工作目录（`working_directory`，默认为`server`）；
+- `target`留空时，由`root_path`推导：`is_mcdr`为`true`时，是镜像服MCDR的工作目录，在示例中就是`./Mirror/server`；`is_mcdr`为`false`时，就是`root_path`本身。目录结构特殊，或要同步到多个目录时，再填写`target`。一个简单的检查方法是，`target`目标目录就是`server.properties`所在的目录。
 
 `ignore_files`为不进行同步的文件，一般无需更改。若加载了`carpet`模组，可以添加`carpet.conf`。若加载了`Plusls-Carpet-Addition(PCA)`模组，可以添加`pca.conf`。
 
@@ -198,6 +213,7 @@ mcdr_root
   # 第一个镜像服的配置文件
 "!!mirror2":
   # 第二个镜像服的配置文件，只书写变化的值
+  root_path: ./Mirror2
   mcsm:
     uuid: abc123
   display:
@@ -205,4 +221,6 @@ mcdr_root
 "!!mirror3":
   # 第三个镜像服的配置文件，只书写变化的值
 ```
+后续镜像服会继承第一个镜像服的`root_path`，因此每个镜像服都要填写自己的`root_path`。
+
 详见[多镜像服配置文件示例](../README.md#多镜像服配置文件示例)

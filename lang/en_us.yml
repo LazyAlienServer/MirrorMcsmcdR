@@ -223,6 +223,7 @@ mirror_mcsmcdr:
     sync:
       fail:
         task_exist: §b{server_name} §calready has a sync in progress
+        target: "§cSync cancelled: cannot read the mirror's MCDR config to tell the sync target. Check the mirror's config.yml, or set §7'sync.target'§c. See the console for details"
         unsupported: "§cOperation failed / §b{server_name}§c: the current config does not support querying the status; configure §7'mcsm'§c or §7'terminal'"
       hint:
         running: "§fPlease stop §b{server_name}§f first, then sync"
@@ -248,7 +249,7 @@ mirror_mcsmcdr:
         detail: "Pre-sync backup of §b{server_name}§f: {detail}"
         output: "§7Last lines of the §3PrimeBackup§7 output:\n§f{output}"
         reason:
-          mcdr_path_required: "§7'sync.backup.mcdr_path'§c is required while §7'terminal'§c is disabled"
+          plain_server: "§cno pre-sync backup while §7'is_mcdr'§c is false; turn §7'sync.backup.enable'§c off"
           mcdr_path_not_found: "§cthe mirror's MCDR directory does not exist"
           mcdr_config_unreadable: "§ccannot read the mirror's MCDR config"
           mcdr_config_invalid: "§cinvalid value of §4'{option}'§c in the mirror's MCDR config"

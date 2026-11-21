@@ -46,7 +46,9 @@ After upgrading, check the configuration file:
 - The `subprocess` proxy now requires `terminal.port` as well; without it the terminal proxy is unavailable;
 - `command.action.sync.max_attempt_times` is removed. After an automatic stop for a sync, the plugin waits up to `command.action.stop.timeout` seconds (60 by default; 15 before);
 - `command.action.sync.check_status_interval` moved to `command.action.check_status_interval`. A value at the old place is ignored, and the default `5` applies;
-- `!!mirror execute` is renamed `!!mirror input`; the old command no longer exists. The permission key `command.permission.execute` becomes `command.permission.input`; an old `execute` key is ignored, and the default `console` applies.
+- `!!mirror execute` is renamed `!!mirror input`; the old command no longer exists. The permission key `command.permission.execute` becomes `command.permission.input`; an old `execute` key is ignored, and the default `console` applies;
+- `terminal.launch_path` becomes the top-level [`root_path`](#root_path--is_mcdr-mirror-server-directory-and-kind), `terminal.is_mcdr` becomes the top-level `is_mcdr`, and `sync.backup.mcdr_path` is removed (the backup uses `root_path`). The old keys are ignored and `root_path` falls back to its default `./Mirror`; **set it by hand**;
+- `sync.source` and `sync.target` may be left empty; they then use this MCDR's `working_directory` and the directory derived from `root_path`. Values already set keep working.
 
 When the plugin loads its configuration, it removes the keys it does not know from the configuration file (including the removed keys above and misspelt ones). It lists each of them with its path and value in the console and tells the game once. Before that, the original file is backed up as `config.yml.<time>-<content hash>.bak` in the same folder.
 
@@ -81,6 +83,8 @@ The configuration file supports hot reloading and automatic completion. When a n
 
 ```yaml
 "!!mirror":
+    root_path: # Directory of the mirror server
+    is_mcdr: # Whether the mirror server is run by MCDR
     mcsm: # MCSManager configuration
     terminal: # Configuration for starting the mirror server terminal through the command line
     sync: # Save synchronization configuration
@@ -122,6 +126,24 @@ For a complete example, see [Multi-mirror Server Configuration File Example](#ex
 
 <br>
 
+### root_path / is_mcdr: Mirror server directory and kind
+```yaml
+root_path: "./Mirror"
+is_mcdr: true
+```
+
+**root_path** `str`
+- The directory of the mirror server, relative to the MCDR root of this server, or absolute. It must not be empty.
+  - The terminal proxies run `launch_command` in it, and `!!mirror recover` looks for the mirror server in it;
+  - With `is_mcdr` set to `true`, it is the mirror's MCDR directory, the one that contains its `config.yml`. An empty `sync.target` then means the mirror MCDR's `working_directory` under it, and the pre-sync backup looks for the mirror's PrimeBackup in it;
+  - With `is_mcdr` set to `false`, it is the server's own directory, and an empty `sync.target` means this directory itself.
+
+**is_mcdr** `bool`
+- Whether the mirror server is run by MCDReforged. Defaults to `true`; set it to `false` for a plain server. With `false`, the [pre-sync backup](#syncbackup-pre-sync-backup) is not supported, and the plugin never adopts an untracked server when it loads.
+- It also decides how the terminal proxies stop and kill the mirror server. For the Linux proxy, `true` makes `stop` send `!!MCDR server stop_exit` to screen, and `kill` send `!!MCDR server kill` while the port is open, or close the screen otherwise; `false` makes `stop` send Minecraft's `stop` command and `kill` perform a force kill. For the Windows proxy, `true` makes `stop` type `!!MCDR server stop_exit` into the command prompt window, while `false` types Minecraft's `stop` command; `kill` always forcefully terminates the process listening on the port; while the mirror server is still starting and the port is not open yet, it terminates every process the plugin started. For the subprocess proxy, `true` makes `stop` send `!!MCDR server stop_exit`, while `false` sends Minecraft's `stop` command; `kill` terminates the child process directly.
+
+<br>
+
 ### mcsm: MCSManager Configuration
 If you have any questions about this configuration section, please refer to the [MCSManager Documentation](https://docs.mcsmanager.com/#/zh-cn/apis/readme).
 ```yaml
@@ -156,11 +178,9 @@ After enabling MCSM, the terminal configuration will be disabled.
 ```yaml
 terminal:
   enable: false
-  launch_path: "./Mirror"
   launch_command: "python -m mcdreforged"
   port:
   terminal_name: "Mirror"
-  is_mcdr: true
   proxy_type:
   console_log: false
   auto_recover: true
@@ -170,11 +190,11 @@ When `proxy_type` is `linux`, the plugin creates a new screen; when it is `windo
 
 > [!NOTE]
 > If you cannot start the mirror server with this command, try the following steps. `terminal_name` and `launch_command` are the corresponding configuration values.
-> 1. Execute `launch_command` under `launch_path` and confirm that it starts the mirror server successfully.
+> 1. Execute `launch_command` under `root_path` and confirm that it starts the mirror server successfully.
 > 2. Linux users should check whether `screen` is installed. Windows users should check whether the `python` command works in the terminal.
 > 3. If neither suggestion resolves the problem, execute the complete command for the Linux or Windows proxy in the current MCDR server's root directory and inspect the output.
->    - Linux: `cd "{launch_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
->    - Windows: `cd /d "{launch_path}"&&start cmd.exe /S /C "title {terminal_name}&&{launch_command}"`
+>    - Linux: `cd "{root_path}"&&screen -dmS {terminal_name}&&screen -x -S {terminal_name} -p 0 -X stuff "{launch_command}&&exit\n"`
+>    - Windows: `cd /d "{root_path}"&&start cmd.exe /S /C "title {terminal_name}&&{launch_command}"`
 
 Note: The `linux` proxy controls the mirror server through screen. With the `windows` proxy, `stop` types the stop command into the command prompt window of the process listening on the configured mirror port and `kill` forcefully terminates that process. The `subprocess` proxy controls the mirror server through the child process's standard input and output. Every proxy requires a correctly configured `port`. MCSM can still be used as an alternative control method.
 
@@ -184,9 +204,6 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 **enable** `bool`
 - Whether to enable the terminal. When MCSM is not enabled and this option is `true`, the mirror server will be started through the selected terminal proxy.
 
-**launch_path** `str`
-- The path where the startup command is executed, usually the directory where the mirror server is located.
-
 **launch_command** `str`
 - The startup command that needs to be executed. If a simple startup command cannot meet your requirements, you can create a `.bat` (or `.sh`) file and write the startup command in it, then execute the file. The Linux proxy rejects a command that is too long (above roughly 700 bytes); use a script file in that case as well.
 
@@ -195,9 +212,6 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 
 **terminal_name** `str`
 - The title of the new command prompt, the name of the new screen, or the prefix used for subprocess proxy log output. As a screen name it must not exceed 64 bytes or contain control characters.
-
-**is_mcdr** `bool`
-- Whether the mirror server is started by MCDReforged. Defaults to `true`. For the Linux proxy, `true` makes `stop` send `!!MCDR server stop_exit` to screen, and `kill` send `!!MCDR server kill` while the port is open, or close the screen otherwise; `false` makes `stop` send Minecraft's `stop` command and `kill` perform a force kill. For the Windows proxy, `true` makes `stop` type `!!MCDR server stop_exit` into the command prompt window, while `false` types Minecraft's `stop` command; `kill` always forcefully terminates the process listening on the port; while the mirror server is still starting and the port is not open yet, it terminates every process the plugin started. For the subprocess proxy, `true` makes `stop` send `!!MCDR server stop_exit`, while `false` sends Minecraft's `stop` command; `kill` terminates the child process directly.
 
 > [!IMPORTANT]
 > `!!mirror kill -f` and `!!mirror kill --force` are available for every terminal proxy. They forcefully terminate every process the plugin started and recorded (the Linux proxy then closes the screen); when the status is unknown, they also terminate processes holding the configured port that the plugin did not start. The processes are listed to the command source first. If the port is held by a process whose PID cannot be read (such as a process of another user), nothing is terminated. Confirm that `port` is correct to avoid terminating other services.
@@ -216,10 +230,10 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 - Whether to output the subprocess proxy's mirror server console logs to the MCDR console by default. This option only applies to the `subprocess` proxy.
 
 **auto_recover** `bool`
-- Whether the plugin, when it loads with no running process in its record, adopts an MCDR it did not start that runs in the launch path. Defaults to `true`. It adopts only when it finds exactly one, and the configured port is free or listened on by that MCDR and its children; it then lists the processes in the console and tells the game once. Otherwise, and with `false`, it only reports what it found; `!!mirror recover` adopts it by hand. With `is_mcdr` set to `false`, nothing is ever adopted automatically. See [Adopting a mirror server](#adopting-a-mirror-server).
+- Whether the plugin, when it loads with no running process in its record, adopts an MCDR it did not start that runs in `root_path`. Defaults to `true`. It adopts only when it finds exactly one, and the configured port is free or listened on by that MCDR and its children; it then lists the processes in the console and tells the game once. Otherwise, and with `false`, it only reports what it found; `!!mirror recover` adopts it by hand. With `is_mcdr` set to `false`, nothing is ever adopted automatically. See [Adopting a mirror server](#adopting-a-mirror-server).
 
 **java_name** `str`
-- With `is_mcdr` set to `false`, the plugin looks for an untracked server in the launch path among the processes whose name matches this regular expression, case-insensitively. The default matches `java`, `javaw`, `java17`, `java21.exe` and the like. Change it if the Java executable goes by another name.
+- With `is_mcdr` set to `false`, the plugin looks for an untracked server in `root_path` among the processes whose name matches this regular expression, case-insensitively. The default matches `java`, `javaw`, `java17`, `java21.exe` and the like. Change it if the Java executable goes by another name.
 
 #### Mirror server status
 
@@ -244,7 +258,7 @@ The recorded processes fall into these groups:
 | stopping | The stop command was sent, or the server closed the port the plugin had seen it open (for example, it was stopped from the mirror's own console); waiting for the processes to exit | `kill`, `kill -f` |
 | server stopped, MCDR still running | The server has exited; MCDR is idle or exiting | `start`, `stop`, `kill`, `kill -f`; `sync` with `auto_mcdr_stop` |
 | status unknown | The port is held by a process the plugin did not start | `kill -f` |
-| status unknown | An MCDR the plugin did not start (a Java process with `is_mcdr` set to `false`) is running in the launch path (see below) | `recover` |
+| status unknown | An MCDR the plugin did not start (a Java process with `is_mcdr` set to `false`) is running in `root_path` (see below) | `recover` |
 
 In `server stopped, MCDR still running`, `start` and `stop` do not launch another mirror server; they type a command into the console of the MCDR that is still running: `start` types `!!MCDR server start`, which starts the server in that MCDR, and `stop` types `!!MCDR server exit`, which makes MCDR exit. An MCDR that is exiting refuses to start the server; the status then becomes `stopped`.
 
@@ -260,15 +274,15 @@ When the server process is running but the port never opens, the status stays at
 > [!WARNING]
 > A mirror server this plugin did not start (started by hand, or by an older version of the plugin) is not in the record:
 > - While its port is held, the status is `status unknown`, and only `!!mirror kill -f` can end it;
-> - While its port is free (the mirror server is starting or stopping, or the server has stopped inside MCDR), the usual status check does not see it. So once `!!mirror status`, `start` or `sync` finds the status `stopped`, the plugin looks among all processes of the machine for an MCDR whose working directory is `launch_path` (a Java process with `is_mcdr` set to `false`). If there is one, the status is `status unknown`, and `start` and `sync` are refused. Only processes of the plugin's own user whose details can be read are looked at.
+> - While its port is free (the mirror server is starting or stopping, or the server has stopped inside MCDR), the usual status check does not see it. So once `!!mirror status`, `start` or `sync` finds the status `stopped`, the plugin looks among all processes of the machine for an MCDR whose working directory is `root_path` (a Java process with `is_mcdr` set to `false`). If there is one, the status is `status unknown`, and `start` and `sync` are refused. Only processes of the plugin's own user whose details can be read are looked at.
 >
 > Such a mirror server can be adopted with `!!mirror recover`; see below.
 
 #### Adopting a mirror server
 
-`!!mirror recover` looks among all processes of the machine for an MCDR whose working directory is `launch_path` and that is not in the record, and writes it and the processes it started into the record. From then on the plugin judges its status, and runs `stop`, `kill` and syncs on it, as it does for a mirror server it started itself.
+`!!mirror recover` looks among all processes of the machine for an MCDR whose working directory is `root_path` and that is not in the record, and writes it and the processes it started into the record. From then on the plugin judges its status, and runs `stop`, `kill` and syncs on it, as it does for a mirror server it started itself.
 
-With `is_mcdr` set to `false`, the plugin looks for a Java process whose working directory is `launch_path` instead, with a name as [`java_name`](#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) gives. A process that only listens on the configured port, with another working directory, is never adopted: with a wrong port, it may be another server. Such a mirror server is not adopted when the plugin loads.
+With `is_mcdr` set to `false`, the plugin looks for a Java process whose working directory is `root_path` instead, with a name as [`java_name`](#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) gives. A process that only listens on the configured port, with another working directory, is never adopted: with a wrong port, it may be another server. Such a mirror server is not adopted when the plugin loads.
 
 - With exactly one found, the plugin lists it and asks for `!!mirror confirm`; with several found, it lists them, and `!!mirror recover <pid>` picks one. The PID must be one of those listed; no confirmation is asked when a PID is given;
 - Nothing is adopted while the configured port is held by a process outside this MCDR and its children;
@@ -290,16 +304,14 @@ The plugin also looks once when it loads, and adopts or only reports what it fin
 sync:
     world:
         - "world"
-    source: "./server"
-    target:
-        - "./Mirror/server"
+    source: ""
+    target: []
     ignore_inexistent_target_path: false
     concurrency: 4
     ignore_files:
         - "session.lock"
     backup:
         enable: false
-        mcdr_path: ""
         timeout: 600
         confirm_on_warning: true
 ```
@@ -322,10 +334,11 @@ mcdr_root (./)
 - The directory that needs to be synchronized, it needs to be added when there are multiple world files in the archive.
 
 **source** `str`
-- The source server directory, which should usually be the [working directory](https://mcdreforged.readthedocs.io/en/latest/configuration.html#working-directory) of MCDR, that is, the default `server` directory. Files are synchronized from `source/world`  to `target/world`
+- The source server directory. When empty, the [working directory](https://mcdreforged.readthedocs.io/en/latest/configuration.html#working-directory) of this MCDR (`working_directory`, `server` by default) is used; usually there is no need to set it. Files are synchronized from `source/world`  to `target/world`
 
 **target** `str, list`
-- The target server directory, you can only write a string if there is only one directory, and a list is needed for multiple directories. A copy of the source directory files will be synchronized for each target directory. By default, the MCDR working directory of the mirror server is located in the `Mirror` directory under the current MCDR root directory.
+- The target server directory, you can only write a string if there is only one directory, and a list is needed for multiple directories. A copy of the source directory files will be synchronized for each target directory.
+- When empty, it is derived from [`root_path`](#root_path--is_mcdr-mirror-server-directory-and-kind): with `is_mcdr` set to `true`, the mirror MCDR's `working_directory` under `root_path` (read from the mirror's `config.yml` at every sync; if it cannot be read, the sync is refused); with `is_mcdr` set to `false`, `root_path` itself. With the default config it is `./Mirror/server`.
 
 **ignore_inexistent_target_path** `bool`
 - If a target server directory does not exist, it will be skipped when set to `false`. When set to `true`, the directory will be created and synchronization will continue.
@@ -346,7 +359,6 @@ mcdr_root (./)
 sync:
     backup:
         enable: false
-        mcdr_path: ""
         timeout: 600
         confirm_on_warning: true
 ```
@@ -358,12 +370,9 @@ Two rules apply:
 - **The backup is as complete as the mirror's PrimeBackup settings make it.** They are expected to be equivalent to the sync settings. Where they are not, the plugin warns and by default asks for confirmation (see `confirm_on_warning`), then backs up with the settings as they are. Whoever confirms accepts that part of what the sync overwrites is not in the backup.
 
 **enable** `bool`
-- Whether every sync is preceded by a backup. Off by default; while it is `false` nothing of the mirror is read and syncing works as without this feature.
-
-**mcdr_path** `str`
-- Directory of the mirror's MCDR, the one that contains its `config.yml`. Like `sync.target`, it is relative to the MCDR root of this server. When empty, `terminal.launch_path` is used if `terminal.enable` is `true`; otherwise it must be set.
-- With `terminal.is_mcdr` set to `false`, `launch_path` is the server's own directory, not an MCDR one, so leaving this empty makes every sync refused. Set `mcdr_path` to the MCDR directory that holds the mirror's PrimeBackup; without such a directory, turn `enable` off.
-- Paths read from the mirror's files (`plugin_directories`, `working_directory`, PrimeBackup's `storage_root` and `source_root`) are relative to `mcdr_path`, as they are for the mirror's MCDR.
+- Whether every sync is preceded by a backup. Off by default; while it is `false` nothing of the mirror's PrimeBackup is read and syncing works as without this feature.
+- The mirror's PrimeBackup is looked for in [`root_path`](#root_path--is_mcdr-mirror-server-directory-and-kind). Paths read from the mirror's files (`plugin_directories`, `working_directory`, PrimeBackup's `storage_root` and `source_root`) are relative to `root_path`, as they are for the mirror's MCDR.
+- With `is_mcdr` set to `false` there is no pre-sync backup: a plain server has no MCDR, so no PrimeBackup of its own. Turning `enable` on then refuses every sync and warns in the console on load; turn it off.
 
 **timeout** `int`
 - Seconds a backup may take. A backup that takes longer is killed and the sync is refused.
@@ -570,6 +579,8 @@ display:
 
 ```yaml
 "!!mirror":
+    root_path: "./Mirror"
+    is_mcdr: true
     mcsm:
         enable: true
         url: "http://127.0.0.1:23333/"
@@ -578,11 +589,9 @@ display:
         apikey: "b8f???????????????????????????ade"
     terminal:
         enable: false
-        launch_path: "./Mirror"
         launch_command: "python -m mcdreforged"
         port: null
         terminal_name: "Mirror"
-        is_mcdr: true
         proxy_type: null
         console_log: false
         auto_recover: true
@@ -590,9 +599,8 @@ display:
     sync:
         world:
             - "world"
-        source: "./server"
-        target:
-            - "./Mirror/server"
+        source: ""
+        target: []
         ignore_inexistent_target_path: false
         concurrency: 4
         ignore_files:
@@ -633,25 +641,22 @@ display:
     display:
         server_name: "Mirror"
 "!!mirror2":
+    root_path: "./Mirror2"
     mcsm:
         uuid: "83011??????????49c1133fc08a41b80"
-    sync:
-        target:
-            - "./Mirror2/server"
     display:
         server_name: "Mirror2"
 "!!mirror3":
+    root_path: "./Mirror3"
     mcsm:
         enable: false
-    sync:
-        target:
-            - "./Mirror3/server"
     terminal:
         enable: true
-        launch_path: "./Mirror3"
         port: 30002
         terminal_name: "Mirror3"
 ```
+
+Later entries inherit `root_path` from the first one, so every mirror server needs its own `root_path`.
 
 ## Acknowledgements
 

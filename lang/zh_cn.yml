@@ -224,6 +224,7 @@ mirror_mcsmcdr:
     sync:
       fail:
         task_exist: §b{server_name} §c已有正在进行中的同步任务
+        target: "§c同步已取消，无法读取镜像服的 MCDR 配置文件，不能确定同步目标。请检查镜像服的 config.yml，或填写 §7'sync.target'§c。详情见控制台"
         unsupported: §c操作失败 / §b{server_name} §c当前配置文件不支持获取运行状态，需要配置 §7'mcsm'§c 或 §7'terminal'
       hint:
         running: "§f请先停止 §b{server_name} §f再进行同步"
@@ -249,7 +250,7 @@ mirror_mcsmcdr:
         detail: "§b{server_name} §f的同步前备份: {detail}"
         output: "§3PrimeBackup §7输出的最后几行:\n§f{output}"
         reason:
-          mcdr_path_required: "§7'terminal'§c 未启用时必须填写 §7'sync.backup.mcdr_path'"
+          plain_server: "§7'is_mcdr'§c 为 false 时不支持同步前备份，请关闭 §7'sync.backup.enable'"
           mcdr_path_not_found: "§c镜像服的 MCDR 目录不存在"
           mcdr_config_unreadable: "§c无法读取镜像服的 MCDR 配置文件"
           mcdr_config_invalid: "§c镜像服的 MCDR 配置文件中 §4'{option}'§c 的值无效"

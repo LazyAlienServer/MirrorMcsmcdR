@@ -1,13 +1,35 @@
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Pattern
 
 from mirror_mcsmcdr.config import MirrorConfig
+from mirror_mcsmcdr.mcdr_config import CONFIG_FILE, MCDRConfigError, read_mcdr_config
 from mirror_mcsmcdr.sync.history import SyncHistory
 from mirror_mcsmcdr.server import ProcessTracker, ProxySettingException, ServerController, SubprocessProxy, build_backends
 from mirror_mcsmcdr.sync.synchronizer import ClassicWorldSynchronizer
 from mirror_mcsmcdr.sync.backup import MirrorBackup
+
+
+def sync_targets(config: MirrorConfig) -> list[str]:
+    """
+    The directories a sync copies into: as configured, or else the server directory under ``root_path``,
+    which for an MCDR is its ``working_directory``. Read anew on every call, as the mirror's own config may change.
+
+    :raise MCDRConfigError: if the mirror's MCDR config has to be read and cannot be
+    """
+    target = config.sync.target
+    targets = [path for path in ([target] if isinstance(target, str) else target) if path]
+    if targets:
+        return targets
+    if not config.is_mcdr:
+        return [config.root_path]
+    config_path = Path(config.root_path) / CONFIG_FILE
+    working_directory = read_mcdr_config(config_path).get("working_directory", "server")
+    if not isinstance(working_directory, str):
+        raise MCDRConfigError(config_path, None)
+    return [os.path.join(config.root_path, working_directory)]
 
 
 @dataclass(frozen=True)
@@ -30,13 +52,15 @@ class MirrorRuntime:
     backup: Optional[MirrorBackup]
 
     @classmethod
-    def build(cls, config: MirrorConfig, data_path: Path, tracker: ProcessTracker) -> "MirrorRuntime":
+    def build(cls, config: MirrorConfig, data_path: Path, tracker: ProcessTracker, working_directory: str) -> "MirrorRuntime":
+        """:param working_directory: that of the MCDR running this plugin, the source of a sync that names none"""
+        if not config.root_path:
+            raise ValueError("root_path must not be empty")
         sync = config.sync
         action = config.command.action
         world_sync = ClassicWorldSynchronizer(
             sync.world,
-            sync.source,
-            sync.target,
+            sync.source or working_directory,
             sync.ignore_inexistent_target_path,
             sync.concurrency,
             sync.ignore_files,
@@ -53,11 +77,9 @@ class MirrorRuntime:
         backup = config.sync.backup
         if not backup.enable:
             return None
-        # the mirror's MCDR usually is what the terminal launches
-        mcdr_path = backup.mcdr_path or (config.terminal.launch_path if config.terminal.enable else None)
-        target = config.sync.target
-        targets = [target] if isinstance(target, str) else list(target)
-        return MirrorBackup(mcdr_path, list(config.sync.world), targets, list(config.sync.ignore_files), backup.timeout)
+        # a plain server has no MCDR, so no PrimeBackup of its own
+        mcdr_path = config.root_path if config.is_mcdr else None
+        return MirrorBackup(mcdr_path, list(config.sync.world), lambda: sync_targets(config), list(config.sync.ignore_files), backup.timeout)
 
     @property
     def subprocess_terminal(self) -> Optional[SubprocessProxy]:

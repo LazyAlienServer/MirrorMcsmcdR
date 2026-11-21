@@ -12,7 +12,7 @@ import sys
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import psutil
 
@@ -98,6 +98,8 @@ class ResolvedBackup:
     backup_config: dict[str, Any]
     storage_path: str
     source_path: str
+    # the directories the sync copies into, as configured or derived
+    targets: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -115,11 +117,11 @@ class MirrorBackup:
     Nothing is cached: every call reads the mirror's files again, so a result is only as current as the call.
     """
 
-    def __init__(self, mcdr_path: Optional[str], worlds: list[str], targets: list[str], ignore_files: list[str], timeout: float) -> None:
+    def __init__(self, mcdr_path: Optional[str], worlds: list[str], targets: Callable[[], list[str]], ignore_files: list[str], timeout: float) -> None:
         """
-        :param mcdr_path: the mirror's MCDR directory, None if it cannot be determined
+        :param mcdr_path: the mirror's MCDR directory, None for a plain server, which has none
         :param worlds: the worlds of the sync, as configured
-        :param targets: the target directories of the sync
+        :param targets: gives the target directories of the sync; may raise :class:`MCDRConfigError`
         :param ignore_files: the file names the sync does not copy
         :param timeout: seconds a backup may take
         """
@@ -134,9 +136,9 @@ class MirrorBackup:
     # ---------- resolution ----------
 
     def resolve(self) -> ResolvedBackup:
-        """Locate the mirror's PrimeBackup: its plugin, its config, its storage and the directory it backs up."""
+        """Locate the mirror's PrimeBackup: its plugin, its config, its storage, the directory it backs up, and the targets of the sync."""
         if not self.mcdr_path:
-            raise BackupUnavailable("mcdr_path_required")
+            raise BackupUnavailable("plain_server")
         mcdr_path = Path(os.path.abspath(self.mcdr_path))
         if not mcdr_path.is_dir():
             raise BackupUnavailable("mcdr_path_not_found", path=str(mcdr_path))
@@ -156,6 +158,10 @@ class MirrorBackup:
         if not (storage_path / _DB_FILE_NAME).is_file():
             raise BackupUnavailable("database_not_found", path=str(storage_path / _DB_FILE_NAME))
         source_path = self._source_path(mcdr_path, mcdr_config, backup_config, plugin_config_path)
+        try:
+            targets = tuple(self.targets())
+        except MCDRConfigError as e:
+            raise self._config_error(e) from e
 
         return ResolvedBackup(
             mcdr_path=str(mcdr_path),
@@ -165,16 +171,21 @@ class MirrorBackup:
             backup_config=backup_config,
             storage_path=str(storage_path),
             source_path=str(source_path),
+            targets=targets,
         )
 
-    @staticmethod
-    def _read_mcdr_config(mcdr_path: Path) -> dict[str, Any]:
+    @classmethod
+    def _read_mcdr_config(cls, mcdr_path: Path) -> dict[str, Any]:
         try:
             return read_mcdr_config(mcdr_path / CONFIG_FILE)
         except MCDRConfigError as e:
-            if e.error is None:
-                raise BackupUnavailable("mcdr_config_invalid", path=str(e.path), option="/") from e
-            raise BackupUnavailable("mcdr_config_unreadable", path=str(e.path), error=str(e.error)) from e
+            raise cls._config_error(e) from e
+
+    @staticmethod
+    def _config_error(error: MCDRConfigError) -> BackupUnavailable:
+        if error.error is None:
+            return BackupUnavailable("mcdr_config_invalid", path=str(error.path), option="/")
+        return BackupUnavailable("mcdr_config_unreadable", path=str(error.path), error=str(error.error))
 
     @staticmethod
     def _plugin_directories(mcdr_path: Path, mcdr_config: dict[str, Any]) -> list[Path]:
@@ -295,7 +306,7 @@ class MirrorBackup:
         The backup is made with those settings anyway; this is what whoever syncs has to be told first.
         """
         found: list[BackupWarning] = []
-        targets = [os.path.abspath(target) for target in self.targets]
+        targets = [os.path.abspath(target) for target in resolved.targets]
         backed_up = [target for target in targets if _same_directory(target, resolved.source_path)]
         if not backed_up:
             found.append(BackupWarning("source_mismatch", {"source": resolved.source_path, "targets": ", ".join(targets)}))
@@ -359,9 +370,9 @@ class MirrorBackup:
                 untargeted.append(world)
         return untargeted
 
-    def has_existing_world(self) -> bool:
+    def has_existing_world(self, resolved: ResolvedBackup) -> bool:
         """Whether a target holds one of the worlds yet; if none does, the sync has nothing to overwrite."""
-        return any(os.path.lexists(os.path.join(target, world)) for target in self.targets for world in self.worlds)
+        return any(os.path.lexists(os.path.join(target, world)) for target in resolved.targets for world in self.worlds)
 
     # ---------- backup ----------
 

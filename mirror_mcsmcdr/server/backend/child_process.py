@@ -7,7 +7,7 @@ from typing import Optional
 
 from mcdreforged.api.all import RText, ServerInterface
 
-from mirror_mcsmcdr.config.proxy_config import TerminalConfig
+from mirror_mcsmcdr.config.mirror_config import MirrorConfig
 from mirror_mcsmcdr.server.action import Action, ActionResult
 from mirror_mcsmcdr.server.backend.base import KillTargets, TerminalProxy
 from mirror_mcsmcdr.server.tracker import ProcessTracker, TreeView
@@ -19,10 +19,10 @@ class SubprocessProxy(TerminalProxy):
     name = "subprocess"
     supports = frozenset(Action)
 
-    def __init__(self, config: TerminalConfig, tracker: ProcessTracker) -> None:
+    def __init__(self, config: MirrorConfig, tracker: ProcessTracker) -> None:
         super().__init__(config, tracker)
         self.process: Optional[subprocess.Popen] = None
-        self.console_log_enabled = config.console_log
+        self.console_log_enabled = config.terminal.console_log
         self.console_log_limit: Optional[int] = None
         self._output_count = 0
         self._output_thread: Optional[Thread] = None

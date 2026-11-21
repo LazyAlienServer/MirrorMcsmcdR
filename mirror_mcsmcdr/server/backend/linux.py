@@ -3,7 +3,7 @@ from typing import Optional
 
 import psutil
 
-from mirror_mcsmcdr.config.proxy_config import TerminalConfig
+from mirror_mcsmcdr.config.mirror_config import MirrorConfig
 from mirror_mcsmcdr.server.action import Action, ActionResult
 from mirror_mcsmcdr.server.backend.base import KillTargets, TerminalProxy
 from mirror_mcsmcdr.server.status import Capability
@@ -15,7 +15,7 @@ class LinuxProxy(TerminalProxy):
     name = "linux"
     supports = frozenset(Action)
 
-    def __init__(self, config: TerminalConfig, tracker: ProcessTracker) -> None:
+    def __init__(self, config: MirrorConfig, tracker: ProcessTracker) -> None:
         super().__init__(config, tracker)
         # refuses a name screen cannot address before anything is launched
         Screen(self.terminal_name, self.path)

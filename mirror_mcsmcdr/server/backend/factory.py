@@ -4,7 +4,7 @@ from typing import Callable, Dict, List, Sequence, Tuple
 
 from mcdreforged.api.all import Serializable
 
-from mirror_mcsmcdr.config import MirrorConfig, TerminalConfig
+from mirror_mcsmcdr.config import MirrorConfig
 from mirror_mcsmcdr.server.backend.base import ServerBackend, TerminalProxy
 from mirror_mcsmcdr.server.backend.child_process import SubprocessProxy
 from mirror_mcsmcdr.server.backend.linux import LinuxProxy
@@ -28,12 +28,12 @@ def _require(proxy: str, config: Serializable, keys: Sequence[str]) -> None:
         raise ProxySettingException(proxy, missing_keys)
 
 
-def _build_terminal(config: TerminalConfig, tracker: ProcessTracker) -> TerminalProxy:
-    terminal_types: Dict[str, Callable[[TerminalConfig, ProcessTracker], TerminalProxy]] = {"linux": LinuxProxy, "windows": WindowsProxy, "subprocess": SubprocessProxy}
-    terminal_type = terminal_types.get(config.proxy_type or platform.system().lower())
+def _build_terminal(config: MirrorConfig, tracker: ProcessTracker) -> TerminalProxy:
+    terminal_types: Dict[str, Callable[[MirrorConfig, ProcessTracker], TerminalProxy]] = {"linux": LinuxProxy, "windows": WindowsProxy, "subprocess": SubprocessProxy}
+    terminal_type = terminal_types.get(config.terminal.proxy_type or platform.system().lower())
     if terminal_type is None:
         raise ProxySettingException("terminal", ["proxy_type"])
-    _require("terminal", config, ["launch_path", "launch_command", "port"])
+    _require("terminal", config.terminal, ["launch_command", "port"])
     try:
         return terminal_type(config, tracker)
     except ScreenError as e:
@@ -56,7 +56,7 @@ def build_backends(config: MirrorConfig, tracker: ProcessTracker) -> Tuple[List[
 
     builders: Tuple[Tuple[bool, Callable[[], ServerBackend]], ...] = (
         (config.mcsm.enable, build_mcsm),
-        (config.terminal.enable, lambda: _build_terminal(config.terminal, tracker)),
+        (config.terminal.enable, lambda: _build_terminal(config, tracker)),
     )
     backends: List[ServerBackend] = []
     errors: List[ProxySettingException] = []
