@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from pathlib import Path
+from threading import Lock
 from typing import Any, Callable, Iterator, Optional
 
 from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, PlayerCommandSource, PluginServerInterface, RAction, RColor, RText, RTextBase, RTextList, SimpleCommandBuilder, new_thread, Integer, GreedyText
@@ -108,6 +109,8 @@ class MirrorManager:
         # the start whose outcome is awaited; an older wait stops reporting
         self._latest_start = 0
         self._unloaded = False
+        # an adoption and the unload exclude each other, so that nothing is written into the record after the unload
+        self._adopt_lock = Lock()
 
         server.logger.info(rtr("manager.load", prefix=command_prefix))
         self._register_commands(reload_method)
@@ -529,7 +532,10 @@ class MirrorManager:
             if runtime is not checked and not self._check_permission(runtime, source, "recover"):
                 return
             with self._report_api_error(source):
-                result = runtime.controller.recover(pid)
+                with self._adopt_lock:
+                    if self._unloaded:
+                        return
+                    result = runtime.controller.recover(pid)
                 if not result.ok:
                     self._report_recover_failure(runtime, source, result, pid)
                     return
@@ -555,11 +561,20 @@ class MirrorManager:
         """
         plain = not runtime.config.is_mcdr
         auto = runtime.config.terminal.auto_recover and not plain
-        try:
-            result = runtime.controller.recover(None, dry_run=not auto)
-        except Exception as e:
-            self.server.logger.warning(self.rtr("command.recover.auto.error", title=False, e=e), exc_info=e)
-            return
+        # held like a manual recover, so that a reload cannot swap the runtime while this one adopts
+        with self._sync_workflow.hold() as held:
+            # A reload, start or sync claimed it first, within moments of the load.
+            # What it found is then looked at by that one or by a manual recover, not here
+            if not held:
+                return
+            with self._adopt_lock:
+                if self._unloaded or self._active_runtime() is not runtime:
+                    return
+                try:
+                    result = runtime.controller.recover(None, dry_run=not auto)
+                except Exception as e:
+                    self.server.logger.warning(self.rtr("command.recover.auto.error", title=False, e=e), exc_info=e)
+                    return
         if self._unloaded or result.outcome in (RecoverOutcome.UNSUPPORTED, RecoverOutcome.TRACKED, RecoverOutcome.NONE_FOUND):
             return
         adopted = auto and result.ok
@@ -788,7 +803,8 @@ class MirrorManager:
             self.server.reply(info, self.rtr("command.confirm.cancel", action=task.action))
 
     def on_unload(self) -> None:
-        self._unloaded = True
+        with self._adopt_lock:
+            self._unloaded = True
         self.confirmations.clear()
         runtime = self._runtime
         if runtime is not None and runtime.subprocess_terminal is not None:
