@@ -54,9 +54,11 @@ def build_backends(config: MirrorConfig, tracker: ProcessTracker) -> Tuple[List[
         _require("mcsm", config.mcsm, ["url", "uuid", "remote_uuid", "apikey"])
         return MCSManagerProxy(config.mcsm)
 
+    # The panel controls the mirror wherever it runs, possibly on another host: a local terminal beside it would
+    # force-kill and adopt local processes that may have nothing to do with it, so it is not used at all
     builders: Tuple[Tuple[bool, Callable[[], ServerBackend]], ...] = (
         (config.mcsm.enable, build_mcsm),
-        (config.terminal.enable, lambda: _build_terminal(config, tracker)),
+        (config.terminal.enable and not config.mcsm.enable, lambda: _build_terminal(config, tracker)),
     )
     backends: List[ServerBackend] = []
     errors: List[ProxySettingException] = []
