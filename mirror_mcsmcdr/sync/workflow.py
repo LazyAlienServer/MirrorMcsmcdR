@@ -108,6 +108,7 @@ class SyncWorkflow:
         try:
             targets = self._targets(runtime)
             source_path = sync_source(runtime.config, self._server.get_mcdr_config()["working_directory"])
+            self._check_worlds(runtime, source_path, targets)
             if not self._ensure_server_closed(runtime, source, on_server_stopped):
                 return
             if runtime.backup is not None:
@@ -139,6 +140,20 @@ class SyncWorkflow:
             # it names the path
             self._server.logger.warning(str(e))
             raise _SyncRefused(message.to_plain_text()) from e
+
+    def _check_worlds(self, runtime: MirrorRuntime, source_path: str, targets: list[str]) -> None:
+        """
+        Refuse, before the mirror is stopped, a sync that would destroy a world instead of copying it.
+
+        :raise _SyncRefused: if it would
+        """
+        overlapping = runtime.world_sync.overlapping(source_path, targets)
+        if overlapping:
+            message = self._tr("command.sync.fail.overlap")
+            self._server.broadcast(message)
+            for source_world, target_world in overlapping:
+                self._server.logger.warning(self._tr("command.sync.fail.overlap_path", title=False, source=source_world, target=target_world))
+            raise _SyncRefused(message.to_plain_text())
 
     def _ensure_server_closed(self, runtime: MirrorRuntime, source: CommandSource, on_server_stopped: Callable[[], None]) -> bool:
         """

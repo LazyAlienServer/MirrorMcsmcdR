@@ -226,6 +226,8 @@ mirror_mcsmcdr:
       fail:
         task_exist: §b{server_name} §c已有正在进行中的同步任务
         target: "§c同步已取消，无法读取镜像服的 MCDR 配置文件，不能确定同步目标。请检查镜像服的 config.yml，或填写 §7'sync.target'§c。详情见控制台"
+        overlap: "§c同步已取消，源服务器的世界与 §b{server_name} §c的世界是同一个目录，或者一个在另一个里面。详情见控制台"
+        overlap_path: "源世界与目标世界重叠: {source} -> {target}"
         unsupported: §c操作失败 / §b{server_name} §c当前配置文件不支持获取运行状态，需要配置 §7'mcsm'§c 或 §7'terminal'
       hint:
         running: "§f请先停止 §b{server_name} §f再进行同步"

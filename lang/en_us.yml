@@ -225,6 +225,8 @@ mirror_mcsmcdr:
       fail:
         task_exist: §b{server_name} §calready has a sync in progress
         target: "§cSync cancelled: cannot read the mirror's MCDR config to tell the sync target. Check the mirror's config.yml, or set §7'sync.target'§c. See the console for details"
+        overlap: "§cSync cancelled: a world of the source server and one of §b{server_name}§c are the same directory, or one is inside the other. See the console for details"
+        overlap_path: "Source world and target world overlap: {source} -> {target}"
         unsupported: "§cOperation failed / §b{server_name}§c: the current config does not support querying the status; configure §7'mcsm'§c or §7'terminal'"
       hint:
         running: "§fPlease stop §b{server_name}§f first, then sync"

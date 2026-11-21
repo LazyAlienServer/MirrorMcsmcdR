@@ -41,6 +41,15 @@ class ClassicWorldSynchronizer:
                 self.copy_tree(src_path, dst_path)
 
 
+    def overlapping(self, source: str, target_paths: list[str]) -> list[tuple[str, str]]:
+        """
+        The pairs of a source world and a target world that are one directory, or one inside the other:
+        syncing them would delete or overwrite the very files it copies from.
+        """
+        sources = [os.path.join(source, world) for world in self.world]
+        targets = [os.path.join(target, world) for target in target_paths for world in self.world]
+        return [(source_world, target_world) for source_world in sources for target_world in targets if _overlap(source_world, target_world)]
+
     def sync(self, source: str, target_paths: list[str]):
         source = os.path.normpath(source)
 
@@ -77,3 +86,12 @@ class ClassicWorldSynchronizer:
                     changed_files_count += sum([task.result() for task in tasklist])
         
         return changed_files_count, paths_notfound
+
+
+def _overlap(a: str, b: str) -> bool:
+    a, b = (os.path.normcase(os.path.realpath(path)) for path in (a, b))
+    try:
+        return os.path.commonpath([a, b]) in (a, b)
+    except ValueError:
+        # on different drives
+        return False
