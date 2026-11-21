@@ -492,17 +492,20 @@ class MirrorManager:
 
     def recover(self, source: CommandSource, context: CommandContext) -> None:
         pid: Optional[int] = context.get("pid")
+        # filled by the review: the one adopted is the one checked then, also once confirmed later
+        shown: list[ProcessIdentity] = []
         self._run_command(
             "recover",
             source,
-            lambda runtime: self._recover(runtime, source, pid),
-            confirm_if=lambda runtime: self._recover_needs_confirm(runtime, source, pid),
+            lambda runtime: self._recover(runtime, source, pid, shown[0] if shown else None),
+            confirm_if=lambda runtime: self._recover_needs_confirm(runtime, source, pid, shown),
         )
 
-    def _recover_needs_confirm(self, runtime: MirrorRuntime, source: CommandSource, pid: Optional[int]) -> Optional[bool]:
+    def _recover_needs_confirm(self, runtime: MirrorRuntime, source: CommandSource, pid: Optional[int], shown: list[ProcessIdentity]) -> Optional[bool]:
         """
         Whether adopting must be confirmed: when the MCDR was not named by its pid, it is shown and has to be.
 
+        :param shown: gets the identity of the one that would be adopted
         :return: None if it would not be adopted, after telling the source why
         """
         with self._report_api_error(source):
@@ -510,15 +513,16 @@ class MirrorManager:
             if not result.ok:
                 self._report_recover_failure(runtime, source, result, pid)
                 return None
+            assert result.picked is not None and result.identity is not None
+            shown.append(result.identity)
             if pid is not None:
                 return False
-            assert result.picked is not None
             self._report_processes(runtime, source, (result.picked,), "command.recover.found", title=False)
             return True
         return None
 
     @new_thread(f"{TITLE}-recover")
-    def _recover(self, checked: MirrorRuntime, source: CommandSource, pid: Optional[int]) -> None:
+    def _recover(self, checked: MirrorRuntime, source: CommandSource, pid: Optional[int], shown: Optional[ProcessIdentity]) -> None:
         # held like a start: a sync must not find the mirror changing hands between its stop and its restart
         with self._sync_workflow.hold() as held:
             if not held:
@@ -535,7 +539,7 @@ class MirrorManager:
                 with self._adopt_lock:
                     if self._unloaded:
                         return
-                    result = runtime.controller.recover(pid)
+                    result = runtime.controller.recover(pid, shown=shown)
                 if not result.ok:
                     self._report_recover_failure(runtime, source, result, pid)
                     return

@@ -53,6 +53,8 @@ class RecoverResult:
     picked: Optional[ProcessInfo] = None
     # whether the console of the one adopted was found; False also before it is adopted
     console: bool = False
+    # of a dry run that would adopt: the one picked, to be passed back once that is confirmed
+    identity: Optional[ProcessIdentity] = None
 
     @property
     def ok(self) -> bool:
@@ -159,13 +161,15 @@ class ServerController:
         terminal = self._terminal()
         return terminal.forcekill_targets() if terminal is not None else None
 
-    def recover(self, pid: Optional[int], dry_run: bool = False) -> RecoverResult:
+    def recover(self, pid: Optional[int], dry_run: bool = False, shown: Optional[ProcessIdentity] = None) -> RecoverResult:
         """
         Adopt the mirror's MCDR (a plain server's Java process) that runs outside the record, such as one started by hand:
         from then on it is tracked as if launched.
 
         :param pid: the one to adopt among those found; None if there is to be exactly one
         :param dry_run: only tell whether it would be adopted, as ADOPTED if so
+        :param shown: the identity a dry run gave, after it was shown to the operator: this one is adopted or none,
+            GONE if it is not found as it was. It overrides ``pid``
         """
         with self._action_lock:
             terminal = self._terminal()
@@ -177,17 +181,26 @@ class ServerController:
             found = tuple(process_utils.describe(process, Origin.UNTRACKED) for process in processes)
             if not processes:
                 return RecoverResult(RecoverOutcome.NONE_FOUND)
-            if pid is None and len(processes) > 1:
-                return RecoverResult(RecoverOutcome.AMBIGUOUS, found)
-            process = next((process for process in processes if pid is None or process.pid == pid), None)
-            if process is None:
-                return RecoverResult(RecoverOutcome.NOT_FOUND, found)
+            if shown is not None:
+                process = next((process for process in processes if process.pid == shown[0]), None)
+                try:
+                    if process is None or process_utils.start_token(process) != shown[1]:
+                        return RecoverResult(RecoverOutcome.GONE, found)
+                except psutil.Error:
+                    return RecoverResult(RecoverOutcome.GONE, found)
+            else:
+                if pid is None and len(processes) > 1:
+                    return RecoverResult(RecoverOutcome.AMBIGUOUS, found)
+                process = next((process for process in processes if pid is None or process.pid == pid), None)
+                if process is None:
+                    return RecoverResult(RecoverOutcome.NOT_FOUND, found)
             picked = process_utils.describe(process, Origin.PICKED)
             try:
                 if not terminal.holds_port(process):
                     return RecoverResult(RecoverOutcome.FOREIGN_LISTENER, found, picked)
                 if dry_run:
-                    return RecoverResult(RecoverOutcome.ADOPTED, found, picked)
+                    identity = (process.pid, process_utils.start_token(process))
+                    return RecoverResult(RecoverOutcome.ADOPTED, found, picked, identity=identity)
                 adoption = terminal.adopt(process)
             except psutil.Error:
                 return RecoverResult(RecoverOutcome.GONE, found, picked)

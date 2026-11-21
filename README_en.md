@@ -284,7 +284,7 @@ When the server process is running but the port never opens, the status stays at
 
 With `is_mcdr` set to `false`, the plugin looks for a Java process whose working directory is `root_path` instead, with a name as [`java_name`](#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) gives. A process that only listens on the configured port, with another working directory, is never adopted: with a wrong port, it may be another server. Such a mirror server is not adopted when the plugin loads.
 
-- With exactly one found, the plugin lists it and asks for `!!mirror confirm`; with several found, it lists them, and `!!mirror recover <pid>` picks one. The PID must be one of those listed; no confirmation is asked when a PID is given;
+- With exactly one found, the plugin lists it and asks for `!!mirror confirm`; once confirmed, only that listed process is adopted, and nothing is if it has exited. With several found, it lists them, and `!!mirror recover <pid>` picks one. The PID must be one of those listed; no confirmation is asked when a PID is given;
 - Nothing is adopted while the configured port is held by a process outside this MCDR and its children;
 - Nothing is adopted while the record still holds running processes, or while a sync is in progress;
 - The plugin finds the console the MCDR runs in, and types commands into it from then on:
