@@ -220,7 +220,8 @@ class ProcessTracker:
                 if console is not None:
                     console_found = console(record)
                 known = {member.pid for member in record.members}
-                members = self._take_in_descendants(self._revalidate(record.members), record.root.pid)
+                revalidated = [self._after_exec(live) if live.member.pid == record.root.pid else live for live in self._revalidate(record.members)]
+                members = self._take_in_descendants(revalidated, record.root.pid)
                 members = self._tell_server_apart(members, {live.member.pid for live in members} - known, listeners)
                 members = [
                     LiveMember(replace(live.member, listened=True), live.process) if live.member.pid in listeners and not live.member.listened else live
@@ -325,6 +326,20 @@ class ProcessTracker:
             role = live.member.role if head is None else Role.SERVER if head == server else Role.OTHER
             told_apart.append(live if role is live.member.role else LiveMember(replace(live.member, role=role), live.process))
         return told_apart
+
+    @classmethod
+    def _after_exec(cls, root: LiveMember) -> LiveMember:
+        """
+        The root shell may have replaced itself with the command it runs, keeping its pid and start time:
+        ``bash -c`` does so with its last command, often only after the root was registered.
+        """
+        if root.member.role is not Role.WRAPPER:
+            return root
+        try:
+            role = cls._role_of_root(root.process)
+        except psutil.Error:
+            return root
+        return root if role is Role.WRAPPER else LiveMember(replace(root.member, role=role), root.process)
 
     @staticmethod
     def _role_of_root(process: psutil.Process) -> Role:
