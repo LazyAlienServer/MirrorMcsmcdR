@@ -5,8 +5,8 @@ from concurrent.futures import ThreadPoolExecutor, wait
 class ClassicWorldSynchronizer:
     
 
-    def __init__(self, world: list, source: str, ignore_inexistent_target_path: bool, concurrency: int, ignore_files: list) -> None:
-        self.world, self.source = world, os.path.normpath(source)
+    def __init__(self, world: list, ignore_inexistent_target_path: bool, concurrency: int, ignore_files: list) -> None:
+        self.world = world
         self.ignore_inexistent_target_path = ignore_inexistent_target_path
         self.concurrency = concurrency
         self.ignore_files = ignore_files
@@ -41,7 +41,8 @@ class ClassicWorldSynchronizer:
                 self.copy_tree(src_path, dst_path)
 
 
-    def sync(self, target_paths: list[str]):
+    def sync(self, source: str, target_paths: list[str]):
+        source = os.path.normpath(source)
 
         changed_files_count = 0
         paths_notfound = []
@@ -57,7 +58,7 @@ class ClassicWorldSynchronizer:
 
             for single_world in self.world:
 
-                src_path = os.path.join(self.source, single_world)
+                src_path = os.path.join(source, single_world)
                 dst_path = os.path.join(target_path, single_world)
 
                 src_files = [os.path.join(path, file_name)[len(src_path)+1:] for path, dir_lst, file_lst in os.walk(src_path) for file_name in file_lst]

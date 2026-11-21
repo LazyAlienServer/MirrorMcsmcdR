@@ -32,6 +32,14 @@ def sync_targets(config: MirrorConfig) -> list[str]:
     return [os.path.join(config.root_path, working_directory)]
 
 
+def sync_source(config: MirrorConfig, working_directory: str) -> str:
+    """
+    The directory a sync copies from: as configured, or else ``working_directory``, that of the MCDR running this plugin.
+    Taken anew for every sync, as that MCDR may reload its config and start its server elsewhere.
+    """
+    return config.sync.source or working_directory
+
+
 @dataclass(frozen=True)
 class MirrorRuntime:
     """
@@ -52,15 +60,13 @@ class MirrorRuntime:
     backup: Optional[MirrorBackup]
 
     @classmethod
-    def build(cls, config: MirrorConfig, data_path: Path, tracker: ProcessTracker, working_directory: str) -> "MirrorRuntime":
-        """:param working_directory: that of the MCDR running this plugin, the source of a sync that names none"""
+    def build(cls, config: MirrorConfig, data_path: Path, tracker: ProcessTracker) -> "MirrorRuntime":
         if not config.root_path:
             raise ValueError("root_path must not be empty")
         sync = config.sync
         action = config.command.action
         world_sync = ClassicWorldSynchronizer(
             sync.world,
-            sync.source or working_directory,
             sync.ignore_inexistent_target_path,
             sync.concurrency,
             sync.ignore_files,

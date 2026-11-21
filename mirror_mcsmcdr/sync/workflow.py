@@ -8,7 +8,7 @@ from mcdreforged.api.all import CommandSource, PluginServerInterface, RTextBase
 
 from mirror_mcsmcdr.config.command_config import SaveWorldConfig
 from mirror_mcsmcdr.mcdr_config import MCDRConfigError
-from mirror_mcsmcdr.runtime import MirrorRuntime, sync_targets
+from mirror_mcsmcdr.runtime import MirrorRuntime, sync_source, sync_targets
 from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
 from mirror_mcsmcdr.sync.backup import BackupError, BackupFailed, BackupUnavailable, MirrorBackup
 from mirror_mcsmcdr.text_utils import Translator, detail_lines, refusal_lines, status_key
@@ -107,13 +107,14 @@ class SyncWorkflow:
         backup_id: Optional[int] = None
         try:
             targets = self._targets(runtime)
+            source_path = sync_source(runtime.config, self._server.get_mcdr_config()["working_directory"])
             if not self._ensure_server_closed(runtime, source, on_server_stopped):
                 return
             if runtime.backup is not None:
                 backup_id = self._back_up(runtime.backup, operator)
                 if backup_id is not None:
                     self._server.broadcast(self._tr("command.sync.backup.done", backup_id=backup_id))
-            record = self._sync_world(runtime, targets, started_at, operator, backup_id)
+            record = self._sync_world(runtime, source_path, targets, started_at, operator, backup_id)
         except _SyncRefused as e:
             record = SyncRecord(started_at, operator, SyncStatus.FAILED, exception=str(e), backup_id=backup_id)
         except Exception as e:
@@ -216,7 +217,7 @@ class SyncWorkflow:
             self._server.logger.warning(line)
         return _SyncRefused(reason.to_plain_text())
 
-    def _sync_world(self, runtime: MirrorRuntime, targets: list[str], started_at: str, operator: str, backup_id: Optional[int]) -> SyncRecord:
+    def _sync_world(self, runtime: MirrorRuntime, source_path: str, targets: list[str], started_at: str, operator: str, backup_id: Optional[int]) -> SyncRecord:
         self._server.broadcast(self._tr("command.sync.success"))
         started = time.time()
         sync_config = runtime.config.command.action.sync
@@ -227,7 +228,7 @@ class SyncWorkflow:
                 self._ensure_stopped(runtime)
             except BackupUnavailable as e:
                 raise self._refuse("stale", e) from e
-        changed_files_count, paths_notfound = runtime.world_sync.sync(targets)
+        changed_files_count, paths_notfound = runtime.world_sync.sync(source_path, targets)
         duration = format_duration(time.time() - started)
 
         if paths_notfound:

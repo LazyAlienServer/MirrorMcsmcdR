@@ -334,7 +334,7 @@ mcdr_root (./)
 - The directory that needs to be synchronized, it needs to be added when there are multiple world files in the archive.
 
 **source** `str`
-- The source server directory. When empty, the [working directory](https://mcdreforged.readthedocs.io/en/latest/configuration.html#working-directory) of this MCDR (`working_directory`, `server` by default) is used; usually there is no need to set it. Files are synchronized from `source/world`  to `target/world`
+- The source server directory. When empty, the [working directory](https://mcdreforged.readthedocs.io/en/latest/configuration.html#working-directory) of this MCDR (`working_directory`, `server` by default; read at every sync, so it follows a reload of this MCDR's config) is used; usually there is no need to set it. Files are synchronized from `source/world`  to `target/world`
 
 **target** `str, list`
 - The target server directory, you can only write a string if there is only one directory, and a list is needed for multiple directories. A copy of the source directory files will be synchronized for each target directory.

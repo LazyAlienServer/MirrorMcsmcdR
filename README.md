@@ -329,7 +329,7 @@ mcdr_root (./)
 - 需要同步的目录，当存档有多个世界文件时需要添加
 
 **source** `str`
-- 源服务端目录。留空时使用本MCDR的[工作目录](https://mcdreforged.readthedocs.io/zh-cn/latest/configuration.html#working-directory)（`working_directory`，默认为`server`），通常无需填写。文件由`source/world` 同步至==> `target/world`
+- 源服务端目录。留空时使用本MCDR的[工作目录](https://mcdreforged.readthedocs.io/zh-cn/latest/configuration.html#working-directory)（`working_directory`，默认为`server`，每次同步时读取，本MCDR重载配置后也随之变化），通常无需填写。文件由`source/world` 同步至==> `target/world`
 
 **target** `str, list`
 - 目标服务端目录, 只有一个目录时可只写字符串, 多个目录需为列表。将会为每个目标目录都同步一份源目录的文件。

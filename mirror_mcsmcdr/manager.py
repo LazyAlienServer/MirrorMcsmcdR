@@ -154,7 +154,7 @@ class MirrorManager:
         """Build a runtime from the config and make it current; on failure the previous state is left untouched."""
         try:
             data_path = Path(self.server.get_data_folder()) / self.command_prefix
-            runtime = MirrorRuntime.build(config, data_path, self._tracker, self.server.get_mcdr_config()["working_directory"])
+            runtime = MirrorRuntime.build(config, data_path, self._tracker)
         except Exception as e:
             if self.server.is_server_startup():
                 self.server.say(self.rtr("manager.reload.fail"))
