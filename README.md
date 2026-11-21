@@ -220,7 +220,7 @@ terminal:
 > [!NOTE]
 > 使用 `subprocess` 代理启动镜像服 MCDR 实例时，请在镜像服 MCDR 的配置文件中将 `advanced_console` 设置为 `false`。
 >
-> subprocess代理启动的镜像服是本MCDR的子进程。执行`!!mirror reload`、重载或卸载本插件时，插件会强制终止这样的镜像服。
+> subprocess代理启动的镜像服是本MCDR的子进程。执行`!!mirror reload`、重载或卸载本插件时，插件会强制终止这样的镜像服。[接管](#接管镜像服)的镜像服不是插件启动的，不会被终止。
 
 **console_log** `bool`
 - 是否默认将`subprocess`代理的镜像服控制台日志输出到MCDR控制台。此配置仅对`subprocess`代理生效。

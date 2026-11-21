@@ -224,7 +224,7 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 > [!NOTE]
 > When using the `subprocess` proxy to start another MCDR instance, set `advanced_console` to `false` in the mirror server MCDR's configuration file.
 >
-> A mirror server started by the subprocess proxy is a child process of this MCDR. `!!mirror reload`, and reloading or unloading this plugin, forcefully terminate it.
+> A mirror server started by the subprocess proxy is a child process of this MCDR. `!!mirror reload`, and reloading or unloading this plugin, forcefully terminate it. An [adopted](#adopting-a-mirror-server) mirror server was not started by the plugin and keeps running.
 
 **console_log** `bool`
 - Whether to output the subprocess proxy's mirror server console logs to the MCDR console by default. This option only applies to the `subprocess` proxy.

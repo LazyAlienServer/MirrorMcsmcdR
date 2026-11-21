@@ -91,9 +91,16 @@ class SubprocessProxy(TerminalProxy):
         return result
 
     def forcekill(self) -> None:
-        """Kill whatever this backend launched, and wait until the child process is gone."""
+        """
+        Kill what this proxy launched, and wait until the child process is gone; for a reload or an unload,
+        after which nothing could reach its pipes any more. A mirror it did not launch, adopted ones included, is left running.
+        """
+        process = self.process
+        if process is None:
+            return
         view = self.tracker.observe(self.listener)
-        if view.record is not None and view.record.backend == self.name:
+        record = view.record
+        if record is not None and record.backend == self.name and record.adoption is None and record.root.pid == process.pid:
             self._kill_all(live.process for live in view.members)
         self._reap()
 
