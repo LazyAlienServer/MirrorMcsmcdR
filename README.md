@@ -357,6 +357,7 @@ sync:
 
 **mcdr_path** `str`
 - 镜像服 MCDR 的目录，即其 `config.yml` 所在的目录。与 `sync.target` 一样，相对于本服务端的 MCDR 根目录。留空时，若 `terminal.enable` 为 `true` 则使用 `terminal.launch_path`，否则必须填写。
+- `terminal.is_mcdr` 为 `false` 时，`launch_path` 是服务端自己的目录，而不是 MCDR 的目录，留空会导致所有同步被拒绝。此时请把 `mcdr_path` 填为装有镜像服 PrimeBackup 的 MCDR 目录；没有这样的目录时，请关闭 `enable`。
 - 从镜像服文件中读取的路径（`plugin_directories`、`working_directory`，以及 PrimeBackup 的 `storage_root` 和 `source_root`）都相对于 `mcdr_path`，与镜像服 MCDR 自己的解析方式一致。
 
 **timeout** `int`

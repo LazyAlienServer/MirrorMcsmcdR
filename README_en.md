@@ -362,6 +362,7 @@ Two rules apply:
 
 **mcdr_path** `str`
 - Directory of the mirror's MCDR, the one that contains its `config.yml`. Like `sync.target`, it is relative to the MCDR root of this server. When empty, `terminal.launch_path` is used if `terminal.enable` is `true`; otherwise it must be set.
+- With `terminal.is_mcdr` set to `false`, `launch_path` is the server's own directory, not an MCDR one, so leaving this empty makes every sync refused. Set `mcdr_path` to the MCDR directory that holds the mirror's PrimeBackup; without such a directory, turn `enable` off.
 - Paths read from the mirror's files (`plugin_directories`, `working_directory`, PrimeBackup's `storage_root` and `source_root`) are relative to `mcdr_path`, as they are for the mirror's MCDR.
 
 **timeout** `int`
