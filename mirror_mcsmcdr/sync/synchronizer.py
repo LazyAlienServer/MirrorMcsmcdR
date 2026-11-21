@@ -50,6 +50,10 @@ class ClassicWorldSynchronizer:
         targets = [os.path.join(target, world) for target in target_paths for world in self.world]
         return [(source_world, target_world) for source_world in sources for target_world in targets if _overlap(source_world, target_world)]
 
+    def missing_sources(self, source: str) -> list[str]:
+        """The source worlds that are no directory: syncing one would empty the target world, as nothing is there to copy."""
+        return [path for path in (os.path.join(source, world) for world in self.world) if not os.path.isdir(path)]
+
     def sync(self, source: str, target_paths: list[str]):
         source = os.path.normpath(source)
 

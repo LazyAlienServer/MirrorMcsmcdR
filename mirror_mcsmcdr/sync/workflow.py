@@ -154,6 +154,13 @@ class SyncWorkflow:
             for source_world, target_world in overlapping:
                 self._server.logger.warning(self._tr("command.sync.fail.overlap_path", title=False, source=source_world, target=target_world))
             raise _SyncRefused(message.to_plain_text())
+        missing = runtime.world_sync.missing_sources(source_path)
+        if missing:
+            message = self._tr("command.sync.fail.source_missing", count=len(missing))
+            self._server.broadcast(message)
+            for path in missing:
+                self._server.logger.warning(self._tr("command.sync.fail.source_missing_path", title=False, path=path))
+            raise _SyncRefused(message.to_plain_text())
 
     def _ensure_server_closed(self, runtime: MirrorRuntime, source: CommandSource, on_server_stopped: Callable[[], None]) -> bool:
         """
