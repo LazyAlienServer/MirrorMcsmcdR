@@ -3,7 +3,7 @@
 # 添加另一个前缀，例如 "!!mirror2"，以配置另一个镜像服务器。
 
 "!!mirror":
-  # MCSManager 连接设置。启用时，terminal 和 RCON 不被使用。
+  # MCSManager 连接设置。启用时，terminal 不被使用。
   mcsm:
     # 是否通过 MCSManager 控制镜像服务器。
     enable: false
@@ -24,29 +24,20 @@
     launch_path: ./Mirror
     # 用于启动镜像服务器的命令。
     launch_command: python -m mcdreforged
-    # 镜像服务器端口；子进程代理不需要。
+    # 镜像服务器端口，所有代理都必须填写。
     port:
     # 终端标题、screen 名称或子进程日志前缀。
     terminal_name: Mirror
-    # Linux/Windows 代理是否验证 Java 进程名称。
-    regex_strict: false
     # 镜像服务器本身是否由 MCDReforged 启动。
     is_mcdr: true
     # 代理类型：linux、windows、subprocess 或 null 以自动选择。
     proxy_type:
     # 子进程控制台输出是否默认显示。
     console_log: false
-
-  # RCON 连接设置。
-  rcon:
-    # 是否启用 RCON。
-    enable: false
-    # RCON 服务器地址。
-    address:
-    # RCON 服务器端口。
-    port:
-    # RCON 服务器密码。
-    password:
+    # 插件加载时，若记录中没有运行的进程，而启动目录中恰好有一个不是插件启动的 MCDR，是否自动接管它；为 false 时只提示。
+    auto_recover: true
+    # is_mcdr 为 false 时，查找未跟踪服务端所认的 Java 进程名，正则表达式，不区分大小写。
+    java_name: '^javaw?\d*(\.exe)?$'
 
   # 文件同步设置。
   sync:
@@ -65,6 +56,17 @@
     # 同步时排除的文件名。
     ignore_files:
       - session.lock
+    # 每次同步前，用镜像服自己的 PrimeBackup（>= 1.13.0）备份镜像服。
+    # 启用后，备份不成功就不会复制任何文件。备份按镜像服 PrimeBackup 的现有设置进行。
+    backup:
+      # 每次同步前是否先备份；想不备份就同步，请改为 false 并重载配置。
+      enable: false
+      # 镜像服 MCDR 的目录（其 config.yml 所在目录），相对于本 MCDR。留空时，若启用了 terminal 则使用 terminal.launch_path。
+      mcdr_path: ''
+      # 备份最多可用的秒数；超时的备份会被终止，同步被拒绝。
+      timeout: 600
+      # 镜像服 PrimeBackup 的设置与同步设置不一致、备份可能不完整时，是否必须确认后才同步。
+      confirm_on_warning: true
 
   # 命令权限和命令行为。
   command:
@@ -77,9 +79,9 @@
       sync: 2
       history: 0
       confirm: 0
-      abort: 0
       log: console
-      execute: console
+      input: console
+      recover: 3
     action:
       status:
         require_confirm: false
@@ -91,14 +93,15 @@
         require_confirm: true
         # 停止最多需要的秒数; 在此期间状态显示为“正在停止”。
         timeout: 60
+      # 等待镜像服状态变化（例如同步前等待其停止、启动后等待其运行）时，两次完整检查之间的最长秒数；记录中的进程一退出或开始、停止监听端口就会立即检查。
+      check_status_interval: 5
       kill:
         require_confirm: true
       sync:
         require_confirm: true
         ensure_server_closed: true
         auto_server_restart: false
-        check_status_interval: 5
-        max_attempt_times: 3
+        auto_mcdr_stop: false
         save_world:
           # 复制世界时禁用自动保存。
           turn_off_auto_save: true
@@ -116,13 +119,13 @@
       confirm:
         timeout: 30
         cancel_anymsg: true
-      abort:
-        operator: everyone
 
   # 显示设置。
   display:
     # 此镜像服务器在命令反馈中使用的名称。
     server_name: Mirror
+    # 游戏内消息不显示的进程信息，控制台始终显示全部信息。可选 name（进程名）和 pid，例如 [name, pid]；两项都填时只显示进程数量。
+    protected_process_info: []
 
 # 对于额外的镜像服务器，你可以使用类 yaml 的语法来覆盖基础配置。例如：
 # "!!mirror2":

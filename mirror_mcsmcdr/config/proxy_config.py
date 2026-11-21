@@ -14,13 +14,10 @@ class TerminalConfig(Serializable):
     launch_command: str = "python -m mcdreforged"
     port: Optional[int] = None
     terminal_name: str = "Mirror"
-    regex_strict: bool = False
     is_mcdr: bool = True
     proxy_type: Optional[Literal["windows", "linux", "subprocess"]] = None
     console_log: bool = False
-
-class RConConfig(Serializable):
-    enable: bool = False
-    address: Optional[str] = None
-    port: Optional[int] = None
-    password: Optional[str] = None
+    # adopt the mirror's MCDR found running outside the record when the plugin loads
+    auto_recover: bool = True
+    # with is_mcdr false: the names of the Java processes looked for outside the record, as a regular expression
+    java_name: str = r"^javaw?\d*(\.exe)?$"

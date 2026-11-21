@@ -1,11 +1,14 @@
-from mcdreforged.api.all import PluginServerInterface
+from mcdreforged.api.all import PluginServerInterface, RTextBase, RTextList
 from copy import deepcopy
 from pathlib import Path
 from mirror_mcsmcdr.config.mirror_config import MirrorConfig, MultiMirrorConfig
+from mirror_mcsmcdr.constants import PLUGIN_ID, REPLY_TITLE
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+import hashlib
 import os
+import time
 
 
 class MultiConfigLoader:
@@ -30,6 +33,16 @@ class MultiConfigLoader:
         template = self._load_template(yaml)
         user_config, source_path = self._load_user_config()
 
+        schema = MirrorConfig().serialize()
+        unknown: Dict[str, List[Tuple[str, Any]]] = {}
+        for prefix, data in user_config.items():
+            if not isinstance(data, dict):
+                continue
+            kept, removed = self._strip_unknown(schema, data)
+            if removed:
+                user_config[prefix] = kept
+                unknown[prefix] = removed
+
         template_prefix = next(iter(template))
         if user_config:
             first_prefix = next(iter(user_config))
@@ -37,7 +50,7 @@ class MultiConfigLoader:
             parent_config = MirrorConfig.deserialize(self._inherit(MirrorConfig().serialize(), first_data))
             needs_save = parent_config.serialize() != first_data
             if needs_save:
-                self.server.logger.info("Merge missing keys for mirror config.")
+                self.server.logger.info(self._rtr("merged"))
         else:
             first_prefix = template_prefix
             parent_config = MirrorConfig()
@@ -48,16 +61,17 @@ class MultiConfigLoader:
 
         annotated_first = deepcopy(template[template_prefix])
         self._apply_values(annotated_first, parent_config.serialize())
-        first_data_defined = user_config and first_prefix in user_config
-        needs_save = needs_save or source_path is None or source_path != self.config_path or (first_data_defined and first_data != annotated_first)
+        first_data_defined = bool(user_config) and first_prefix in user_config
+        needs_save = needs_save or source_path is None or source_path != self.config_path or (first_data_defined and first_data != annotated_first) or bool(unknown)
         if not needs_save:
             return
         export_config = deepcopy(template)
         if template_prefix != first_prefix:
             del export_config[template_prefix]
         export_config[first_prefix] = annotated_first
+        self._report_unknown(unknown, source_path)
         if source_path is None:
-            self.server.logger.warning("Config missing. Automatically create new config.yml with default values.")
+            self.server.logger.warning(self._rtr("created"))
         else:
             for prefix, config in user_config.items():
                 if prefix != first_prefix:
@@ -79,6 +93,56 @@ class MultiConfigLoader:
         # merged as plain data: a deserialized entry would bring its defaults along and override the parent with them
         return MirrorConfig.deserialize(self._inherit(self.parent_config.serialize(), self.user_config[command_prefix]))
 
+    def _rtr(self, key: str, **kwargs: Any) -> RTextBase:
+        # not text_utils.rtr: importing it here would import the config package from itself through the server package
+        return self.server.rtr(f"{PLUGIN_ID}.config_loader.{key}", **kwargs)
+
+    def _report_unknown(self, unknown: Dict[str, List[Tuple[str, Any]]], source_path: Optional[Path]) -> None:
+        """Tell what is about to be removed; a YAML source is backed up first, a legacy JSON one already is."""
+        if not unknown:
+            return
+        for prefix, removed in unknown.items():
+            for path, value in removed:
+                self.server.logger.warning(self._rtr("unknown_key", prefix=prefix, path=path, value=repr(value)))
+        if source_path == self.config_path:
+            content = source_path.read_bytes()
+            stamp = time.strftime('%Y%m%d-%H%M%S')
+            backup_path = source_path.with_name(f"{source_path.name}.{stamp}-{hashlib.sha256(content).hexdigest()[:6]}.bak")
+            backup_path.write_bytes(content)
+            self.server.logger.warning(self._rtr("backup", path=backup_path))
+        count = sum(map(len, unknown.values()))
+        self.server.broadcast(RTextList(REPLY_TITLE + " ", self._rtr("unknown_removed", count=count)))
+
+    @classmethod
+    def _strip_unknown(cls, schema: dict, data: dict, path: str = '') -> Tuple[dict, List[Tuple[str, Any]]]:
+        """
+        Split ``data`` into the keys ``schema`` knows and the ones it does not, the latter as (full dotted path, value).
+
+        A dotted key such as ``display.server_name`` is known if its whole path is; it is kept as written.
+        """
+        kept: dict = {}
+        removed: List[Tuple[str, Any]] = []
+        for key, value in data.items():
+            head, _, rest = str(key).partition(".")
+            if head not in schema:
+                removed.append((f"{path}{key}", value))
+                continue
+            node = schema[head]
+            if rest:
+                if not isinstance(node, dict):
+                    removed.append((f"{path}{key}", value))
+                    continue
+                inner_kept, inner_removed = cls._strip_unknown(node, {rest: value}, f"{path}{head}.")
+                removed += inner_removed
+                if inner_kept:
+                    kept[key] = inner_kept[rest]
+            elif isinstance(node, dict) and isinstance(value, dict):
+                kept[key], inner_removed = cls._strip_unknown(node, value, f"{path}{key}.")
+                removed += inner_removed
+            else:
+                kept[key] = value
+        return kept, removed
+
     def _load_template(self, yaml: YAML) -> CommentedMap:
         lang = self.server.get_mcdr_language()
         template_name = f'{self.DEFAULT_CONFIG_DIR}/{lang}.yml'
@@ -95,8 +159,10 @@ class MultiConfigLoader:
         if not path.is_file():
             if self.legacy_config_path.is_file():
                 path = self.legacy_config_path
-                self.server.logger.warning("JSON format is outdated. Automatically convert legacy config.json to config.yml and backup to config.json.bak.")
+                self.server.logger.warning(self._rtr("legacy_json"))
                 config = self.server.load_config_simple("config.json")
+                if not isinstance(config, dict):
+                    raise ValueError("Legacy config.json must contain a JSON object")
                 os.rename(path, path.with_suffix('.json.bak'))
                 return config, path
             else:

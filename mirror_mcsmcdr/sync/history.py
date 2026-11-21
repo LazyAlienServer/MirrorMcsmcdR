@@ -22,6 +22,8 @@ class SyncRecord:
     changed_files_count: int = 0
     paths_notfound: list[str] = field(default_factory=list)
     exception: Optional[str] = None
+    # the pre-sync backup made by the mirror's PrimeBackup, whatever became of the sync afterwards
+    backup_id: Optional[int] = None
 
     def to_dict(self) -> dict[str, Any]:
         detail: dict[str, Any]
@@ -33,16 +35,22 @@ class SyncRecord:
                 "changed_files_count": self.changed_files_count,
                 "paths_notfound": self.paths_notfound,
             }
-        return {
+        data: dict[str, Any] = {
             "time": self.time,
             "operator": self.operator,
             "status": self.status.value,
             "detail": detail,
         }
+        if self.backup_id is not None:
+            data["backup_id"] = self.backup_id
+        return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "SyncRecord":
         detail = data.get("detail", {})
+        backup_id = data.get("backup_id")
+        if backup_id is not None and type(backup_id) is not int:
+            raise ValueError("backup_id must be an integer")
         return cls(
             time=data["time"],
             operator=data["operator"],
@@ -51,6 +59,7 @@ class SyncRecord:
             changed_files_count=detail.get("changed_files_count", 0),
             paths_notfound=detail.get("paths_notfound", []),
             exception=detail.get("exception"),
+            backup_id=backup_id,
         )
 
 

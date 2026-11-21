@@ -1,7 +1,7 @@
 from typing import Optional
 
 from mirror_mcsmcdr.server.action import Action
-from mirror_mcsmcdr.server.status import Anomaly, Evidence, ServerState, StatusSnapshot
+from mirror_mcsmcdr.server.status import Anomaly, Detail, Evidence, ServerState, StatusSnapshot
 
 
 class StatusResolver:
@@ -14,51 +14,58 @@ class StatusResolver:
             It only decides between states the evidence cannot tell apart
         """
         if evidence.panel_state is not None:
-            return StatusSnapshot(evidence.panel_state, frozenset(), evidence)
+            plain = evidence.panel_state in (ServerState.RUNNING, ServerState.STOPPED)
+            return StatusSnapshot(evidence.panel_state, frozenset(), evidence, None if plain else Detail.PANEL)
 
-        starting = intent is Action.START
         stopping = intent is Action.STOP
-        # whatever the server runs in; None on Windows, where only the port can be observed
-        host = evidence.process_alive if evidence.process_alive is not None else evidence.screen_exists
-        listening = evidence.port_listening
-        rcon = evidence.rcon_reachable
-        running = ServerState.STOPPING if stopping else ServerState.RUNNING
+        pending = {Action.START: ServerState.STARTING, Action.STOP: ServerState.STOPPING}.get(intent) if intent else None
+        pending_detail = {Action.START: Detail.START_PENDING, Action.STOP: Detail.STOP_PENDING}.get(intent) if intent else None
         anomaly: Optional[Anomaly] = None
+        detail: Optional[Detail] = None
 
-        if host is None and listening is None:
-            if rcon is None:
-                state = ServerState.UNKNOWN
-            else:
-                state = running if rcon else ServerState.STOPPED
-        elif rcon:
-            # a server that answers is up, whatever the terminal looks like
-            state = running
-        elif listening if listening is not None else host:
-            if host is False:
-                # a dead child process means the port belongs to something else
-                if evidence.screen_exists is False:
-                    state, anomaly = ServerState.RUNNING, Anomaly.ORPHAN_PROCESS
-                else:
-                    state = ServerState.STOPPED
-            elif rcon is False and not stopping:
-                # RCON comes up after the port, so this is only a conflict once the start has settled
-                if starting:
-                    state = ServerState.STARTING
-                else:
-                    state, anomaly = ServerState.UNKNOWN, Anomaly.PROBE_CONFLICT
-            else:
-                state = running
-        elif host:
-            if starting:
-                state = ServerState.STARTING
-            elif stopping:
-                state = ServerState.STOPPING
-            elif evidence.screen_exists:
+        if evidence.port_listening is None:
+            state = ServerState.UNKNOWN
+        elif evidence.untracked and not evidence.members_alive:
+            # the mirror runs, but not under the plugin, whether the port is open yet or not
+            state, detail = ServerState.UNKNOWN, Detail.UNTRACKED
+        elif evidence.foreign_listeners:
+            # the port is held by something the plugin did not launch
+            state, detail = ServerState.UNKNOWN, Detail.FOREIGN_LISTENER
+        elif not evidence.members_alive:
+            state = ServerState.STOPPED
+        elif not (evidence.mcdr_alive or evidence.server_alive or evidence.others_alive):
+            # only the terminal is there: it has not got to the command yet, or it is closing after it
+            if pending is not None:
+                state, detail = pending, pending_detail
+            elif evidence.endpoint_alive:
+                # left behind by a command that failed
                 state, anomaly = ServerState.STOPPED, Anomaly.ORPHAN_SCREEN
             else:
-                # a child process that never opened its port within the start timeout
+                state, detail = ServerState.STOPPING, Detail.CONSOLE_CLOSING
+        elif not evidence.endpoint_alive:
+            state, anomaly = ServerState.RUNNING, Anomaly.ORPHAN_PROCESS
+        elif evidence.server_alive or (evidence.others_alive and evidence.mcdr_alive is False):
+            if not evidence.port_listening:
+                if pending is not None:
+                    state, detail = pending, pending_detail
+                elif evidence.server_listened:
+                    # the server closes the port on its way out, as when it is stopped from its own console
+                    state, detail = ServerState.STOPPING, Detail.PORT_RELEASED
+                else:
+                    # The port opens a while after the server process is there, and stays closed if it is not the right one.
+                    # A server never seen listening may also be on its way out, as one adopted after it closed the port.
+                    state, detail = ServerState.STARTING, Detail.PORT_CLOSED
+            elif stopping:
+                state, detail = ServerState.STOPPING, Detail.STOP_PENDING
+            else:
                 state = ServerState.RUNNING
+            if evidence.mcdr_alive is False:
+                anomaly = Anomaly.MCDR_MISSING
         else:
-            state = ServerState.STARTING if starting and host is None else ServerState.STOPPED
+            # MCDR without a server: it is loading or unloading, or it was told to stop the server only
+            state, detail = pending or ServerState.MCDR_ONLY, pending_detail or Detail.MCDR_ONLY
 
-        return StatusSnapshot(state, frozenset() if anomaly is None else frozenset({anomaly}), evidence)
+        if anomaly is not None:
+            # what is odd matters more than how the state came about
+            detail = Detail(anomaly.value)
+        return StatusSnapshot(state, frozenset() if anomaly is None else frozenset({anomaly}), evidence, detail)

@@ -10,7 +10,7 @@ It includes the following commands:
 
 `!!mirror help` Displays command help
 
-`!!mirror status` Gets the running status of the mirror server instance, with states such as unknown/stopped/stopping/starting/running
+`!!mirror status` Gets the running status of the mirror server instance, with states such as unknown/stopped/stopping/starting/running/server stopped, MCDR still running
 
 `!!mirror start` Starts the mirror server instance
 
@@ -18,7 +18,7 @@ It includes the following commands:
 
 `!!mirror kill` Terminates the mirror server instance
 
-`!!mirror kill -f` or `!!mirror kill --force` Forcefully terminates the mirror server instance (Linux terminal only)
+`!!mirror kill -f` or `!!mirror kill --force` Forcefully terminates the mirror server instance (terminal proxies)
 
 `!!mirror sync` Performs file synchronization
 
@@ -26,7 +26,7 @@ It includes the following commands:
 
 `!!mirror reload` Hot reloads the configuration file for the corresponding mirror server
 
-`!!mirror execute <command>` Sends a command through the subprocess proxy
+`!!mirror input <command>` Sends a command through the subprocess proxy
 
 `!!mirror log` View the enabled/disabled status of console log output.
 
@@ -42,7 +42,6 @@ The configuration file is mainly composed as follows:
 !!mirror:
     mcsm: # MCSManager configuration
     terminal: # Configuration for starting the mirror server terminal through the command line
-    rcon: # RCON configuration
     sync: # Save synchronization configuration
     command:
         permission: # Command permission configuration
@@ -52,7 +51,7 @@ The configuration file is mainly composed as follows:
 
 ### Brief Explanation
 
-`mcsm`, `terminal`, and `rcon` are used to control the mirror server, such as obtaining status, starting, and stopping the mirror server.
+`mcsm` and `terminal` are used to control the mirror server, such as obtaining status, starting, and stopping the mirror server.
 
 `sync` is for synchronizing saves; it takes effect when using the `!!mirror sync` command to synchronize the survival server to the mirror server (i.e., controlling the logic of synchronizing saves from the source server to the target server).
 
@@ -85,7 +84,7 @@ mcsm:
     apikey:
 ```
 
-Note that after enabling MCSM, the terminal (`terminal`) and RCON (`rcon`) configuration items will be disabled.
+Note that after enabling MCSM, the terminal (`terminal`) configuration items will be disabled.
 
 `url` is the access address of the MCSManager panel, that is, the address for requesting the API.
 
@@ -100,7 +99,7 @@ Jump to [Save Synchronization](#save-synchronization) for the next step.
 ### Controlling the Mirror Server through the Terminal
 
 > [!NOTE]
-> `screen` is required when `proxy_type` is `linux` (or left as `null` on Linux); `windows` creates a new command prompt; and `subprocess` starts the mirror server as a child process inside MCDR. The Linux/Windows proxies control the server through screen or system processes, while the subprocess proxy uses standard input and output. `rcon` is an optional alternative control method.
+> `screen` is required when `proxy_type` is `linux` (or left as `null` on Linux); `windows` creates a new command prompt; and `subprocess` starts the mirror server as a child process inside MCDR. The Linux/Windows proxies control the server through screen or system processes, while the subprocess proxy uses standard input and output.
 ```yaml
 terminal:
     enable: false
@@ -108,7 +107,6 @@ terminal:
     launch_command: python -m mcdreforged
     port:
     terminal_name: Mirror
-    regex_strict: false
     is_mcdr: true
     proxy_type:
     console_log: false
@@ -133,28 +131,15 @@ In the example, the mirror server is located in `mcdr_root/Mirror` and is starte
 
 When `proxy_type` is `linux`, the plugin creates a screen session; when it is `windows`, it creates a new command prompt; and when it is `subprocess`, it starts the mirror server as a child process inside MCDR. `terminal_name` is the title of the command prompt, the name of the screen, or the prefix used for subprocess log output.
 
-`regex_strict`, `is_mcdr`, and `proxy_type` generally do not need to be modified. `is_mcdr` defaults to `true`, meaning the mirror server is started by MCDReforged. When `proxy_type` is `null`, the plugin automatically selects `linux` or `windows` based on the operating system. When set to `subprocess`, the mirror server runs as an MCDR child process, `port` is not required, and `console_log` controls whether its console logs are output by default. See [README-Configuring the Mirror Server Terminal through the Command Line](../README_en.md#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) for details.
+`is_mcdr` and `proxy_type` generally do not need to be modified. `is_mcdr` defaults to `true`, meaning the mirror server is started by MCDReforged. When `proxy_type` is `null`, the plugin automatically selects `linux` or `windows` based on the operating system. When set to `subprocess`, the mirror server runs as an MCDR child process, and `console_log` controls whether its console logs are output by default. See [README-Configuring the Mirror Server Terminal through the Command Line](../README_en.md#terminal-configuration-for-starting-the-mirror-server-terminal-through-the-command-line) for details.
 
 > [!NOTE]
 > When using the `subprocess` proxy to start another MCDR instance, set `advanced_console: false` in the mirror server MCDR's `config.yml`.
 
-At this point, Linux and Windows users can jump to [Save Synchronization](#save-synchronization), or optionally continue to view the `rcon` configuration.
-
 Similarly, after the configuration is completed, you need to set `enable` to `true` to truly enable terminal control.
 
-```yaml
-rcon:
-    enable: false
-    address:
-    port:
-    password:
-```
-
-First, you need to configure RCON in the `server.properties` of the mirror server, set `rcon.port` to a custom RCON port, set `rcon.password` to a custom RCON password, and set `enable-rcon` to `true` to enable RCON.
-
-Then configure the configuration file of this plugin. `address` is the connection address for RCON, and generally, writing the local machine address `127.0.0.1` is sufficient. `port` is the port for RCON, which is the `rcon.port` item in the `server.properties` file of the mirror server. Similarly to the `port` in `terminal`, it should be an integer and does not need to be wrapped in `"xxx"`. `password` is the password for RCON, which is the `rcon.password` item in the `server.properties` file of the mirror server.
-
-Note: After configuring RCON, the plugin will execute the `stop` command and obtain the status of the mirror server through RCON (both Windows and Linux). If both `rcon` and `terminal` are enabled, the plugin will first check the status of RCON to obtain the status of the mirror server. If RCON is not connected, it will check the status through the port. If the status of RCON does not match the status of the port, a prompt will be given. This mismatch is usually due to incorrect `rcon` configuration or incorrect port configuration for `terminal`.
+> [!IMPORTANT]
+> The plugin only knows the mirror server processes it started itself. Start the mirror server with `!!mirror start` only, and let `launch_command` run it in the foreground; do not detach it with `nohup ... &`, `start` or the like. See [README - Mirror server status](../README_en.md#mirror-server-status).
 
 Jump to [Save Synchronization](#save-synchronization) for the next step.
 

@@ -3,7 +3,7 @@
 # Add another prefix such as "!!mirror2" to configure another mirror server.
 
 "!!mirror":
-  # MCSManager connection settings. When enabled, terminal and RCON are not used.
+  # MCSManager connection settings. When enabled, terminal is not used.
   mcsm:
     # Whether to control the mirror server through MCSManager.
     enable: false
@@ -24,29 +24,20 @@
     launch_path: ./Mirror
     # Command used to start the mirror server.
     launch_command: python -m mcdreforged
-    # Mirror server port; not required for the subprocess proxy.
+    # Mirror server port; required for every proxy.
     port:
     # Terminal title, screen name, or subprocess log prefix.
     terminal_name: Mirror
-    # Whether Linux/Windows proxies verify the Java process name.
-    regex_strict: false
     # Whether the mirror server is itself started by MCDReforged.
     is_mcdr: true
     # Proxy type: linux, windows, subprocess, or null for automatic selection.
     proxy_type:
     # Whether subprocess console output is shown by default.
     console_log: false
-
-  # RCON connection settings.
-  rcon:
-    # Whether RCON is enabled.
-    enable: false
-    # RCON server address.
-    address:
-    # RCON server port.
-    port:
-    # RCON server password.
-    password:
+    # Whether the plugin, when it loads with no running process in its record, adopts the one MCDR it finds running in the launch path; false only reports it.
+    auto_recover: true
+    # With is_mcdr set to false, the names of the Java processes an untracked server is looked for as; a regular expression, case-insensitive.
+    java_name: '^javaw?\d*(\.exe)?$'
 
   # File synchronization settings.
   sync:
@@ -65,6 +56,17 @@
     # File names excluded from synchronization.
     ignore_files:
       - session.lock
+    # Back up the mirror with the mirror's own PrimeBackup (>= 1.13.0) before every sync.
+    # When enabled, nothing is copied unless the backup succeeded. The backup is made with the mirror's PrimeBackup settings as they are.
+    backup:
+      # Whether every sync is preceded by a backup; set to false and reload to sync without one.
+      enable: false
+      # Directory of the mirror's MCDR (where its config.yml is), relative to this MCDR. Empty uses terminal.launch_path while the terminal is enabled.
+      mcdr_path: ''
+      # Seconds a backup may take; a backup that takes longer is cancelled and the sync refused.
+      timeout: 600
+      # Whether a sync must be confirmed when the mirror's PrimeBackup settings differ from the sync settings, so that the backup may be incomplete.
+      confirm_on_warning: true
 
   # Command permissions and command behavior.
   command:
@@ -77,9 +79,9 @@
       sync: 2
       history: 0
       confirm: 0
-      abort: 0
       log: console
-      execute: console
+      input: console
+      recover: 3
     action:
       status:
         require_confirm: false
@@ -91,14 +93,15 @@
         require_confirm: true
         # Seconds a stop may take; meanwhile the status is "stopping".
         timeout: 60
+      # Longest gap in seconds between two full checks while waiting for the mirror's status to change (e.g. for it to stop before a sync, or to run after a start); a recorded process exiting, or starting or stopping to listen on the port, is checked at once.
+      check_status_interval: 5
       kill:
         require_confirm: true
       sync:
         require_confirm: true
         ensure_server_closed: true
         auto_server_restart: false
-        check_status_interval: 5
-        max_attempt_times: 3
+        auto_mcdr_stop: false
         save_world:
           # Disable automatic saving while the world is copied.
           turn_off_auto_save: true
@@ -116,13 +119,13 @@
       confirm:
         timeout: 30
         cancel_anymsg: true
-      abort:
-        operator: everyone
 
   # Display settings.
   display:
     # Name used in command feedback for this mirror server.
     server_name: Mirror
+    # Process details left out of in-game messages; the console always shows everything. Options: name and pid, e.g. [name, pid]; with both, only counts are shown.
+    protected_process_info: []
 
 # For additional mirror servers, you can use yaml-like syntax to override the base configuration. e.g.
 # "!!mirror2":

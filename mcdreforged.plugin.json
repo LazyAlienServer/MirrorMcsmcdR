@@ -1,18 +1,28 @@
 {
+	"schema_version": 1,
 	"id": "mirror_mcsmcdr",
-	"version": "1.8.0",
+	"version": "2.0.0-beta.1",
 	"name": "MirrorMcsmcdR",
 	"description": {
 		"en_us": "A mirror server manager MCDR plugin, based on MCSManager.",
 		"zh_cn": "一个多功能的完善的控制镜像服的MCDR插件"
 	},
-	"author": [
-		"tanh_Heng"
+	"authors": [
+		{
+			"name": "tanh_Heng",
+			"homepage": "https://tanh.moe"
+		}
 	],
-	"link": "https://github.com/LazyAlienServer/MirrorMcsmcdR",
-	"dependencies": {
-		"mcdreforged": ">=2.6.0"
+	"links": {
+		"homepage": "https://github.com/LazyAlienServer/MirrorMcsmcdR",
+		"source": "https://github.com/LazyAlienServer/MirrorMcsmcdR",
+		"issues": "https://github.com/LazyAlienServer/MirrorMcsmcdR/issues"
 	},
+	"license": "GPL-3.0-only",
+	"dependencies": {
+		"mcdreforged": ">=2.16.0"
+	},
+	"requirements_file": "requirements.txt",
     "resources": [
         "LICENSE",
         "lang",
