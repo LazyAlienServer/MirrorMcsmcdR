@@ -8,7 +8,7 @@ from mcdreforged.api.all import CommandContext, CommandSource, Info, Literal, Pl
 from mirror_mcsmcdr.constants import TITLE
 from mirror_mcsmcdr.config import MultiConfigLoader, MirrorConfig
 from mirror_mcsmcdr.mcdr_config import MCDRConfigError
-from mirror_mcsmcdr.runtime import MirrorRuntime, sync_targets
+from mirror_mcsmcdr.runtime import MirrorRuntime, sync_source, sync_targets
 from mirror_mcsmcdr.sync.workflow import SyncWorkflow, backup_error_console_lines, describe_backup_error
 from mirror_mcsmcdr.sync.backup import BackupError, BackupUnavailable, BackupWarning, MirrorBackup, ResolvedBackup
 from mirror_mcsmcdr.text_utils import detail_lines, help_msg, rejection_lines, rtr, status_key
@@ -30,17 +30,19 @@ def operator_name(source: CommandSource) -> str:
     return source.player if isinstance(source, PlayerCommandSource) else CONSOLE_OPERATOR
 
 
-def resolve_backup(runtime: MirrorRuntime, backup: MirrorBackup) -> ResolvedBackup:
+def resolve_backup(runtime: MirrorRuntime, backup: MirrorBackup, working_directory: str) -> ResolvedBackup:
     """
-    The backup of ``runtime`` with the targets a sync would copy into now, for what is told before a sync.
+    The backup of ``runtime`` with the targets and worlds a sync would copy now, for what is told before a sync.
 
+    :param working_directory: that of the MCDR running this plugin, the default source
     :raise BackupError: if it cannot be resolved, including when the targets cannot be told
     """
     try:
         targets = sync_targets(runtime.config)
     except MCDRConfigError as e:
         raise BackupUnavailable.from_mcdr_config(e) from e
-    return backup.resolve(targets)
+    worlds = runtime.world_sync.select(sync_source(runtime.config, working_directory)).worlds
+    return backup.resolve(targets, worlds)
 
 
 class MultiMirrorManager:
@@ -196,7 +198,7 @@ class MirrorManager:
             return not self._unloaded and self._runtime is runtime
 
         try:
-            resolved = resolve_backup(runtime, backup)
+            resolved = resolve_backup(runtime, backup, self.server.get_mcdr_config()["working_directory"])
             backup.probe(resolved)
             warnings = backup.warnings(resolved)
         except BackupError as e:
@@ -683,7 +685,7 @@ class MirrorManager:
         if backup is None:
             return False
         try:
-            warnings = backup.warnings(resolve_backup(runtime, backup))
+            warnings = backup.warnings(resolve_backup(runtime, backup, self.server.get_mcdr_config()["working_directory"]))
         except BackupError as e:
             source.reply(self.rtr("command.sync.backup.unavailable", reason=describe_backup_error(self.rtr, e).to_legacy_text()))
             for line in backup_error_console_lines(self.rtr, e):

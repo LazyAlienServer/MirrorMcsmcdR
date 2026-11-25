@@ -42,7 +42,7 @@
 
   # 文件同步设置。
   sync:
-    # 要同步的世界目录。
+    # 要同步的世界：gitignore 规则，与源服务器目录第一层的名字匹配，只选中目录（同 PrimeBackup 的 backup.targets），区分大小写。
     world:
       - world
     # 源服务器目录；留空时使用本 MCDR 的 working_directory。
@@ -53,9 +53,11 @@
     ignore_inexistent_target_path: false
     # 同步工作线程数。
     concurrency: 4
-    # 同步时排除的文件名。
-    ignore_files:
+    # 不同步、并在目标中删除的路径：gitignore 规则，路径相对于服务器目录（同 PrimeBackup 的 ignore_patterns）。
+    ignore_patterns:
       - session.lock
+    # 不同步、并保留目标中原有内容的路径，如 carpet.conf：gitignore 规则，路径相对于服务器目录（同 PrimeBackup 的 retain_patterns）。
+    retain_patterns: []
     # 每次同步前，用 root_path 下镜像服自己的 PrimeBackup（>= 1.13.0）备份镜像服。is_mcdr 为 false 时不支持。
     # 启用后，备份不成功就不会复制任何文件。备份按镜像服 PrimeBackup 的现有设置进行。
     backup:

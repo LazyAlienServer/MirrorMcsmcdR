@@ -69,7 +69,8 @@ class MirrorRuntime:
             sync.world,
             sync.ignore_inexistent_target_path,
             sync.concurrency,
-            sync.ignore_files,
+            sync.ignore_patterns,
+            sync.retain_patterns,
         )
         save_world_regex = re.compile(action.sync.save_world.saved_world_regex)
         history = SyncHistory(data_path / "history.json", action.history.max_history_count)
@@ -85,7 +86,7 @@ class MirrorRuntime:
             return None
         # a plain server has no MCDR, so no PrimeBackup of its own
         mcdr_path = config.root_path if config.is_mcdr else None
-        return MirrorBackup(mcdr_path, list(config.sync.world), list(config.sync.ignore_files), backup.timeout)
+        return MirrorBackup(mcdr_path, [*config.sync.ignore_patterns, *config.sync.retain_patterns], backup.timeout)
 
     @property
     def subprocess_terminal(self) -> Optional[SubprocessProxy]:

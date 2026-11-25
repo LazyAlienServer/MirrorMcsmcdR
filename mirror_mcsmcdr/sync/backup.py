@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
+import pathspec
 import psutil
 
 from mirror_mcsmcdr.mcdr_config import CONFIG_FILE, MCDRConfigError, read_mcdr_config
@@ -107,6 +108,8 @@ class ResolvedBackup:
     source_path: str
     # the directories the sync copies into, as configured or derived
     targets: tuple[str, ...]
+    # names of the worlds the sync copies, as selected in its source
+    worlds: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -124,28 +127,27 @@ class MirrorBackup:
     Nothing is cached: every call reads the mirror's files again, so a result is only as current as the call.
     """
 
-    def __init__(self, mcdr_path: Optional[str], worlds: list[str], ignore_files: list[str], timeout: float) -> None:
+    def __init__(self, mcdr_path: Optional[str], sync_patterns: list[str], timeout: float) -> None:
         """
         :param mcdr_path: the mirror's MCDR directory, None for a plain server, which has none
-        :param worlds: the worlds of the sync, as configured
-        :param ignore_files: the file names the sync does not copy
+        :param sync_patterns: the sync's ignore and retain patterns, which it does not copy
         :param timeout: seconds a backup may take
         """
         if timeout <= 0:
             raise ValueError("sync.backup.timeout must be positive")
         self.mcdr_path = mcdr_path
-        self.worlds = worlds
-        self.ignore_files = ignore_files
+        self.sync_patterns = sync_patterns
         self.timeout = timeout
 
     # ---------- resolution ----------
 
-    def resolve(self, targets: Sequence[str]) -> ResolvedBackup:
+    def resolve(self, targets: Sequence[str], worlds: Sequence[str]) -> ResolvedBackup:
         """
         Locate the mirror's PrimeBackup: its plugin, its config, its storage and the directory it backs up.
 
         :param targets: the directories the sync copies into. A sync passes those it copies into,
             so that what is backed up and checked is what gets overwritten
+        :param worlds: the names of the worlds the sync copies into them
         """
         if not self.mcdr_path:
             raise BackupUnavailable("plain_server")
@@ -178,6 +180,7 @@ class MirrorBackup:
             storage_path=str(storage_path),
             source_path=str(source_path),
             targets=tuple(targets),
+            worlds=tuple(worlds),
         )
 
     @classmethod
@@ -323,14 +326,15 @@ class MirrorBackup:
         if untargeted:
             found.append(BackupWarning("worlds_not_targeted", {"worlds": ", ".join(untargeted), "targets": ", ".join(patterns)}))
 
+        # only the same string is known to leave out the same: patterns are not compared by what they match
         ignored = [
             pattern
             for pattern in (*self._patterns(resolved, "ignore_patterns", _DEFAULT_IGNORE_PATTERNS), *self._patterns(resolved, "ignored_files", []))
-            if not self._skipped_by_sync_too(pattern)
+            if pattern not in self.sync_patterns
         ]
         if ignored:
             found.append(BackupWarning("ignored", {"patterns": ", ".join(ignored)}))
-        retained = self._patterns(resolved, "retain_patterns", [])
+        retained = [pattern for pattern in self._patterns(resolved, "retain_patterns", []) if pattern not in self.sync_patterns]
         if retained:
             found.append(BackupWarning("retained", {"patterns": ", ".join(retained)}))
         if resolved.backup_config.get("reuse_stat_unchanged_file", False):
@@ -339,7 +343,7 @@ class MirrorBackup:
             found.append(BackupWarning("creation_skip_missing_file"))
 
         # the sync deletes what only the target has, which would be the backup itself
-        for world in (os.path.join(target, world) for target in targets for world in self.worlds):
+        for world in (os.path.join(target, world) for target in targets for world in resolved.worlds):
             if _is_inside(resolved.storage_path, world):
                 found.append(BackupWarning("storage_in_world", {"storage": resolved.storage_path, "world": world}))
         return found
@@ -351,44 +355,23 @@ class MirrorBackup:
             raise BackupUnavailable("pb_config_invalid", path=resolved.config_path, option=f"backup.{key}")
         return [pattern for pattern in patterns if pattern.strip()]
 
-    def _skipped_by_sync_too(self, pattern: str) -> bool:
-        """
-        Whether a PrimeBackup ignore pattern leaves out only what the sync leaves out as well.
-
-        Only a plain name that ``sync.ignore_files`` holds: gitignore matches it at any depth, as the sync matches file names.
-        A path, a wildcard or a negation matches otherwise than the sync does, and the name of a world leaves out all of it.
-        """
-        if pattern not in self.ignore_files or pattern.startswith("!") or any(char in pattern for char in "/*?[\\"):
-            return False
-        world_names = {os.path.normcase(part) for world in self.worlds for part in os.path.normpath(world).split(os.sep)}
-        return os.path.normcase(pattern) not in world_names
-
-    def _untargeted_worlds(self, resolved: ResolvedBackup, patterns: list[str]) -> list[str]:
+    @staticmethod
+    def _untargeted_worlds(resolved: ResolvedBackup, patterns: list[str]) -> list[str]:
         """The worlds PrimeBackup does not select: it matches gitignore patterns against the entries of its source directory."""
         try:
-            # not a dependency of this plugin, but PrimeBackup cannot run without it either
-            import pathspec
-        except ImportError as e:
-            raise BackupUnavailable("pathspec_missing") from e
-        try:
             spec = pathspec.GitIgnoreSpec.from_lines(patterns)
-        except Exception as e:
+        except ValueError as e:
             raise BackupUnavailable("pb_config_invalid", path=resolved.config_path, option="backup.targets", error=str(e)) from e
         try:
             # matched as they are spelled on disk, also where the file system ignores case
             entries = {os.path.normcase(entry): entry for entry in os.listdir(resolved.source_path)}
         except OSError:
             entries = {}
-        untargeted = []
-        for world in self.worlds:
-            name = _top_level_name(world)
-            if name is None or not spec.match_file(entries.get(os.path.normcase(name), name)):
-                untargeted.append(world)
-        return untargeted
+        return [world for world in resolved.worlds if not spec.match_file(entries.get(os.path.normcase(world), world))]
 
     def has_existing_world(self, resolved: ResolvedBackup) -> bool:
         """Whether a target holds one of the worlds yet; if none does, the sync has nothing to overwrite."""
-        return any(os.path.lexists(os.path.join(target, world)) for target in resolved.targets for world in self.worlds)
+        return any(os.path.lexists(os.path.join(target, world)) for target in resolved.targets for world in resolved.worlds)
 
     # ---------- backup ----------
 
@@ -476,15 +459,6 @@ def _version_supported(version: Any) -> bool:
     core = tuple(int(part) for part in match.group(1, 2, 3))
     # a pre-release comes before its release
     return core > MIN_PRIME_BACKUP_VERSION or (core == MIN_PRIME_BACKUP_VERSION and match.group(4) is None)
-
-
-def _top_level_name(path: str) -> Optional[str]:
-    """The first component of a relative path that stays below its base, None for any other path."""
-    normalized = os.path.normpath(path)
-    if os.path.isabs(normalized) or os.path.splitdrive(normalized)[0]:
-        return None
-    name = normalized.split(os.sep)[0]
-    return None if name in ("", ".", "..") else name
 
 
 def _same_path(a: Path, b: Path) -> bool:

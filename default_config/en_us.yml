@@ -42,7 +42,7 @@
 
   # File synchronization settings.
   sync:
-    # World directories to synchronize.
+    # Worlds to synchronize: gitignore patterns matched against the names of the source's top-level entries, directories only (as PrimeBackup's backup.targets); case-sensitive.
     world:
       - world
     # Source server directory; empty uses the working_directory of this MCDR.
@@ -53,9 +53,11 @@
     ignore_inexistent_target_path: false
     # Number of synchronization workers.
     concurrency: 4
-    # File names excluded from synchronization.
-    ignore_files:
+    # Paths not synchronized and deleted in the target: gitignore patterns, relative to the server directory (as PrimeBackup's ignore_patterns).
+    ignore_patterns:
       - session.lock
+    # Paths not synchronized, the target's own copy kept, e.g. carpet.conf: gitignore patterns, relative to the server directory (as PrimeBackup's retain_patterns).
+    retain_patterns: []
     # Back up the mirror with the mirror's own PrimeBackup (>= 1.13.0) before every sync; found under root_path. Not supported with is_mcdr false.
     # When enabled, nothing is copied unless the backup succeeded. The backup is made with the mirror's PrimeBackup settings as they are.
     backup:

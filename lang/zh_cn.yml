@@ -228,8 +228,8 @@ mirror_mcsmcdr:
         target: "§c同步已取消，无法读取镜像服的 MCDR 配置文件，不能确定同步目标。请检查镜像服的 config.yml，或填写 §7'sync.target'§c。详情见控制台"
         overlap: "§c同步已取消，源服务器的世界与 §b{server_name} §c的世界是同一个目录，或者一个在另一个里面。详情见控制台"
         overlap_path: "源世界与目标世界重叠: {source} -> {target}"
-        source_missing: "§c同步已取消，源服务器有 §b{count} §c个要同步的世界不存在。详情见控制台"
-        source_missing_path: "源世界不存在: {path}"
+        source_missing: "§c同步已取消，§7'sync.world'§c 中有 §b{count} §c条规则在源服务器上没有选中任何目录。详情见控制台"
+        source_missing_path: "世界规则在 {source} 中没有选中任何目录: {pattern}"
         unsupported: §c操作失败 / §b{server_name} §c当前配置文件不支持获取运行状态，需要配置 §7'mcsm'§c 或 §7'terminal'
       hint:
         running: "§f请先停止 §b{server_name} §f再进行同步"
@@ -240,6 +240,7 @@ mirror_mcsmcdr:
         exiting: §b{server_name} §f的 MCDR 进程未停止，自动关闭 §b{server_name}§f MCDR 并进行同步...
         fail: §c自动关闭失败，§b{server_name} §f{status}
       success: §b{server_name} §a正在进行同步...
+      world_file: "'sync.world' 匹配到的是文件而不是世界目录，不会被同步: {path}"
       skip_dictionary: "§b{server_name} §c有 §b{count} §c个目标目录不存在，已跳过，详情见控制台"
       skip_dictionary_path: "目标目录不存在，已跳过: {path}"
       completed: §a同步完成！§f用时 §b{time}s §7/ §f更新了 §b{changed_files_count} §f个文件
@@ -267,7 +268,6 @@ mirror_mcsmcdr:
           pb_config_unreadable: "§c无法读取镜像服的 §3PrimeBackup §c配置文件"
           pb_config_invalid: "§c镜像服的 §3PrimeBackup §c配置文件中 §4'{option}'§c 的值无效"
           database_not_found: "§c镜像服的 §3PrimeBackup §c数据库不存在"
-          pathspec_missing: "§c未安装 §3PrimeBackup §c所需的 Python 包 pathspec"
           mirror_not_stopped: "§b{server_name} §c当前状态为 {status}，而不是已停止"
           probe_failed: "§3PrimeBackup §c命令行工具退出码为 {code}，请检查其 Python 依赖是否已安装"
           launch: "§c无法启动 §3PrimeBackup §c命令行工具"
@@ -279,8 +279,8 @@ mirror_mcsmcdr:
           source_mismatch: "§b{server_name} §f的同步前备份: §e其 §3PrimeBackup §e备份的目录 §7{source} §e不是任何一个同步目标 §7({targets})§e，同步覆盖的内容不会被备份"
           targets_not_backed_up: "§b{server_name} §f的同步前备份: §e以下同步目标不是其 §3PrimeBackup §e备份的目录，会在没有备份的情况下被覆盖: §7{targets}"
           worlds_not_targeted: "§b{server_name} §f的同步前备份: §e其 §3PrimeBackup §e的 §7'backup.targets' [{targets}] §e不包含以下被同步的世界: §7{worlds}"
-          ignored: "§b{server_name} §f的同步前备份: §e其 §3PrimeBackup §e忽略了同步不忽略的内容 (§7'ignore_patterns'§e / §7'ignored_files'§e): §7{patterns}"
-          retained: "§b{server_name} §f的同步前备份: §e其 §3PrimeBackup §e的 §7'retain_patterns'§e 会让以下内容不进入备份: §7{patterns}"
+          ignored: "§b{server_name} §f的同步前备份: §e其 §3PrimeBackup §e不备份以下内容 (§7'ignore_patterns'§e / §7'ignored_files'§e)，这些规则不在 §7'sync.ignore_patterns'§e 或 §7'sync.retain_patterns'§e 中: §7{patterns}"
+          retained: "§b{server_name} §f的同步前备份: §e其 §3PrimeBackup §e的 §7'retain_patterns'§e 让以下内容不进入备份，这些规则不在 §7'sync.ignore_patterns'§e 或 §7'sync.retain_patterns'§e 中: §7{patterns}"
           reuse_stat_unchanged_file: "§b{server_name} §f的同步前备份: §e其 §3PrimeBackup §e开启了 §7'reuse_stat_unchanged_file'§e，大小和修改时间未变的文件不会被读取，备份中可能是旧内容"
           creation_skip_missing_file: "§b{server_name} §f的同步前备份: §e其 §3PrimeBackup §e开启了 §7'creation_skip_missing_file'§e，备份过程中消失的文件会被直接跳过"
           storage_in_world: "§b{server_name} §f的同步前备份: §3PrimeBackup §e的存储目录 §7{storage} §e位于被同步的世界 §7{world} §e中，同步会删除备份"

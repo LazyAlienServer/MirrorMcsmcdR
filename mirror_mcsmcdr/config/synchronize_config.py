@@ -7,6 +7,7 @@ class BackupConfig(Serializable):
     confirm_on_warning: bool = True
 
 class SynchronizationConfig(Serializable):
+    # gitignore patterns over the names of the source's top-level directories
     world: List[str] = ["world"]
     # empty: the working directory of this MCDR
     source: str = ""
@@ -14,5 +15,7 @@ class SynchronizationConfig(Serializable):
     target: Union[List[str], str] = []
     ignore_inexistent_target_path: bool = False
     concurrency: int = 4
-    ignore_files: List[str] = ["session.lock"]
+    # gitignore patterns over paths relative to the server directory, as PrimeBackup's of the same names
+    ignore_patterns: List[str] = ["session.lock"]
+    retain_patterns: List[str] = []
     backup: BackupConfig = BackupConfig()
