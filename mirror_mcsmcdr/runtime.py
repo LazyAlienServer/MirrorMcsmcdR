@@ -68,7 +68,7 @@ class MirrorRuntime:
         world_sync = ClassicWorldSynchronizer(
             sync.world,
             sync.extra_patterns,
-            sync.ignore_inexistent_target_path,
+            sync.missing,
             sync.concurrency,
             sync.ignore_patterns,
             sync.retain_patterns,

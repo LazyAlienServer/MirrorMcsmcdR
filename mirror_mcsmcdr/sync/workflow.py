@@ -12,7 +12,7 @@ from mirror_mcsmcdr.mcdr_config import MCDRConfigError
 from mirror_mcsmcdr.runtime import MirrorRuntime, sync_source, sync_targets
 from mirror_mcsmcdr.sync.history import SyncRecord, SyncStatus
 from mirror_mcsmcdr.sync.backup import BackupError, BackupFailed, BackupUnavailable, MirrorBackup
-from mirror_mcsmcdr.sync.selection import Selection
+from mirror_mcsmcdr.sync.synchronizer import MissingPath, SourceVanished, SyncPlan
 from mirror_mcsmcdr.text_utils import Translator, detail_lines, refusal_lines, status_key
 from mirror_mcsmcdr.server import Action, ServerState, StatusSnapshot, WaitEnd
 
@@ -121,14 +121,14 @@ class SyncWorkflow:
         try:
             targets = self._targets(runtime)
             source_path = sync_source(runtime.config, self._server.get_mcdr_config()["working_directory"])
-            selection = self._select(runtime, source_path, targets)
+            plan = self._plan(runtime, source_path, targets)
             if not self._ensure_server_closed(runtime, source, on_server_stopped):
                 return
             if runtime.backup is not None:
-                backup_id = self._back_up(runtime.backup, targets, selection.paths, operator)
+                backup_id = self._back_up(runtime.backup, plan, operator)
                 if backup_id is not None:
                     self._server.broadcast(self._tr("command.sync.backup.done", backup_id=backup_id))
-            record = self._sync_world(runtime, source_path, targets, selection, started_at, operator, backup_id)
+            record = self._sync_world(runtime, plan, started_at, operator, backup_id)
         except _SyncRefused as e:
             record = SyncRecord(started_at, operator, SyncStatus.FAILED, exception=str(e), backup_id=backup_id)
         except Exception as e:
@@ -154,37 +154,51 @@ class SyncWorkflow:
             self._server.logger.warning(str(e))
             raise _SyncRefused(message.to_plain_text()) from e
 
-    def _select(self, runtime: MirrorRuntime, source_path: str, targets: list[str]) -> Selection:
+    def _plan(self, runtime: MirrorRuntime, source_path: str, targets: list[str]) -> SyncPlan:
         """
-        Select what to copy and refuse, before the mirror is stopped, a sync that would destroy what it should copy,
-        or delete what it was not told to touch.
+        Settle what to copy where and refuse, before the mirror is stopped, a sync that misses what it must not miss,
+        would destroy what it should copy, or would delete what it was not told to touch.
+        What is skipped is told here as well, as only now is it known.
 
         :raise _SyncRefused: if it would
         """
-        selection = runtime.world_sync.select(source_path)
-        for name in selection.world_files:
-            self._server.logger.warning(self._tr("command.sync.world_file", title=False, path=os.path.join(source_path, name)))
-        overlapping = runtime.world_sync.overlapping(source_path, targets, selection.paths)
+        plan = runtime.world_sync.plan(source_path, targets)
+        for name in plan.selection.world_files:
+            self._server.logger.warning(self._tr("command.sync.world_file", title=False, path=os.path.join(plan.source, name)))
+        if plan.refused:
+            message = self._tr("command.sync.fail.missing", count=len(plan.refused))
+            self._server.broadcast(message)
+            self._log_missing(plan.refused)
+            raise _SyncRefused(message.to_plain_text())
+        overlapping = runtime.world_sync.overlapping(plan.source, plan.targets, plan.selection.paths)
         if overlapping:
             message = self._tr("command.sync.fail.overlap")
             self._server.broadcast(message)
             for source_world, target_world in overlapping:
                 self._server.logger.warning(self._tr("command.sync.fail.overlap_path", title=False, source=source_world, target=target_world))
             raise _SyncRefused(message.to_plain_text())
-        if selection.missing_worlds:
-            message = self._tr("command.sync.fail.source_missing", count=len(selection.missing_worlds))
-            self._server.broadcast(message)
-            for pattern in selection.missing_worlds:
-                self._server.logger.warning(self._tr("command.sync.fail.source_missing_path", title=False, pattern=pattern, source=source_path))
-            raise _SyncRefused(message.to_plain_text())
-        clashing = runtime.world_sync.clashing(source_path, targets, selection.extras)
+        clashing = runtime.world_sync.clashing(plan.source, plan.targets, plan.selection.extras)
         if clashing:
             message = self._tr("command.sync.fail.clash", count=len(clashing))
             self._server.broadcast(message)
             for source_entry, target_entry in clashing:
                 self._server.logger.warning(self._tr("command.sync.fail.clash_path", title=False, source=source_entry, target=target_entry))
             raise _SyncRefused(message.to_plain_text())
-        return selection
+        if plan.empty:
+            # an empty sync would look like one that found nothing changed
+            message = self._tr("command.sync.fail.nothing")
+            self._server.broadcast(message)
+            self._log_missing(plan.skipped)
+            raise _SyncRefused(message.to_plain_text())
+        if plan.skipped:
+            self._server.broadcast(self._tr("command.sync.skipped", count=len(plan.skipped)))
+            self._log_missing(plan.skipped)
+        return plan
+
+    def _log_missing(self, missing: tuple[MissingPath, ...]) -> None:
+        # they name paths, so they are for the console only
+        for item in missing:
+            self._server.logger.warning(self._tr(f"command.sync.missing.{item.kind}", title=False, **item.kwargs))
 
     def _ensure_server_closed(self, runtime: MirrorRuntime, source: CommandSource, on_server_stopped: Callable[[], None]) -> bool:
         """
@@ -233,17 +247,17 @@ class SyncWorkflow:
             source.reply(line)
         return False
 
-    def _back_up(self, backup: MirrorBackup, targets: list[str], paths: tuple[str, ...], operator: str) -> Optional[int]:
+    def _back_up(self, backup: MirrorBackup, plan: SyncPlan, operator: str) -> Optional[int]:
         """
         Back the mirror up with its PrimeBackup, located from scratch: nothing found earlier is trusted.
 
-        :param targets: those the sync copies into, so that what is backed up is what gets overwritten
-        :param paths: what it copies into them, relative to each
+        What is backed up and checked is what the plan overwrites: its existing targets and the paths it copies into them.
+
         :return: the id of the backup, None if no target holds any of the paths yet
         :raise _SyncRefused: there is no backup, so there must be no sync
         """
         try:
-            resolved = backup.resolve(targets, paths)
+            resolved = backup.resolve(plan.existing_targets, plan.selection.paths)
             if not backup.has_existing_path(resolved):
                 self._server.broadcast(self._tr("command.sync.backup.skipped"))
                 return None
@@ -265,7 +279,7 @@ class SyncWorkflow:
             self._server.logger.warning(line)
         return _SyncRefused(reason.to_plain_text())
 
-    def _sync_world(self, runtime: MirrorRuntime, source_path: str, targets: list[str], selection: Selection, started_at: str, operator: str, backup_id: Optional[int]) -> SyncRecord:
+    def _sync_world(self, runtime: MirrorRuntime, plan: SyncPlan, started_at: str, operator: str, backup_id: Optional[int]) -> SyncRecord:
         self._server.broadcast(self._tr("command.sync.success"))
         started = time.time()
         sync_config = runtime.config.command.action.sync
@@ -276,14 +290,15 @@ class SyncWorkflow:
                 self._ensure_stopped(runtime)
             except BackupUnavailable as e:
                 raise self._refuse("stale", e) from e
-        changed_files_count, paths_notfound = runtime.world_sync.sync(source_path, targets, selection)
+        try:
+            changed_files_count = runtime.world_sync.sync(plan)
+        except SourceVanished as e:
+            message = self._tr("command.sync.fail.vanished")
+            self._server.broadcast(message)
+            self._server.logger.warning(self._tr("command.sync.fail.vanished_path", title=False, path=e.path))
+            raise _SyncRefused(message.to_plain_text()) from e
         duration = format_duration(time.time() - started)
 
-        if paths_notfound:
-            # the paths are for the console only; derived ones come from the mirror's own config
-            self._server.broadcast(self._tr("command.sync.skip_dictionary", count=len(paths_notfound)))
-            for path in paths_notfound:
-                self._server.logger.warning(self._tr("command.sync.skip_dictionary_path", title=False, path=path))
         if changed_files_count != 0:
             self._server.broadcast(self._tr("command.sync.completed", time=duration, changed_files_count=changed_files_count))
         else:
@@ -294,7 +309,7 @@ class SyncWorkflow:
             SyncStatus.SUCCESS if changed_files_count != 0 else SyncStatus.IDENTICAL,
             duration=duration,
             changed_files_count=changed_files_count,
-            paths_notfound=paths_notfound,
+            skipped_count=len(plan.skipped),
             backup_id=backup_id,
         )
 

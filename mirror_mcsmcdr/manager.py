@@ -32,7 +32,7 @@ def operator_name(source: CommandSource) -> str:
 
 def resolve_backup(runtime: MirrorRuntime, backup: MirrorBackup, working_directory: str) -> ResolvedBackup:
     """
-    The backup of ``runtime`` with the targets and paths a sync would copy now, for what is told before a sync.
+    The backup of ``runtime`` for what a sync would overwrite now, as its plan tells it, for what is told before a sync.
 
     :param working_directory: that of the MCDR running this plugin, the default source
     :raise BackupError: if it cannot be resolved, including when the targets cannot be told
@@ -41,8 +41,8 @@ def resolve_backup(runtime: MirrorRuntime, backup: MirrorBackup, working_directo
         targets = sync_targets(runtime.config)
     except MCDRConfigError as e:
         raise BackupUnavailable.from_mcdr_config(e) from e
-    paths = runtime.world_sync.select(sync_source(runtime.config, working_directory)).paths
-    return backup.resolve(targets, paths)
+    plan = runtime.world_sync.plan(sync_source(runtime.config, working_directory), targets)
+    return backup.resolve(plan.existing_targets, plan.selection.paths)
 
 
 class MultiMirrorManager:

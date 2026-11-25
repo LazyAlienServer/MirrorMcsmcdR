@@ -1,6 +1,6 @@
 import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from threading import Lock
@@ -20,7 +20,8 @@ class SyncRecord:
     status: SyncStatus
     duration: Optional[str] = None
     changed_files_count: int = 0
-    paths_notfound: list[str] = field(default_factory=list)
+    # what the sync skipped by sync.missing; only told by count, as the paths are for the console only
+    skipped_count: int = 0
     exception: Optional[str] = None
     # the pre-sync backup made by the mirror's PrimeBackup, whatever became of the sync afterwards
     backup_id: Optional[int] = None
@@ -33,7 +34,7 @@ class SyncRecord:
             detail = {
                 "duration": self.duration,
                 "changed_files_count": self.changed_files_count,
-                "paths_notfound": self.paths_notfound,
+                "skipped_count": self.skipped_count,
             }
         data: dict[str, Any] = {
             "time": self.time,
@@ -57,7 +58,8 @@ class SyncRecord:
             status=SyncStatus(data["status"]),
             duration=detail.get("duration"),
             changed_files_count=detail.get("changed_files_count", 0),
-            paths_notfound=detail.get("paths_notfound", []),
+            # a record of an older version holds the target paths it skipped
+            skipped_count=detail["skipped_count"] if "skipped_count" in detail else len(detail.get("paths_notfound", [])),
             exception=detail.get("exception"),
             backup_id=backup_id,
         )

@@ -228,8 +228,10 @@ mirror_mcsmcdr:
         target: "§c同步已取消，无法读取镜像服的 MCDR 配置文件，不能确定同步目标。请检查镜像服的 config.yml，或填写 §7'sync.target'§c。详情见控制台"
         overlap: "§c同步已取消，源服务器要同步的路径与 §b{server_name} §c的对应路径是同一个，或者一个在另一个里面。详情见控制台"
         overlap_path: "源路径与目标路径重叠: {source} -> {target}"
-        source_missing: "§c同步已取消，§7'sync.world'§c 中有 §b{count} §c条规则在源服务器上没有选中任何目录。详情见控制台"
-        source_missing_path: "世界规则在 {source} 中没有选中任何目录: {pattern}"
+        missing: "§c同步已取消，同步设置中有 §b{count} §c个路径或规则不存在或不可用。详情见控制台"
+        nothing: "§c同步已取消，要同步的内容都因不存在而被跳过，没有可复制的内容。详情见控制台"
+        vanished: "§c同步已中止，要同步的路径从源服务器上消失了，§b{server_name} §c中的内容可能不完整。详情见控制台"
+        vanished_path: "源路径在复制前消失: {path}"
         clash: "§c同步已取消，§7'sync.extra_patterns'§c 选中的路径中有 §b{count} §c个在一边是文件、另一边是目录。详情见控制台"
         clash_path: "源路径与目标路径类型不同: {source} -> {target}"
         unsupported: §c操作失败 / §b{server_name} §c当前配置文件不支持获取运行状态，需要配置 §7'mcsm'§c 或 §7'terminal'
@@ -243,8 +245,14 @@ mirror_mcsmcdr:
         fail: §c自动关闭失败，§b{server_name} §f{status}
       success: §b{server_name} §a正在进行同步...
       world_file: "'sync.world' 匹配到的是文件而不是世界目录，不会被同步；要同步它，请加入 'sync.extra_patterns': {path}"
-      skip_dictionary: "§b{server_name} §c有 §b{count} §c个目标目录不存在，已跳过，详情见控制台"
-      skip_dictionary_path: "目标目录不存在，已跳过: {path}"
+      skipped: "§e按 §7'sync.missing'§e 的设置，跳过了同步设置中 §b{count} §e个不存在的路径或规则。详情见控制台"
+      missing:
+        source_world: "世界规则在 {source} 中没有选中任何目录: {pattern}"
+        extra_pattern: "额外规则在 {source} 中世界以外没有匹配到任何内容: {pattern}"
+        target: "目标目录不存在: {path}"
+        target_parent: "目标目录的上级目录不存在，无法创建: {path}"
+        target_not_directory: "目标不是目录: {path}"
+        target_world: "目标中没有这个世界: {path}"
       completed: §a同步完成！§f用时 §b{time}s §7/ §f更新了 §b{changed_files_count} §f个文件
       identical: §a文件完全相同，无需同步
       error: "§c同步时发生错误，请前往终端查看错误信息"

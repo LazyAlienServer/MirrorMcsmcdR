@@ -52,8 +52,17 @@
     source: ''
     # One or more target server directories; empty uses the working_directory of the mirror's MCDR under root_path (with is_mcdr false, root_path itself).
     target: []
-    # Whether missing target directories are ignored.
-    ignore_inexistent_target_path: false
+    # What to do about paths the sync config names that do not exist. All is judged before the mirror is stopped; refuse cancels the sync, skip leaves it out and lists it on the console.
+    # A sync that would skip everything is refused.
+    missing:
+      # A world pattern selects no directory on the source server: refuse or skip; with skip, the target's world of that name stays as it is.
+      source_world: refuse
+      # A target directory does not exist: refuse, skip or create; create makes the last component only and refuses when its parent does not exist either.
+      target: refuse
+      # A target directory exists but lacks a world to sync: create or refuse.
+      target_world: create
+      # A pattern of extra_patterns matches nothing on the source server: skip or refuse.
+      extra_pattern: skip
     # Number of synchronization workers.
     concurrency: 4
     # Paths not synchronized and deleted in the target: gitignore patterns, relative to the server directory (as PrimeBackup's ignore_patterns).

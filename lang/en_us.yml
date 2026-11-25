@@ -227,8 +227,10 @@ mirror_mcsmcdr:
         target: "§cSync cancelled: cannot read the mirror's MCDR config to tell the sync target. Check the mirror's config.yml, or set §7'sync.target'§c. See the console for details"
         overlap: "§cSync cancelled: a path to sync of the source server and one of §b{server_name}§c are the same, or one is inside the other. See the console for details"
         overlap_path: "Source path and target path overlap: {source} -> {target}"
-        source_missing: "§cSync cancelled: §b{count}§c pattern(s) of §7'sync.world'§c select no directory on the source server. See the console for details"
-        source_missing_path: "World pattern selects no directory in {source}: {pattern}"
+        missing: "§cSync cancelled: §b{count}§c path(s) or pattern(s) in the sync config are missing or unusable. See the console for details"
+        nothing: "§cSync cancelled: everything to sync was skipped as missing, nothing is left to copy. See the console for details"
+        vanished: "§cSync stopped: a path to sync disappeared from the source server; §b{server_name}§c may hold an incomplete copy. See the console for details"
+        vanished_path: "Source path disappeared before it was copied: {path}"
         clash: "§cSync cancelled: §b{count}§c path(s) of §7'sync.extra_patterns'§c are a file on one side and a directory on the other. See the console for details"
         clash_path: "Source path and target path differ in type: {source} -> {target}"
         unsupported: "§cOperation failed / §b{server_name}§c: the current config does not support querying the status; configure §7'mcsm'§c or §7'terminal'"
@@ -242,8 +244,14 @@ mirror_mcsmcdr:
         fail: §cAuto-stop failed, §b{server_name} §f{status}
       success: §b{server_name}§a is syncing...
       world_file: "Matched by 'sync.world' but a file, not a world directory; not synced, add it to 'sync.extra_patterns' to sync it: {path}"
-      skip_dictionary: "§b{count}§c target directories of §b{server_name}§c do not exist and were skipped; see the console"
-      skip_dictionary_path: "Target directory does not exist and was skipped: {path}"
+      skipped: "§eSkipped §b{count}§e missing path(s) or pattern(s) of the sync config, as §7'sync.missing'§e says. See the console for details"
+      missing:
+        source_world: "World pattern selects no directory in {source}: {pattern}"
+        extra_pattern: "Extra pattern matches nothing outside the worlds in {source}: {pattern}"
+        target: "Target directory does not exist: {path}"
+        target_parent: "Target directory cannot be created, as its parent does not exist: {path}"
+        target_not_directory: "Target is not a directory: {path}"
+        target_world: "Target has no such world: {path}"
       completed: "§aSync completed! §fTime: §b{time}s §7/ §b{changed_files_count} §ffiles updated"
       identical: §aNo changes detected
       error: "§cAn error occurred while syncing, please check the console for details"

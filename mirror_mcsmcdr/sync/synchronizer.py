@@ -1,21 +1,63 @@
 import os
 import shutil
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from typing import Sequence
 
 import xxhash
 
+from mirror_mcsmcdr.config.synchronize_config import MissingConfig
 from mirror_mcsmcdr.sync.selection import PathPatterns, Selection, Selector
+
+
+@dataclass(frozen=True)
+class MissingPath:
+    """Something the config names that is not there, as ``command.sync.missing.<kind>`` tells it."""
+
+    kind: str
+    kwargs: dict[str, str]
+
+
+@dataclass(frozen=True)
+class SyncPlan:
+    """What a sync copies where, settled before the mirror is stopped."""
+
+    source: str
+    selection: Selection
+    # the targets copied into, in the configured order
+    targets: tuple[str, ...]
+    # those among them that do not exist yet; each is made first
+    created: tuple[str, ...]
+    refused: tuple[MissingPath, ...]
+    skipped: tuple[MissingPath, ...]
+
+    @property
+    def existing_targets(self) -> tuple[str, ...]:
+        """The targets the sync overwrites, as opposed to those it makes."""
+        return tuple(target for target in self.targets if target not in self.created)
+
+    @property
+    def empty(self) -> bool:
+        """Whether what was skipped leaves nothing to copy."""
+        return not self.targets or not self.selection.paths
+
+
+class SourceVanished(Exception):
+    """A selected source path was gone when it was to be copied; copying it would have emptied the target."""
+
+    def __init__(self, path: str) -> None:
+        super().__init__(path)
+        self.path = path
 
 
 class ClassicWorldSynchronizer:
     
 
-    def __init__(self, world: Sequence[str], extra_patterns: Sequence[str], ignore_inexistent_target_path: bool, concurrency: int, ignore_patterns: Sequence[str], retain_patterns: Sequence[str]) -> None:
+    def __init__(self, world: Sequence[str], extra_patterns: Sequence[str], missing: MissingConfig, concurrency: int, ignore_patterns: Sequence[str], retain_patterns: Sequence[str]) -> None:
         """:raise ValueError: if a pattern is not valid"""
         self.selector = Selector(world, extra_patterns)
         self.paths = PathPatterns(ignore_patterns, retain_patterns)
-        self.ignore_inexistent_target_path = ignore_inexistent_target_path
+        self.missing = missing
         self.concurrency = concurrency
     
 
@@ -38,10 +80,43 @@ class ClassicWorldSynchronizer:
         return True
 
 
-    def select(self, source: str) -> Selection:
-        return self.selector.select(source)
+    def plan(self, source: str, target_paths: Sequence[str]) -> SyncPlan:
+        """Select what to copy and judge, by ``sync.missing``, what is not there."""
+        source = os.path.normpath(source)
+        selection = self.selector.select(source)
+        refused: list[MissingPath] = []
+        skipped: list[MissingPath] = []
 
-    def overlapping(self, source: str, target_paths: list[str], paths: Sequence[str]) -> list[tuple[str, str]]:
+        def judge(refuse: bool, kind: str, **kwargs: str) -> None:
+            (refused if refuse else skipped).append(MissingPath(kind, kwargs))
+
+        for pattern in selection.missing_worlds:
+            judge(self.missing.source_world == "refuse", "source_world", pattern=pattern, source=source)
+        for pattern in selection.missing_extras:
+            judge(self.missing.extra_pattern == "refuse", "extra_pattern", pattern=pattern, source=source)
+        targets: list[str] = []
+        created: list[str] = []
+        for target in (os.path.normpath(path) for path in target_paths):
+            if os.path.isdir(target):
+                targets.append(target)
+                if self.missing.target_world == "refuse":
+                    for world in selection.worlds:
+                        if not os.path.isdir(_join(target, world)):
+                            refused.append(MissingPath("target_world", {"path": _join(target, world)}))
+            elif os.path.lexists(target):
+                refused.append(MissingPath("target_not_directory", {"path": target}))
+            elif self.missing.target == "create":
+                # only the last component, so that a mistyped path does not grow a tree of its own
+                if os.path.isdir(os.path.dirname(os.path.abspath(target))):
+                    targets.append(target)
+                    created.append(target)
+                else:
+                    refused.append(MissingPath("target_parent", {"path": target}))
+            else:
+                judge(self.missing.target == "refuse", "target", path=target)
+        return SyncPlan(source, selection, tuple(targets), tuple(created), tuple(refused), tuple(skipped))
+
+    def overlapping(self, source: str, target_paths: Sequence[str], paths: Sequence[str]) -> list[tuple[str, str]]:
         """
         The pairs of a selected source path and a target path that are one, or one inside the other:
         syncing them would delete or overwrite the very files it copies from.
@@ -50,7 +125,7 @@ class ClassicWorldSynchronizer:
         targets = [_join(target, path) for target in target_paths for path in paths]
         return [(source_path, target_path) for source_path in sources for target_path in targets if _overlap(source_path, target_path)]
 
-    def clashing(self, source: str, target_paths: list[str], extras: Sequence[str]) -> list[tuple[str, str]]:
+    def clashing(self, source: str, target_paths: Sequence[str], extras: Sequence[str]) -> list[tuple[str, str]]:
         """
         The pairs of a source extra path and what stands in its way in a target: a file where it needs a directory,
         or the other way round. Replacing that would delete what the sync was not told to touch.
@@ -74,35 +149,31 @@ class ClassicWorldSynchronizer:
                         break
         return found
 
-    def sync(self, source: str, target_paths: list[str], selection: Selection):
-        """:param selection: what :meth:`select` found in ``source``"""
-        source = os.path.normpath(source)
-
+    def sync(self, plan: SyncPlan) -> int:
+        """
+        :return: how many files were copied
+        :raise SourceVanished: if a selected source path is gone when it is to be copied
+        """
         changed_files_count = 0
-        paths_notfound = []
-
-        for target_path in target_paths:
-            target_path = os.path.normpath(target_path)
-
-            if not os.path.exists(target_path):
-                if not self.ignore_inexistent_target_path:
-                    paths_notfound.append(target_path)
-                    continue
-                os.makedirs(target_path)
+        worlds = set(plan.selection.worlds)
+        for target_path in plan.targets:
+            if target_path in plan.created and not os.path.isdir(target_path):
+                os.mkdir(target_path)
 
             copies: list[str] = []
-            for world in selection.worlds:
-                self._sync_entry(source, target_path, world, copies)
-            for extra in selection.extras:
-                # what is left alone or deleted needs no parent
-                if not (self.paths.retained(extra) or self.paths.ignored(extra)):
-                    os.makedirs(os.path.dirname(_join(target_path, extra)), exist_ok=True)
-                self._sync_entry(source, target_path, extra, copies)
+            for path in plan.selection.paths:
+                source_path = _join(plan.source, path)
+                if not (os.path.isdir(source_path) if path in worlds else os.path.lexists(source_path)):
+                    raise SourceVanished(source_path)
+                # what is left alone or deleted needs no parent; a world's parent is the target
+                if path not in worlds and not (self.paths.retained(path) or self.paths.ignored(path)):
+                    os.makedirs(os.path.dirname(_join(target_path, path)), exist_ok=True)
+                self._sync_entry(plan.source, target_path, path, copies)
             with ThreadPoolExecutor(max_workers=self.concurrency) as executor:
-                changed = executor.map(self._copy_if_changed, [_join(source, path) for path in copies], [_join(target_path, path) for path in copies])
+                changed = executor.map(self._copy_if_changed, [_join(plan.source, path) for path in copies], [_join(target_path, path) for path in copies])
                 changed_files_count += sum(changed)
         
-        return changed_files_count, paths_notfound
+        return changed_files_count
 
     def _sync_entry(self, source: str, target: str, path: str, copies: list[str]) -> None:
         """

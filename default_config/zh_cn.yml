@@ -52,8 +52,17 @@
     source: ''
     # 一个或多个目标服务器目录；留空时使用 root_path 下镜像服 MCDR 的 working_directory（is_mcdr 为 false 时为 root_path 本身）。
     target: []
-    # 是否忽略缺失的目标目录。
-    ignore_inexistent_target_path: false
+    # 同步设置中写到、但实际不存在的路径如何处理。全部在停止镜像服之前判断；refuse 为拒绝同步，skip 为跳过并在控制台列出。
+    # 全部内容都被跳过时，同步会被拒绝。
+    missing:
+      # 世界规则在源服务器中没有选中任何目录：refuse 或 skip；skip 时目标中同名的世界保持原样。
+      source_world: refuse
+      # 目标目录不存在：refuse、skip 或 create；create 只创建最后一级目录，上级目录也不存在时拒绝同步。
+      target: refuse
+      # 目标目录存在、但其中没有要同步的世界：create 或 refuse。
+      target_world: create
+      # extra_patterns 中的规则在源服务器中没有匹配到任何内容：skip 或 refuse。
+      extra_pattern: skip
     # 同步工作线程数。
     concurrency: 4
     # 不同步、并在目标中删除的路径：gitignore 规则，路径相对于服务器目录（同 PrimeBackup 的 ignore_patterns）。

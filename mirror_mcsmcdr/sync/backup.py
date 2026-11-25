@@ -314,6 +314,9 @@ class MirrorBackup:
         The backup is made with those settings anyway; this is what whoever syncs has to be told first.
         """
         found: list[BackupWarning] = []
+        # nothing is overwritten, so nothing can be missing from the backup
+        if not resolved.targets or not resolved.paths:
+            return found
         targets = [os.path.abspath(target) for target in resolved.targets]
         backed_up = [target for target in targets if _same_directory(target, resolved.source_path)]
         if not backed_up:
