@@ -45,6 +45,9 @@
     # 要同步的世界：gitignore 规则，与源服务器目录第一层的名字匹配，只选中目录（同 PrimeBackup 的 backup.targets），区分大小写。
     world:
       - world
+    # 世界以外要同步的文件或目录，如 config/carpet.conf：gitignore 规则，路径相对于服务器目录，在任意层级匹配，世界内部的匹配不算。
+    # 选中的目录像世界一样整体同步；选中的文件内容不同时覆盖；目标中独有的路径保持原样。不要选中 server.properties，否则镜像服的端口会被覆盖。
+    extra_patterns: []
     # 源服务器目录；留空时使用本 MCDR 的 working_directory。
     source: ''
     # 一个或多个目标服务器目录；留空时使用 root_path 下镜像服 MCDR 的 working_directory（is_mcdr 为 false 时为 root_path 本身）。

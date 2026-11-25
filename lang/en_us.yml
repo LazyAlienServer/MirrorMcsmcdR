@@ -225,10 +225,12 @@ mirror_mcsmcdr:
       fail:
         task_exist: §b{server_name} §calready has a sync in progress
         target: "§cSync cancelled: cannot read the mirror's MCDR config to tell the sync target. Check the mirror's config.yml, or set §7'sync.target'§c. See the console for details"
-        overlap: "§cSync cancelled: a world of the source server and one of §b{server_name}§c are the same directory, or one is inside the other. See the console for details"
-        overlap_path: "Source world and target world overlap: {source} -> {target}"
+        overlap: "§cSync cancelled: a path to sync of the source server and one of §b{server_name}§c are the same, or one is inside the other. See the console for details"
+        overlap_path: "Source path and target path overlap: {source} -> {target}"
         source_missing: "§cSync cancelled: §b{count}§c pattern(s) of §7'sync.world'§c select no directory on the source server. See the console for details"
         source_missing_path: "World pattern selects no directory in {source}: {pattern}"
+        clash: "§cSync cancelled: §b{count}§c path(s) of §7'sync.extra_patterns'§c are a file on one side and a directory on the other. See the console for details"
+        clash_path: "Source path and target path differ in type: {source} -> {target}"
         unsupported: "§cOperation failed / §b{server_name}§c: the current config does not support querying the status; configure §7'mcsm'§c or §7'terminal'"
       hint:
         running: "§fPlease stop §b{server_name}§f first, then sync"
@@ -239,7 +241,7 @@ mirror_mcsmcdr:
         exiting: §b{server_name}§f's MCDR is still running; stopping it automatically and syncing...
         fail: §cAuto-stop failed, §b{server_name} §f{status}
       success: §b{server_name}§a is syncing...
-      world_file: "Matched by 'sync.world' but a file, not a world directory; not synced: {path}"
+      world_file: "Matched by 'sync.world' but a file, not a world directory; not synced, add it to 'sync.extra_patterns' to sync it: {path}"
       skip_dictionary: "§b{count}§c target directories of §b{server_name}§c do not exist and were skipped; see the console"
       skip_dictionary_path: "Target directory does not exist and was skipped: {path}"
       completed: "§aSync completed! §fTime: §b{time}s §7/ §b{changed_files_count} §ffiles updated"
@@ -248,7 +250,7 @@ mirror_mcsmcdr:
       backup:
         start: "§b{server_name}§f: backing up with its §3PrimeBackup§f..."
         done: "§aBackup §b#{backup_id}§a of §b{server_name}§a created"
-        skipped: "§b{server_name}§f holds none of the synchronized worlds yet, nothing to back up"
+        skipped: "§b{server_name}§f holds nothing of what is synchronized yet, nothing to back up"
         unavailable: "§cSync cancelled, no backup can be made: {reason}. See the console for details"
         failed: "§cSync cancelled, the backup failed: {reason}. See the console for details"
         stale: "§cSync cancelled before copying: {reason}. The backup is no longer current"
@@ -277,12 +279,12 @@ mirror_mcsmcdr:
         warning:
           source_mismatch: "Pre-sync backup of §b{server_name}§f: §eits §3PrimeBackup§e backs up §7{source}§e, which is none of the sync targets §7({targets})§e; what the sync overwrites is not backed up"
           targets_not_backed_up: "Pre-sync backup of §b{server_name}§f: §ethese sync targets are not the directory its §3PrimeBackup§e backs up, they are overwritten without a backup: §7{targets}"
-          worlds_not_targeted: "Pre-sync backup of §b{server_name}§f: §7'backup.targets' [{targets}] §eof its §3PrimeBackup§e does not include these synchronized worlds: §7{worlds}"
+          worlds_not_targeted: "Pre-sync backup of §b{server_name}§f: §7'backup.targets' [{targets}] §eof its §3PrimeBackup§e does not include these synchronized top-level entries: §7{worlds}"
           ignored: "Pre-sync backup of §b{server_name}§f: §eits §3PrimeBackup§e leaves these out of the backup (§7'ignore_patterns'§e / §7'ignored_files'§e), which are not in §7'sync.ignore_patterns'§e or §7'sync.retain_patterns'§e: §7{patterns}"
           retained: "Pre-sync backup of §b{server_name}§f: §7'retain_patterns'§e of its §3PrimeBackup§e keeps these out of the backup, which are not in §7'sync.ignore_patterns'§e or §7'sync.retain_patterns'§e: §7{patterns}"
           reuse_stat_unchanged_file: "Pre-sync backup of §b{server_name}§f: §eits §3PrimeBackup§e has §7'reuse_stat_unchanged_file'§e on; files with unchanged size and time are not read and may be stored with older content"
           creation_skip_missing_file: "Pre-sync backup of §b{server_name}§f: §eits §3PrimeBackup§e has §7'creation_skip_missing_file'§e on; files that disappear during the backup are skipped silently"
-          storage_in_world: "Pre-sync backup of §b{server_name}§f: §ethe §3PrimeBackup§e storage §7{storage} §eis inside the synchronized world §7{world}§e, the sync would delete the backup"
+          storage_in_world: "Pre-sync backup of §b{server_name}§f: §ethe §3PrimeBackup§e storage §7{storage} §eis inside the synchronized path §7{world}§e, the sync would delete the backup"
     
     history:
       record:

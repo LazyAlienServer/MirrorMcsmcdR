@@ -5,15 +5,15 @@ from typing import Sequence
 
 import xxhash
 
-from mirror_mcsmcdr.sync.selection import PathPatterns, WorldPatterns, WorldSelection
+from mirror_mcsmcdr.sync.selection import PathPatterns, Selection, Selector
 
 
 class ClassicWorldSynchronizer:
     
 
-    def __init__(self, world: Sequence[str], ignore_inexistent_target_path: bool, concurrency: int, ignore_patterns: Sequence[str], retain_patterns: Sequence[str]) -> None:
+    def __init__(self, world: Sequence[str], extra_patterns: Sequence[str], ignore_inexistent_target_path: bool, concurrency: int, ignore_patterns: Sequence[str], retain_patterns: Sequence[str]) -> None:
         """:raise ValueError: if a pattern is not valid"""
-        self.world = WorldPatterns(world)
+        self.selector = Selector(world, extra_patterns)
         self.paths = PathPatterns(ignore_patterns, retain_patterns)
         self.ignore_inexistent_target_path = ignore_inexistent_target_path
         self.concurrency = concurrency
@@ -38,20 +38,44 @@ class ClassicWorldSynchronizer:
         return True
 
 
-    def select(self, source: str) -> WorldSelection:
-        return self.world.select(source)
+    def select(self, source: str) -> Selection:
+        return self.selector.select(source)
 
-    def overlapping(self, source: str, target_paths: list[str], worlds: Sequence[str]) -> list[tuple[str, str]]:
+    def overlapping(self, source: str, target_paths: list[str], paths: Sequence[str]) -> list[tuple[str, str]]:
         """
-        The pairs of a source world and a target world that are one directory, or one inside the other:
+        The pairs of a selected source path and a target path that are one, or one inside the other:
         syncing them would delete or overwrite the very files it copies from.
         """
-        sources = [os.path.join(source, world) for world in worlds]
-        targets = [os.path.join(target, world) for target in target_paths for world in worlds]
-        return [(source_world, target_world) for source_world in sources for target_world in targets if _overlap(source_world, target_world)]
+        sources = [_join(source, path) for path in paths]
+        targets = [_join(target, path) for target in target_paths for path in paths]
+        return [(source_path, target_path) for source_path in sources for target_path in targets if _overlap(source_path, target_path)]
 
-    def sync(self, source: str, target_paths: list[str], worlds: Sequence[str]):
-        """:param worlds: names of the source's top-level directories to copy, as :meth:`select` found them"""
+    def clashing(self, source: str, target_paths: list[str], extras: Sequence[str]) -> list[tuple[str, str]]:
+        """
+        The pairs of a source extra path and what stands in its way in a target: a file where it needs a directory,
+        or the other way round. Replacing that would delete what the sync was not told to touch.
+        A world is not checked, as it is the sync's own, nor what the sync leaves alone or deletes anyway.
+        """
+        found = []
+        for path in extras:
+            if self.paths.retained(path) or self.paths.ignored(path):
+                continue
+            is_dir = os.path.isdir(_join(source, path))
+            for target in target_paths:
+                if not os.path.isdir(target):
+                    continue
+                parts = path.split("/")
+                for depth in range(1, len(parts) + 1):
+                    target_path = _join(target, "/".join(parts[:depth]))
+                    if not os.path.lexists(target_path):
+                        break
+                    if os.path.isdir(target_path) != (is_dir if depth == len(parts) else True):
+                        found.append((_join(source, path), target_path))
+                        break
+        return found
+
+    def sync(self, source: str, target_paths: list[str], selection: Selection):
+        """:param selection: what :meth:`select` found in ``source``"""
         source = os.path.normpath(source)
 
         changed_files_count = 0
@@ -67,8 +91,13 @@ class ClassicWorldSynchronizer:
                 os.makedirs(target_path)
 
             copies: list[str] = []
-            for world in worlds:
+            for world in selection.worlds:
                 self._sync_entry(source, target_path, world, copies)
+            for extra in selection.extras:
+                # what is left alone or deleted needs no parent
+                if not (self.paths.retained(extra) or self.paths.ignored(extra)):
+                    os.makedirs(os.path.dirname(_join(target_path, extra)), exist_ok=True)
+                self._sync_entry(source, target_path, extra, copies)
             with ThreadPoolExecutor(max_workers=self.concurrency) as executor:
                 changed = executor.map(self._copy_if_changed, [_join(source, path) for path in copies], [_join(target_path, path) for path in copies])
                 changed_files_count += sum(changed)

@@ -108,8 +108,8 @@ class ResolvedBackup:
     source_path: str
     # the directories the sync copies into, as configured or derived
     targets: tuple[str, ...]
-    # names of the worlds the sync copies, as selected in its source
-    worlds: tuple[str, ...]
+    # what the sync copies into each target: its worlds and extra paths, relative and joined with "/"
+    paths: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -141,13 +141,13 @@ class MirrorBackup:
 
     # ---------- resolution ----------
 
-    def resolve(self, targets: Sequence[str], worlds: Sequence[str]) -> ResolvedBackup:
+    def resolve(self, targets: Sequence[str], paths: Sequence[str]) -> ResolvedBackup:
         """
         Locate the mirror's PrimeBackup: its plugin, its config, its storage and the directory it backs up.
 
         :param targets: the directories the sync copies into. A sync passes those it copies into,
             so that what is backed up and checked is what gets overwritten
-        :param worlds: the names of the worlds the sync copies into them
+        :param paths: what the sync copies into them, relative to each and joined with "/"
         """
         if not self.mcdr_path:
             raise BackupUnavailable("plain_server")
@@ -180,7 +180,7 @@ class MirrorBackup:
             storage_path=str(storage_path),
             source_path=str(source_path),
             targets=tuple(targets),
-            worlds=tuple(worlds),
+            paths=tuple(paths),
         )
 
     @classmethod
@@ -343,9 +343,9 @@ class MirrorBackup:
             found.append(BackupWarning("creation_skip_missing_file"))
 
         # the sync deletes what only the target has, which would be the backup itself
-        for world in (os.path.join(target, world) for target in targets for world in resolved.worlds):
-            if _is_inside(resolved.storage_path, world):
-                found.append(BackupWarning("storage_in_world", {"storage": resolved.storage_path, "world": world}))
+        for path in (os.path.join(target, *path.split("/")) for target in targets for path in resolved.paths):
+            if _is_inside(resolved.storage_path, path):
+                found.append(BackupWarning("storage_in_world", {"storage": resolved.storage_path, "world": path}))
         return found
 
     @staticmethod
@@ -357,7 +357,10 @@ class MirrorBackup:
 
     @staticmethod
     def _untargeted_worlds(resolved: ResolvedBackup, patterns: list[str]) -> list[str]:
-        """The worlds PrimeBackup does not select: it matches gitignore patterns against the entries of its source directory."""
+        """
+        The top-level names of the synced paths that PrimeBackup does not select:
+        it matches gitignore patterns against the entries of its source directory.
+        """
         try:
             spec = pathspec.GitIgnoreSpec.from_lines(patterns)
         except ValueError as e:
@@ -367,11 +370,12 @@ class MirrorBackup:
             entries = {os.path.normcase(entry): entry for entry in os.listdir(resolved.source_path)}
         except OSError:
             entries = {}
-        return [world for world in resolved.worlds if not spec.match_file(entries.get(os.path.normcase(world), world))]
+        names = dict.fromkeys(path.split("/")[0] for path in resolved.paths)
+        return [name for name in names if not spec.match_file(entries.get(os.path.normcase(name), name))]
 
-    def has_existing_world(self, resolved: ResolvedBackup) -> bool:
-        """Whether a target holds one of the worlds yet; if none does, the sync has nothing to overwrite."""
-        return any(os.path.lexists(os.path.join(target, world)) for target in resolved.targets for world in resolved.worlds)
+    def has_existing_path(self, resolved: ResolvedBackup) -> bool:
+        """Whether a target holds one of the paths yet; if none does, the sync has nothing to overwrite."""
+        return any(os.path.lexists(os.path.join(target, *path.split("/"))) for target in resolved.targets for path in resolved.paths)
 
     # ---------- backup ----------
 

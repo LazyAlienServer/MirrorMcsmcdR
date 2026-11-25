@@ -67,6 +67,7 @@ class MirrorRuntime:
         action = config.command.action
         world_sync = ClassicWorldSynchronizer(
             sync.world,
+            sync.extra_patterns,
             sync.ignore_inexistent_target_path,
             sync.concurrency,
             sync.ignore_patterns,

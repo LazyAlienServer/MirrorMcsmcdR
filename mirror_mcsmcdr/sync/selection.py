@@ -2,8 +2,8 @@
 What a sync copies: gitignore patterns, matched the way the mirror's PrimeBackup matches its own.
 
 ``sync.world`` is matched against the bare names of the source's top-level entries, as PrimeBackup's ``backup.targets``;
-``sync.ignore_patterns`` and ``sync.retain_patterns`` against paths relative to the server directory,
-as PrimeBackup's patterns of the same names. Matching is case-sensitive on every platform.
+``sync.extra_patterns``, ``sync.ignore_patterns`` and ``sync.retain_patterns`` against paths relative to the server directory,
+the latter two as PrimeBackup's patterns of the same names. Matching is case-sensitive on every platform.
 """
 import os
 from dataclasses import dataclass
@@ -21,41 +21,79 @@ def compile_patterns(option: str, patterns: Sequence[str]) -> pathspec.GitIgnore
 
 
 @dataclass(frozen=True)
-class WorldSelection:
-    """The worlds ``sync.world`` selects in one source directory."""
+class Selection:
+    """What a sync copies from one source directory."""
 
-    # names of the selected top-level directories
+    # names of the top-level directories ``sync.world`` selects
     worlds: tuple[str, ...]
-    # names of the top-level files the patterns match: a world is a directory, so these are not synced
-    files: tuple[str, ...]
-    # the patterns that are not negated and select no directory on their own
-    missing: tuple[str, ...]
+    # ``/``-separated paths ``sync.extra_patterns`` selects outside the worlds; a selected directory is one path
+    extras: tuple[str, ...]
+    # names of the top-level files ``sync.world`` matches and ``sync.extra_patterns`` does not:
+    # a world is a directory, so these are not synced
+    world_files: tuple[str, ...]
+    # the ``sync.world`` patterns that are not negated and select no directory on their own
+    missing_worlds: tuple[str, ...]
+
+    @property
+    def paths(self) -> tuple[str, ...]:
+        """Everything selected, relative to the server directory."""
+        return self.worlds + self.extras
 
 
-class WorldPatterns:
-    def __init__(self, patterns: Sequence[str]) -> None:
-        self._spec = compile_patterns("world", patterns)
+class Selector:
+    def __init__(self, world: Sequence[str], extra_patterns: Sequence[str]) -> None:
+        """:raise ValueError: if a pattern is not valid"""
+        self._world = compile_patterns("world", world)
         # a negation or a comment selects nothing by itself, so only the others can be missing
-        self._selecting = [
+        self._selecting_world = [
             (pattern, spec)
-            for pattern in patterns
+            for pattern in world
             for spec in [pathspec.GitIgnoreSpec.from_lines([pattern])]
             if any(compiled.include for compiled in spec.patterns)
         ]
+        self._extra = compile_patterns("extra_patterns", extra_patterns)
+        # without a pattern that selects, nothing outside the worlds has to be walked
+        self._walks_extra = any(compiled.include for compiled in self._extra.patterns)
 
-    def select(self, source: str) -> WorldSelection:
+    def select(self, source: str) -> Selection:
         try:
             names = sorted(os.listdir(source))
         except (FileNotFoundError, NotADirectoryError):
             # nothing is there to select, so every pattern is missing
             names = []
-        matched = [name for name in names if self._spec.match_file(name)]
+        matched = [name for name in names if self._world.match_file(name)]
         directories = {name for name in names if os.path.isdir(os.path.join(source, name))}
-        return WorldSelection(
-            worlds=tuple(name for name in matched if name in directories),
-            files=tuple(name for name in matched if name not in directories),
-            missing=tuple(pattern for pattern, spec in self._selecting if not any(spec.match_file(name) for name in directories)),
+        worlds = tuple(name for name in matched if name in directories)
+        extras = tuple(self._find_extras(source, set(worlds))) if self._walks_extra and names else ()
+        return Selection(
+            worlds=worlds,
+            extras=extras,
+            world_files=tuple(name for name in matched if name not in directories and name not in extras),
+            missing_worlds=tuple(pattern for pattern, spec in self._selecting_world if not any(spec.match_file(name) for name in directories)),
         )
+
+    def _find_extras(self, source: str, worlds: set[str]) -> list[str]:
+        """
+        Walk ``source`` outside the worlds. A directory is matched as ``path/``, so that a pattern such as ``config/``
+        selects it as a whole; it is then not descended into, nor is a link to a directory.
+        """
+        found: list[str] = []
+
+        def walk(directory: str, prefix: str) -> None:
+            with os.scandir(directory) as iterator:
+                entries = sorted(iterator, key=lambda entry: entry.name)
+            for entry in entries:
+                if not prefix and entry.name in worlds:
+                    continue
+                path = prefix + entry.name
+                is_dir = entry.is_dir()
+                if self._extra.match_file(path + "/" if is_dir else path):
+                    found.append(path)
+                elif is_dir and not entry.is_symlink():
+                    walk(entry.path, path + "/")
+
+        walk(source, "")
+        return found
 
 
 class PathPatterns:

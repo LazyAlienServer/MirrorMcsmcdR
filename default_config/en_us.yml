@@ -45,6 +45,9 @@
     # Worlds to synchronize: gitignore patterns matched against the names of the source's top-level entries, directories only (as PrimeBackup's backup.targets); case-sensitive.
     world:
       - world
+    # Files or directories to synchronize outside the worlds, e.g. config/carpet.conf: gitignore patterns, relative to the server directory, matched at any depth; matches inside a world do not count.
+    # A selected directory is synchronized as a whole, like a world; a selected file is overwritten when its content differs; paths only the target has stay. Do not select server.properties, or the mirror's port is overwritten.
+    extra_patterns: []
     # Source server directory; empty uses the working_directory of this MCDR.
     source: ''
     # One or more target server directories; empty uses the working_directory of the mirror's MCDR under root_path (with is_mcdr false, root_path itself).

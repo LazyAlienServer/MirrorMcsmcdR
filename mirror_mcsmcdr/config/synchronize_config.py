@@ -9,6 +9,8 @@ class BackupConfig(Serializable):
 class SynchronizationConfig(Serializable):
     # gitignore patterns over the names of the source's top-level directories
     world: List[str] = ["world"]
+    # gitignore patterns over paths relative to the server directory, outside the worlds
+    extra_patterns: List[str] = []
     # empty: the working directory of this MCDR
     source: str = ""
     # empty: derived from root_path, see MirrorRuntime.sync_targets
