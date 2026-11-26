@@ -163,12 +163,18 @@ Jump to [Save Synchronization](#save-synchronization) for the next step.
 sync:
     world:
         - world
+    extra_patterns: []
     source: ''
     target: []
-    ignore_inexistent_target_path: false
+    missing:
+        source_world: refuse
+        target: refuse
+        target_world: create
+        extra_pattern: skip
     concurrency: 4
-    ignore_files:
+    ignore_patterns:
         - session.lock
+    retain_patterns: []
 ```
 
 Assuming this is your directory structure:
@@ -192,9 +198,13 @@ In general, there is no need to change `world`, `source` or `target`:
 - An empty `source` means the working directory of this MCDR (`working_directory`, `server` by default);
 - An empty `target` is derived from `root_path`: with `is_mcdr` set to `true`, the working directory of the mirror server's MCDR, `./Mirror/server` in the example; with `is_mcdr` set to `false`, `root_path` itself. Set `target` for an unusual directory layout, or to sync into several directories. A simple check is that the `target` directory is the directory where `server.properties` is located.
 
-`ignore_files` are files that are not synchronized, and generally, there is no need to change them. If the `carpet` module is loaded, you can add `carpet.conf`. If the `Plusls-Carpet-Addition(PCA)` module is loaded, you can add `pca.conf`.
+Each entry of `world` is a gitignore pattern, written as in PrimeBackup's `backup.targets`. The name of the world directory does; mind that matching is case-sensitive.
 
-During synchronization, the plugin will also compare the hash values of the files. `concurrency` is the number of threads used by the plugin for comparison and synchronization. Generally, there is no need to change it. `ignore_inexistent_target_path` means that if a target directory does not exist, when set to `false`, it will skip synchronization for that directory and give a prompt. When set to `true`, it will create the directory and continue synchronization. Similarly, there is generally no need to change it.
+`retain_patterns` are files that are not synchronized, the mirror server's own copy kept. If the `carpet` mod is loaded, you can add `carpet.conf`. If the `Plusls-Carpet-Addition(PCA)` mod is loaded, you can add `pca.conf`. `ignore_patterns` are files that are not synchronized and are deleted in the mirror server; generally there is no need to change them.
+
+Files outside the worlds (such as mod settings in `config`) are not synchronized by default; add them to `extra_patterns` when needed, see [README - sync](../README_en.md#sync-configuration-file-related-to-file-synchronization). Do not add `server.properties`, or the mirror server's port is overwritten.
+
+During synchronization, the plugin will also compare the hash values of the files. `concurrency` is the number of threads used by the plugin for comparison and synchronization. Generally, there is no need to change it. `missing` decides what happens to worlds or directories the sync config names that do not exist; for example, `target: refuse` refuses the sync when a target directory does not exist. Similarly, there is generally no need to change it.
 
 ### Command and Display Suggestions
 

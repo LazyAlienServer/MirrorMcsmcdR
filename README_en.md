@@ -50,7 +50,10 @@ After upgrading, check the configuration file:
 - `terminal.launch_path` becomes the top-level [`root_path`](#root_path--is_mcdr-mirror-server-directory-and-kind), `terminal.is_mcdr` becomes the top-level `is_mcdr`, and `sync.backup.mcdr_path` is removed (the backup uses `root_path`). The old keys are ignored, `root_path` falls back to its default `./Mirror` and `is_mcdr` to its default `true`; **set them by hand**. A plain-server mirror that had `terminal.is_mcdr: false` needs `is_mcdr: false` again (later mirror entries inherit the value of the first one);
 - `command.permission.abort` and `command.action.abort` are removed; no command ever used them;
 - With both `mcsm` and `terminal` enabled, only MCSM is used now and the `terminal` section has no effect (`log` and `input`, which only the subprocess proxy offers, are unavailable as well). This keeps `kill -f` and adopting a mirror server from acting on local processes that have nothing to do with the MCSM instance;
-- `sync.source` and `sync.target` may be left empty; they then use this MCDR's `working_directory` and the directory derived from `root_path`. Values already set keep working.
+- `sync.source` and `sync.target` may be left empty; they then use this MCDR's `working_directory` and the directory derived from `root_path`. Values already set keep working;
+- `sync.world` now holds [gitignore patterns](#sync-configuration-file-related-to-file-synchronization). A plain directory name keeps its meaning, but matching is case-sensitive, also on Windows: `World` used to sync `world` as well, now it must be spelt as the directory is, or the sync is refused. A sync now also deletes empty directories that only the mirror's world has;
+- `sync.ignore_files` is removed in favour of `sync.ignore_patterns` and `sync.retain_patterns`; the old value is not migrated, **set them by hand**. The files in the old `ignore_files` (such as `carpet.conf` and `pca.conf`) kept the mirror's own copy, which is what `retain_patterns` does now; `session.lock` is in `ignore_patterns` by default, so the mirror's copy is deleted;
+- `sync.ignore_inexistent_target_path` is removed in favour of [`sync.missing`](#sync-configuration-file-related-to-file-synchronization); the old value is not migrated. The old `true` corresponds to `missing.target: create` (which now makes the last component only); the old `false` skipped a missing target directory, which is `missing.target: skip`, while the new default `refuse` refuses the sync.
 
 When the plugin loads its configuration, it removes the keys it does not know from the configuration file (including the removed keys above and misspelt ones). It lists each of them with its path and value in the console and tells the game once. Before that, the original file is backed up as `config.yml.<time>-<content hash>.bak` in the same folder.
 
@@ -307,12 +310,18 @@ The plugin also looks once when it loads, and adopts or only reports what it fin
 sync:
     world:
         - "world"
+    extra_patterns: []
     source: ""
     target: []
-    ignore_inexistent_target_path: false
+    missing:
+        source_world: refuse
+        target: refuse
+        target_world: create
+        extra_pattern: skip
     concurrency: 4
-    ignore_files:
+    ignore_patterns:
         - "session.lock"
+    retain_patterns: []
     backup:
         enable: false
         timeout: 600
@@ -333,8 +342,24 @@ mcdr_root (./)
          └─ world
 ```
 
+Each entry of `world`, `extra_patterns`, `ignore_patterns` and `retain_patterns` is a [gitignore](https://git-scm.com/docs/gitignore) pattern, written as in the same-named (or corresponding) setting of the mirror's PrimeBackup. Patterns are case-sensitive, also on Windows. A pattern starting with `!` excludes; it selects nothing by itself.
+
 **world** `list`
-- The directory that needs to be synchronized, it needs to be added when there are multiple world files in the archive.
+- The worlds to synchronize. As PrimeBackup's `backup.targets`, the patterns are matched against the names of the source server directory's top-level entries only. Plain directory names such as `world` and `world_nether` do; `world*`, or an exclusion such as `!world_the_end`, work as well.
+- Do not end a pattern with `/`: only the name is matched, so `world/` selects no directory.
+- Only directories are selected. A top-level file a pattern matches is not synchronized, and the console says so; synchronize files through `extra_patterns`.
+- After a sync, a world in the target is what it is in the source: files and directories only the target world has are deleted (except those `retain_patterns` matches).
+- A pattern that selects no directory is handled by `missing.source_world`.
+
+**extra_patterns** `list`
+- Files or directories to synchronize outside the worlds, such as `config/carpet.conf` or `config/`. Paths are relative to the server directory, and a pattern is matched at any depth; matches inside a world do not count, as the worlds are up to `world`.
+- A selected directory is synchronized as a whole, like a world, and what it holds is not matched again; a selected file is overwritten when its content differs. Paths only the target has stay as they are. Missing parent directories in the target are created.
+- When a path is a file in the source server and a directory in a target (or the other way round), the sync is refused before the mirror is stopped.
+- When empty, nothing outside the worlds is walked.
+- A pattern that matches nothing is handled by `missing.extra_pattern`.
+
+> [!WARNING]
+> Do not select `server.properties` with `extra_patterns`: the mirror's port and other settings would be overwritten by those of the main server.
 
 **source** `str`
 - The source server directory. When empty, the [working directory](https://mcdreforged.readthedocs.io/en/latest/configuration.html#working-directory) of this MCDR (`working_directory`, `server` by default; read at every sync, so it follows a reload of this MCDR's config) is used; usually there is no need to set it. Files are synchronized from `source/world`  to `target/world`
@@ -343,14 +368,31 @@ mcdr_root (./)
 - The target server directory, you can only write a string if there is only one directory, and a list is needed for multiple directories. A copy of the source directory files will be synchronized for each target directory.
 - When empty, it is derived from [`root_path`](#root_path--is_mcdr-mirror-server-directory-and-kind): with `is_mcdr` set to `true`, the mirror MCDR's `working_directory` under `root_path` (read from the mirror's `config.yml` at every sync; if it cannot be read, the sync is refused); with `is_mcdr` set to `false`, `root_path` itself. With the default config it is `./Mirror/server`.
 
-**ignore_inexistent_target_path** `bool`
-- If a target server directory does not exist, it will be skipped when set to `false`; the game is told how many directories were skipped, and their paths go to the console. When set to `true`, the directory will be created and synchronization will continue.
+**missing**
+- What to do about what the sync config names but does not exist. All of it is judged before the mirror is stopped:
+  - `refuse`: the sync is refused and recorded as failed;
+  - `skip`: the entry is left out and the rest is synchronized. The game is told only how many were skipped; their paths go to the console.
+- A sync that would skip everything is refused instead of being reported as identical.
+
+| Key | When | Values | Default |
+|---|---|---|---|
+| `source_world` | A `world` pattern selects no directory in the source server | `refuse`; `skip`: the target's world of that name stays as it is | `refuse` |
+| `target` | A target directory does not exist | `refuse`; `skip`; `create`: makes the last component only, and refuses when its parent does not exist either | `refuse` |
+| `target_world` | A target directory exists but lacks a world to sync | `create`; `refuse` | `create` |
+| `extra_pattern` | An `extra_patterns` pattern matches nothing | `skip`; `refuse` | `skip` |
+
+- A target path that is a file always refuses the sync.
+- Right before each entry is copied, the plugin checks again that it still exists in the source server. If it disappeared after the mirror was stopped, the sync stops and is recorded as failed, and the target's copy is not emptied; what was copied already stays, so the mirror may hold an incomplete copy.
 
 **concurrency** `int`
 - The number of threads performing hash calculations during synchronization.
 
-**ignore_files** `list`
-- Files that are not synchronized, if you use the `carpet` mod and the `plus-carpet-addition(PCA)` mod, it is recommended to add `"carpet.conf"` `"pca.conf"`
+**ignore_patterns** `list`
+- Paths that are not synchronized and are deleted in the target, as PrimeBackup's `backup.ignore_patterns`. Paths are relative to the server directory; the patterns apply inside the synchronized worlds and what `extra_patterns` selects. `session.lock` by default.
+
+**retain_patterns** `list`
+- Paths that are not synchronized, the target's own copy kept as it is, as PrimeBackup's `backup.retain_patterns`. Meant for the mirror's own settings files, such as `"carpet.conf"` and `"pca.conf"` of the `carpet` and `plus-carpet-addition(PCA)` mods (a pattern without `/` matches at any depth).
+- A path matched by both `ignore_patterns` and `retain_patterns` is retained.
 
 **backup** pre-sync backup, see [sync.backup](#syncbackup-pre-sync-backup) below
 
@@ -394,15 +436,15 @@ When `!!mirror sync` is entered, the mirror's PrimeBackup config is compared wit
 
 | PrimeBackup setting | Warning when |
 |---|---|
-| `backup.source_root`, or the mirror's `working_directory` when `backup.source_root_use_mcdr_working_directory` is `true` | It is not a `sync.target`, or there are further `sync.target` directories besides it |
-| `backup.targets` | A `sync.world` entry is not matched by it |
-| `backup.ignore_patterns`, `backup.ignored_files` | They contain a pattern that is not in `sync.ignore_files` |
-| `backup.retain_patterns` | It is not empty |
+| `backup.source_root`, or the mirror's `working_directory` when `backup.source_root_use_mcdr_working_directory` is `true` | It is not an existing `sync.target`, or there are further existing `sync.target` directories besides it |
+| `backup.targets` | It does not match the top-level name of a world `sync.world` selects or of a path `sync.extra_patterns` selects |
+| `backup.ignore_patterns`, `backup.ignored_files` | They contain a pattern that is in neither `sync.ignore_patterns` nor `sync.retain_patterns` |
+| `backup.retain_patterns` | It contains a pattern that is in neither `sync.ignore_patterns` nor `sync.retain_patterns` |
 | `backup.reuse_stat_unchanged_file` | It is `true`: files with unchanged size and time are not read |
 | `backup.creation_skip_missing_file` | It is `true`: files that disappear during the backup are skipped |
-| `storage_root` | It is inside a synchronized world: the sync deletes the files only the mirror has, the backup among them |
+| `storage_root` | It is inside a synchronized path: the sync deletes the files only the mirror has, the backup among them |
 
-With the defaults of both plugins there is no warning.
+With the defaults of both plugins there is no warning. Patterns are compared as strings: patterns spelt differently that match the same (such as `session.lock` and `/session.lock`) are warned about as well.
 
 **What a sync does with backup enabled**
 1. When `!!mirror sync` is entered, the mirror's PrimeBackup is located: plugin, config and database. If one is missing, the sync is refused at once. Then the warnings above are checked; if there are any and `confirm_on_warning` is `true`, the sync has to be confirmed.
@@ -412,7 +454,7 @@ With the defaults of both plugins there is no warning.
 5. The backup id is broadcast and the main world is saved. With `ensure_server_closed: true`, the mirror must still be stopped right before copying; otherwise the sync is refused, because the backup would be stale.
 6. `!!mirror history` shows the backup id of each sync, also of a sync that failed after its backup.
 
-If no target holds any of the worlds yet, there is nothing to lose: the backup is skipped and the sync runs.
+The backup and its warnings cover what the sync overwrites: the existing target directories, and the worlds and paths synchronized into them. A target directory that `missing.target: create` makes needs no backup. If none of those targets holds anything to be synchronized yet, there is nothing to lose: the backup is skipped and the sync runs.
 
 Messages in game never contain paths. When a sync is refused, the paths involved are in the MCDR console.
 
@@ -602,12 +644,18 @@ display:
     sync:
         world:
             - "world"
+        extra_patterns: []
         source: ""
         target: []
-        ignore_inexistent_target_path: false
+        missing:
+            source_world: refuse
+            target: refuse
+            target_world: create
+            extra_pattern: skip
         concurrency: 4
-        ignore_files:
+        ignore_patterns:
             - "session.lock"
+        retain_patterns: []
     command:
         permission:
             status: 0

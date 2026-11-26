@@ -161,12 +161,18 @@ terminal:
 sync:
   world:
     - world
+  extra_patterns: []
   source: ''
   target: []
-  ignore_inexistent_target_path: false
+  missing:
+    source_world: refuse
+    target: refuse
+    target_world: create
+    extra_pattern: skip
   concurrency: 4
-  ignore_files:
+  ignore_patterns:
     - session.lock
+  retain_patterns: []
 ```
 
 假设这是你的目录结构：
@@ -189,9 +195,13 @@ mcdr_root
 - `source`留空时，使用本MCDR的工作目录（`working_directory`，默认为`server`）；
 - `target`留空时，由`root_path`推导：`is_mcdr`为`true`时，是镜像服MCDR的工作目录，在示例中就是`./Mirror/server`；`is_mcdr`为`false`时，就是`root_path`本身。目录结构特殊，或要同步到多个目录时，再填写`target`。一个简单的检查方法是，`target`目标目录就是`server.properties`所在的目录。
 
-`ignore_files`为不进行同步的文件，一般无需更改。若加载了`carpet`模组，可以添加`carpet.conf`。若加载了`Plusls-Carpet-Addition(PCA)`模组，可以添加`pca.conf`。
+`world`中的每一项是一条gitignore规则，与PrimeBackup的`backup.targets`写法相同。直接写世界目录的名字即可，注意区分大小写。
 
-在同步时，插件将同时比对文件的哈希值。`concurrency`即为插件比对和同步时使用的线程数。一般无需更改。`ignore_inexistent_target_path`表示若某个目标目录不存在，当设置为`false`时，将会跳过对该目录的同步，并进行提示。当设置为`true`时，将会新建该目录并继续同步。同样一般无需更改。
+`retain_patterns`为不同步、并保留镜像服中原有内容的文件。若加载了`carpet`模组，可以添加`carpet.conf`。若加载了`Plusls-Carpet-Addition(PCA)`模组，可以添加`pca.conf`。`ignore_patterns`为不同步、并在镜像服中删除的文件，一般无需更改。
+
+世界以外的文件（如`config`中的模组设置）默认不同步，需要时添加到`extra_patterns`，详见[README-sync](../README.md#sync-文件同步相关的配置文件)。不要添加`server.properties`，否则镜像服的端口会被覆盖。
+
+在同步时，插件将同时比对文件的哈希值。`concurrency`即为插件比对和同步时使用的线程数。一般无需更改。`missing`决定同步设置中写到、但实际不存在的世界或目录如何处理，例如`target: refuse`表示目标目录不存在时拒绝同步。同样一般无需更改。
 
 ### 指令与显示建议
 

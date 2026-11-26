@@ -50,7 +50,10 @@
 - `terminal.launch_path`改为顶层的[`root_path`](#root_path--is_mcdr-镜像服目录与类型)，`terminal.is_mcdr`改为顶层的`is_mcdr`，`sync.backup.mcdr_path`已删除（备份改用`root_path`）。旧的项会被忽略，`root_path`恢复为默认值`./Mirror`，`is_mcdr`恢复为默认值`true`，请**手动修改**。以前设置了`terminal.is_mcdr: false`的普通服务端镜像服，要重新设置`is_mcdr: false`（后续镜像服会继承第一个镜像服的值）；
 - `command.permission.abort`和`command.action.abort`已删除，它们从未对应任何指令；
 - 同时启用`mcsm`和`terminal`时，现在只使用MCSM，`terminal`配置不再生效（只有subprocess代理提供的`log`、`input`也不可用）。这样做是为了避免`kill -f`和接管镜像服误操作本机上与MCSM实例无关的进程；
-- `sync.source`和`sync.target`可以留空，分别使用本MCDR的`working_directory`和由`root_path`推导出的目录。原有的值仍然有效。
+- `sync.source`和`sync.target`可以留空，分别使用本MCDR的`working_directory`和由`root_path`推导出的目录。原有的值仍然有效；
+- `sync.world`现在是[gitignore规则](#sync-文件同步相关的配置文件)。直接写目录名的含义不变，但区分大小写，Windows上也一样：以前写`World`也能同步`world`，现在要写成实际的名字，否则同步被拒绝。同步时，只存在于镜像服世界中的空目录现在也会被删除；
+- `sync.ignore_files`已删除，改为`sync.ignore_patterns`和`sync.retain_patterns`，旧的值不会迁移，请**手动修改**。以前`ignore_files`中的文件（如`carpet.conf`、`pca.conf`）会保留镜像服中原有的那份，对应现在的`retain_patterns`；`session.lock`默认在`ignore_patterns`中，镜像服中的会被删除；
+- `sync.ignore_inexistent_target_path`已删除，改为[`sync.missing`](#sync-文件同步相关的配置文件)，旧的值不会迁移。旧的`true`对应`missing.target: create`（现在只创建最后一级目录）；旧的`false`会跳过不存在的目标目录，对应`missing.target: skip`，而新的默认值`refuse`会拒绝同步。
 
 插件加载配置时，会从配置文件中删除它不认识的项（包括上面已删除的项和拼错的项），并在控制台逐项列出路径和值，同时在游戏内提示一次。删除前，原配置文件会备份为同目录下的`config.yml.<时间>-<内容哈希>.bak`。
 
@@ -303,12 +306,18 @@ terminal:
 sync:
   world:
     - "world"
+  extra_patterns: []
   source: ""
   target: []
-  ignore_inexistent_target_path: false
+  missing:
+    source_world: refuse
+    target: refuse
+    target_world: create
+    extra_pattern: skip
   concurrency: 4
-  ignore_files:
+  ignore_patterns:
     - "session.lock"
+  retain_patterns: []
   backup:
     enable: false
     timeout: 600
@@ -328,8 +337,24 @@ mcdr_root (./)
          └─ world
 ```
 
+`world`、`extra_patterns`、`ignore_patterns`、`retain_patterns`中的每一项都是一条[gitignore](https://git-scm.com/docs/gitignore)规则，写法与镜像服PrimeBackup中同名（或对应）的设置相同。规则区分大小写，Windows上也一样。以`!`开头的规则用来排除，它自己不选中任何内容。
+
 **world** `list`
-- 需要同步的目录，当存档有多个世界文件时需要添加
+- 要同步的世界，与PrimeBackup的`backup.targets`一样，只与源服务端目录第一层条目的名字匹配。直接写目录名即可，如`world`、`world_nether`；也可以写`world*`，或者用`!world_the_end`排除。
+- 规则末尾不要加`/`：只匹配名字，`world/`选不中任何目录。
+- 只选中目录。被匹配到的第一层文件不会同步，控制台会提示；文件请用`extra_patterns`同步。
+- 同步后，目标中的世界与源一致：只存在于目标世界中的文件和目录会被删除（`retain_patterns`匹配到的除外）。
+- 一条规则没有选中任何目录时，按`missing.source_world`处理。
+
+**extra_patterns** `list`
+- 世界以外要同步的文件或目录，如`config/carpet.conf`、`config/`。路径相对于服务端目录，规则在任意层级匹配；世界内部的匹配不算，世界只由`world`决定。
+- 选中的目录与世界一样整体同步，其中的内容不再单独匹配；选中的文件在内容不同时覆盖。只存在于目标中的路径保持原样。目标中缺少的上级目录会自动创建。
+- 同一个路径在源服务端是文件、在目标中是目录（或者反过来）时，同步在停止镜像服之前被拒绝。
+- 留空时，插件不会遍历世界以外的内容。
+- 一条规则没有匹配到任何内容时，按`missing.extra_pattern`处理。
+
+> [!WARNING]
+> 不要用`extra_patterns`选中`server.properties`：镜像服的端口等设置会被主服的覆盖。
 
 **source** `str`
 - 源服务端目录。留空时使用本MCDR的[工作目录](https://mcdreforged.readthedocs.io/zh-cn/latest/configuration.html#working-directory)（`working_directory`，默认为`server`，每次同步时读取，本MCDR重载配置后也随之变化），通常无需填写。文件由`source/world` 同步至==> `target/world`
@@ -338,14 +363,31 @@ mcdr_root (./)
 - 目标服务端目录, 只有一个目录时可只写字符串, 多个目录需为列表。将会为每个目标目录都同步一份源目录的文件。
 - 留空时由[`root_path`](#root_path--is_mcdr-镜像服目录与类型)推导：`is_mcdr`为`true`时，是`root_path`下镜像服MCDR的`working_directory`（每次同步时读取镜像服的`config.yml`，读取失败时同步被拒绝）；`is_mcdr`为`false`时，就是`root_path`。默认配置下为`./Mirror/server`。
 
-**ignore_inexistent_target_path** `bool`
-- 若某个目标服务端目录不存在，当设置为`false`时，将会跳过对该目录的同步，游戏内只提示跳过的目录数量，目录路径输出到控制台。当设置为`true`时，将会新建该目录并继续同步
+**missing**
+- 同步设置中写到、但实际不存在的内容如何处理，都在停止镜像服之前判断：
+  - `refuse`：拒绝同步，同步记为失败；
+  - `skip`：跳过这一项，其余照常同步。游戏内只提示跳过的数量，路径输出到控制台。
+- 所有内容都被跳过时，同步被拒绝，不会显示为“文件完全相同”。
+
+| 项 | 情况 | 可选值 | 默认值 |
+|---|---|---|---|
+| `source_world` | `world`中的一条规则在源服务端没有选中任何目录 | `refuse`；`skip`：目标中同名的世界保持原样 | `refuse` |
+| `target` | 目标目录不存在 | `refuse`；`skip`；`create`：只创建最后一级目录，上级目录也不存在时拒绝同步 | `refuse` |
+| `target_world` | 目标目录存在，但其中没有要同步的世界 | `create`；`refuse` | `create` |
+| `extra_pattern` | `extra_patterns`中的一条规则没有匹配到任何内容 | `skip`；`refuse` | `skip` |
+
+- 目标路径是一个文件时，同步总是被拒绝。
+- 复制每一项之前，插件会再次确认它在源服务端还存在。停止镜像服之后才消失的，同步中止并记为失败，目标中对应的内容不会被清空；已经复制的内容保留，镜像服中的内容可能不完整。
 
 **concurrency** `int`
 - 同步时进行哈希计算的线程数
 
-**ignore_files** `list`
-- 不进行同步的文件，若使用`carpet`模组和`plus-carpet-addition(PCA)`模组，建议添加`"carpet.conf"` `"pca.conf"`
+**ignore_patterns** `list`
+- 不同步、并在目标中删除的路径，对应PrimeBackup的`backup.ignore_patterns`。路径相对于服务端目录，只在被同步的世界和`extra_patterns`选中的内容中起作用。默认为`session.lock`。
+
+**retain_patterns** `list`
+- 不同步、并保留目标中原有内容的路径，对应PrimeBackup的`backup.retain_patterns`。适合放镜像服自己的设置文件，例如`carpet`模组和`plus-carpet-addition(PCA)`模组的`"carpet.conf"` `"pca.conf"`（规则中不含`/`时在任意层级匹配）。
+- 一个路径同时被`ignore_patterns`和`retain_patterns`匹配时，按`retain_patterns`处理。
 
 **backup** 同步前备份，见下文 [sync.backup](#syncbackup-同步前备份)
 
@@ -389,15 +431,15 @@ sync:
 
 | PrimeBackup 设置 | 出现警告的情况 |
 |---|---|
-| `backup.source_root`；`backup.source_root_use_mcdr_working_directory` 为 `true` 时则是镜像服的 `working_directory` | 它不是 `sync.target`，或者除它之外还有别的 `sync.target` 目录 |
-| `backup.targets` | `sync.world` 中有一项没有被它匹配到 |
-| `backup.ignore_patterns`、`backup.ignored_files` | 其中有 `sync.ignore_files` 里没有的规则 |
-| `backup.retain_patterns` | 不为空 |
+| `backup.source_root`；`backup.source_root_use_mcdr_working_directory` 为 `true` 时则是镜像服的 `working_directory` | 它不是已存在的 `sync.target`，或者除它之外还有别的已存在的 `sync.target` 目录 |
+| `backup.targets` | `sync.world` 选中的世界和 `sync.extra_patterns` 选中的路径中，有一项的第一层名字没有被它匹配到 |
+| `backup.ignore_patterns`、`backup.ignored_files` | 其中有一条规则不在 `sync.ignore_patterns` 或 `sync.retain_patterns` 中 |
+| `backup.retain_patterns` | 其中有一条规则不在 `sync.ignore_patterns` 或 `sync.retain_patterns` 中 |
 | `backup.reuse_stat_unchanged_file` | 为 `true`：大小和修改时间未变的文件不会被读取 |
 | `backup.creation_skip_missing_file` | 为 `true`：备份过程中消失的文件会被跳过 |
-| `storage_root` | 位于被同步的世界目录里面：同步会删除只存在于镜像服中的文件，备份也在其中 |
+| `storage_root` | 位于被同步的路径里面：同步会删除只存在于镜像服中的文件，备份也在其中 |
 
-两个插件都使用默认配置时，不会出现警告。
+两个插件都使用默认配置时，不会出现警告。规则按字符串本身比较：写法不同但效果相同的规则（如 `session.lock` 与 `/session.lock`）也会警告。
 
 **启用备份后，一次同步的过程**
 1. 输入 `!!mirror sync` 时，先定位镜像服的 PrimeBackup：插件、配置和数据库。缺少任何一项，同步立即被拒绝。接着检查上面的警告；有警告且 `confirm_on_warning` 为 `true` 时，必须确认后才同步。
@@ -407,7 +449,7 @@ sync:
 5. 广播备份编号，然后保存主服世界。`ensure_server_closed` 为 `true` 时，开始复制前的一刻镜像服必须仍处于停止状态；否则备份已不是最新的，同步被拒绝。
 6. `!!mirror history` 会显示每次同步的备份编号，备份之后失败的同步也会显示。
 
-如果所有目标目录中都还没有要同步的世界，就没有可丢失的内容：跳过备份，直接同步。
+备份和警告只针对同步会覆盖的内容：已存在的目标目录，以及要同步到其中的世界和路径。`missing.target: create` 新建的目标目录不需要备份。如果这些目标目录中都还没有要同步的内容，就没有可丢失的内容：跳过备份，直接同步。
 
 游戏内的消息不包含路径。同步被拒绝时，涉及的路径见 MCDR 控制台。
 
@@ -601,12 +643,18 @@ display:
   sync:
     world:
     - world
+    extra_patterns: []
     source: ''
     target: []
-    ignore_inexistent_target_path: false
+    missing:
+      source_world: refuse
+      target: refuse
+      target_world: create
+      extra_pattern: skip
     concurrency: 4
-    ignore_files:
+    ignore_patterns:
     - session.lock
+    retain_patterns: []
 
   command:
     permission:
