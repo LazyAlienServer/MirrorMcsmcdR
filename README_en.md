@@ -382,6 +382,7 @@ Each entry of `world`, `extra_patterns`, `ignore_patterns` and `retain_patterns`
 | `extra_pattern` | An `extra_patterns` pattern matches nothing | `skip`; `refuse` | `skip` |
 
 - A target path that is a file always refuses the sync.
+- When the source server directory, a selected world or directory, or a directory `extra_patterns` has to walk cannot be read (e.g. no permission), the sync is refused before the mirror is stopped; the paths and reasons go to the console. Only the top level of the selected worlds and directories is checked; a deeper directory that cannot be read makes the sync fail after the mirror is stopped, and the mirror may hold an incomplete copy.
 - Right before each entry is copied, the plugin checks again that it still exists in the source server. If it disappeared after the mirror was stopped, the sync stops and is recorded as failed, and the target's copy is not emptied; what was copied already stays, so the mirror may hold an incomplete copy.
 
 **concurrency** `int`

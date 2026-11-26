@@ -229,6 +229,8 @@ mirror_mcsmcdr:
         overlap_path: "Source path and target path overlap: {source} -> {target}"
         missing: "§cSync cancelled: §b{count}§c path(s) or pattern(s) in the sync config are missing or unusable. See the console for details"
         nothing: "§cSync cancelled: everything to sync was skipped as missing, nothing is left to copy. See the console for details"
+        source_unreadable: "§cSync cancelled: §b{count}§c directory(ies) to sync on the source server cannot be read. See the console for details"
+        source_unreadable_path: "Source directory cannot be read: {path} ({reason})"
         vanished: "§cSync stopped: a path to sync disappeared from the source server; §b{server_name}§c may hold an incomplete copy. See the console for details"
         vanished_path: "Source path disappeared before it was copied: {path}"
         clash: "§cSync cancelled: §b{count}§c path(s) of §7'sync.extra_patterns'§c are a file on one side and a directory on the other. See the console for details"

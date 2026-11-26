@@ -230,6 +230,8 @@ mirror_mcsmcdr:
         overlap_path: "源路径与目标路径重叠: {source} -> {target}"
         missing: "§c同步已取消，同步设置中有 §b{count} §c个路径或规则不存在或不可用。详情见控制台"
         nothing: "§c同步已取消，要同步的内容都因不存在而被跳过，没有可复制的内容。详情见控制台"
+        source_unreadable: "§c同步已取消，源服务器有 §b{count} §c个要同步的目录无法读取。详情见控制台"
+        source_unreadable_path: "源目录无法读取: {path} ({reason})"
         vanished: "§c同步已中止，要同步的路径从源服务器上消失了，§b{server_name} §c中的内容可能不完整。详情见控制台"
         vanished_path: "源路径在复制前消失: {path}"
         clash: "§c同步已取消，§7'sync.extra_patterns'§c 选中的路径中有 §b{count} §c个在一边是文件、另一边是目录。详情见控制台"

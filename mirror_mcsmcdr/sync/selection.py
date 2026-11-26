@@ -35,6 +35,9 @@ class Selection:
     missing_worlds: tuple[str, ...]
     # the ``sync.extra_patterns`` patterns that are not negated and match nothing outside the worlds on their own
     missing_extras: tuple[str, ...]
+    # the source directories that the sync would have to read and cannot, each with the reason:
+    # the source itself, a directory walked for ``sync.extra_patterns``, and each selected directory
+    unreadable: tuple[tuple[str, str], ...] = ()
 
     @property
     def paths(self) -> tuple[str, ...]:
@@ -67,26 +70,42 @@ class Selector:
         except (FileNotFoundError, NotADirectoryError):
             # nothing is there to select, so every pattern is missing
             names = []
+        except OSError as e:
+            # whether anything is missing cannot be told
+            return Selection(worlds=(), extras=(), world_files=(), missing_worlds=(), missing_extras=(), unreadable=((source, _reason(e)),))
+        unreadable: list[tuple[str, str]] = []
         matched = [name for name in names if self._world.match_file(name)]
         directories = {name for name in names if os.path.isdir(os.path.join(source, name))}
         worlds = tuple(name for name in matched if name in directories)
         if self._selecting_extra and names:
-            extras, missing_extras = self._find_extras(source, set(worlds))
+            extras, missing_extras = self._find_extras(source, set(worlds), unreadable)
         else:
             extras, missing_extras = (), tuple(pattern for pattern, _ in self._selecting_extra)
+        # a selected directory that cannot be listed would fail only once the mirror is stopped and the target partly deleted;
+        # only its top level is tried, as walking every world before each sync would cost as much as the sync itself
+        for path in worlds + extras:
+            full_path = os.path.join(source, *path.split("/"))
+            if os.path.isdir(full_path):
+                try:
+                    with os.scandir(full_path):
+                        pass
+                except OSError as e:
+                    unreadable.append((full_path, _reason(e)))
         return Selection(
             worlds=worlds,
             extras=extras,
             world_files=tuple(name for name in matched if name not in directories and name not in extras),
             missing_worlds=tuple(pattern for pattern, spec in self._selecting_world if not any(spec.match_file(name) for name in directories)),
             missing_extras=missing_extras,
+            unreadable=tuple(unreadable),
         )
 
-    def _find_extras(self, source: str, worlds: set[str]) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    def _find_extras(self, source: str, worlds: set[str], unreadable: list[tuple[str, str]]) -> tuple[tuple[str, ...], tuple[str, ...]]:
         """
         Walk ``source`` outside the worlds. A directory is matched as ``path/``, so that a pattern such as ``config/``
         selects it as a whole; it is then not descended into, nor is a link to a directory.
 
+        :param unreadable: receives each directory that cannot be walked, with the reason
         :return: the selected paths, and the patterns that match nothing on their own. A pattern that matches only
             inside a selected directory is not missing, so for such patterns those directories are walked as well
         """
@@ -96,8 +115,12 @@ class Selector:
         def walk(directory: str, prefix: str, selecting: bool) -> None:
             if not selecting and not unmatched:
                 return
-            with os.scandir(directory) as iterator:
-                entries = sorted(iterator, key=lambda entry: entry.name)
+            try:
+                with os.scandir(directory) as iterator:
+                    entries = sorted(iterator, key=lambda entry: entry.name)
+            except OSError as e:
+                unreadable.append((directory, _reason(e)))
+                return
             for entry in entries:
                 if not prefix and entry.name in worlds:
                     continue
@@ -116,6 +139,10 @@ class Selector:
 
         walk(source, "", True)
         return tuple(found), tuple(unmatched)
+
+
+def _reason(error: OSError) -> str:
+    return error.strerror or type(error).__name__
 
 
 class PathPatterns:

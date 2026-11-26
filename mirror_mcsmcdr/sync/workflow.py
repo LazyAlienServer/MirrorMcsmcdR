@@ -163,6 +163,14 @@ class SyncWorkflow:
         :raise _SyncRefused: if it would
         """
         plan = runtime.world_sync.plan(source_path, targets)
+        unreadable = plan.selection.unreadable
+        if unreadable:
+            # what is missing or selected cannot be told from what cannot be read
+            message = self._tr("command.sync.fail.source_unreadable", count=len(unreadable))
+            self._server.broadcast(message)
+            for path, reason in unreadable:
+                self._server.logger.warning(self._tr("command.sync.fail.source_unreadable_path", title=False, path=path, reason=reason))
+            raise _SyncRefused(message.to_plain_text())
         for name in plan.selection.world_files:
             self._server.logger.warning(self._tr("command.sync.world_file", title=False, path=os.path.join(plan.source, name)))
         if plan.refused:
