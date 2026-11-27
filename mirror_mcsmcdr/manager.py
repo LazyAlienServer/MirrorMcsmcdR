@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
 from threading import Lock
 from typing import Any, Callable, Iterator, Optional
@@ -625,7 +626,8 @@ class MirrorManager:
         reason = "adopted" if adopted else (("plain" if plain else "found") if result.ok else result.outcome.value)
         self.server.logger.warning(self.rtr(f"command.recover.auto.console.{reason}", title=False))
         for info in (result.picked,) if result.picked is not None and result.ok else result.found:
-            self.server.logger.warning(self._console_process_line(info))
+            # a dry run marks the one it would adopt; left alone, it stays untracked
+            self.server.logger.warning(self._console_process_line(info if adopted else replace(info, origin=Origin.UNTRACKED)))
         if adopted and not result.console:
             self.server.logger.warning(self.rtr("command.recover.no_console", title=False))
         self.server.broadcast(self.rtr(f"command.recover.auto.{'adopted' if adopted else 'found'}"))
