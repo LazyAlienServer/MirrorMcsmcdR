@@ -143,7 +143,7 @@ mirror_mcsmcdr:
     detail:
       line: "§eDetail§7: §f{detail}"
       panel: reported by MCSManager
-      foreign_listener: "the port is held by processes not started by the plugin; §7{prefix} kill -f§f ends them"
+      foreign_listener: "the port is held by untracked processes; §7{prefix} kill -f§f ends them"
       untracked: "an untracked {server_type} is running in the launch path; §7{prefix} recover§f adopts it"
       start_pending: "starting command sent; waiting for the server to open the port"
       port_closed: "the server process is running but the port is not open; it may be starting or exiting. If it stays so, check §7'port'§f in the config, or end it with §7{prefix} kill"
@@ -174,8 +174,8 @@ mirror_mcsmcdr:
         listening: "§ePort §b{port}§7: §flistening"
         closed: "§ePort §b{port}§7: §fnot listening"
       foreign:
-        title: "§ePort §b{port}§7: §cheld by the following §b{count} §cprocess(es) not started by the plugin:"
-        count: "§ePort §b{port}§7: §cheld by §b{count} §cprocess(es) not started by the plugin"
+        title: "§ePort §b{port}§7: §cheld by the following §b{count} §cuntracked process(es):"
+        count: "§ePort §b{port}§7: §cheld by §b{count} §cuntracked process(es)"
       untracked:
         title: "§eUntracked {server_type} in the launch path§7: §cthe following §b{count} §cprocess(es):"
         count: "§eUntracked {server_type} in the launch path§7: §b{count} §cprocess(es)"
@@ -221,7 +221,7 @@ mirror_mcsmcdr:
         unsupported_force: The current config does not support the §7kill -f§f command; enable §7'terminal'§f and disable §7'mcsm'
       targets:
         title: "§7{prefix} kill -f §fwill §cforcefully terminate §b{count} §fprocess(es):"
-        count: "§7{prefix} kill -f §fwill §cforcefully terminate §b{count} §fprocess(es), §b{foreign} §fof them not started by the plugin"
+        count: "§7{prefix} kill -f §fwill §cforcefully terminate §b{count} §fprocess(es), §b{foreign} §fof them untracked"
 
     sync:
       fail:
