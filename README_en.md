@@ -545,7 +545,7 @@ action:
 **timeout** `int`
 - How many seconds the mirror server may take to start (stop) after the command was sent. Meanwhile its status is shown as `starting` (`stopping`); after that the plugin judges the status only by what it observes, such as the port and the process. Increase `start.timeout` if the mirror server starts slowly
 - The config cannot be reloaded while the mirror server is `starting`. Wait for it, or run `!!mirror kill` first
-- When MCSM is enabled the status comes from MCSM, and this option does not affect it
+- When MCSM is enabled the status comes from MCSM, and this option does not affect it. The plugin broadcasts `has started` as soon as the panel reports the instance running, which may be while the server is still loading its world
 - After an automatic stop for a sync (`auto_server_restart`, `auto_mcdr_stop`), the plugin waits up to `stop.timeout` seconds; past that it outputs `automatic shutdown failed` with the current status of the mirror server and tells the sender what it is still waiting for
 - After every start (`!!mirror start`, the restart after a sync, and the start in `server stopped, MCDR still running`), the plugin waits in the background for the mirror server to be `running` and then broadcasts `has started`. If it becomes `stopped` or `status unknown` or shows an anomaly first, or is still not `running` after `start.timeout` seconds, it broadcasts `start not completed` with the current status and tells the sender the details. With MCSManager, `stopped` and `status unknown` (a busy instance) reported by the panel may be temporary, so the plugin keeps waiting until the timeout; after an automatic stop for a sync, it likewise keeps waiting through a `status unknown` from the panel
 
