@@ -597,6 +597,7 @@ save_world:
 
 **max_history_count** `int`
 - The maximum number of synchronization history records to save. Set it to `-1` to remove the limit, or `0` to disable synchronization history. The default is `5`.
+- Only syncs that got under way are recorded: a sync refused while its targets and content are settled, one whose backup failed, and one stopped or failed while copying are recorded as failed. A sync that never started, because the status of the mirror server did not allow it, the automatic stop failed, another sync was running or the pre-sync backup was unavailable, is not recorded.
 
 ### confirm Configuration
 Players can only confirm the commands they have executed
