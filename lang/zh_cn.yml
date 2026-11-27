@@ -14,7 +14,7 @@ mirror_mcsmcdr:
 
   multi_manager:
     init:
-      error: "设置 §b{prefix}§f 时出错: §4{e}"
+      error: "设置 §b{prefix}§f 时出错：§4{e}"
       success: "§b{prefix} §a构建成功"
       fail: "{prefix} §c构建失败"
       prefix_notfound: "§b{prefix} §c配置文件缺失，实例已禁用"
@@ -22,18 +22,18 @@ mirror_mcsmcdr:
   manager: 
     load: "§b{prefix} §a已加载"
     reload:
-      success: §a配置文件重载成功 §7({prefix})
-      fail: §c无效的配置文件 §7({prefix})§c，请查看控制台并处理报错
-      fail.proxy: §c配置文件 §7({prefix}) §c的接口 §4'{proxy}' §c缺少有效值 §4'{keys}'
-      fail.syncing: §c同步进行中，无法重载配置文件 §7({prefix})
-      fail.starting: §b{server_name} §c正在启动，无法重载配置文件 §7({prefix})§c，请等待启动完成或先执行 §7{prefix} kill
+      success: §a配置文件重载成功§7（{prefix}）
+      fail: §c无效的配置文件§7（{prefix}）§c，请查看控制台并处理报错
+      fail.proxy: §c配置文件§7（{prefix}）§c的接口 §4'{proxy}' §c缺少有效值 §4'{keys}'
+      fail.syncing: §c同步进行中，无法重载配置文件§7（{prefix}）
+      fail.starting: §b{server_name} §c正在启动，无法重载配置文件§7（{prefix}）§c，请等待启动完成或先执行 §7{prefix} kill
     permission_denied: §b{server_name} §c操作权限不足
     console_only: §b{server_name} §c此命令仅可通过终端执行
     mcsm_disabled: §cMCSM-API 未启用
     unavailable: §c配置文件错误，§b{prefix} §c实例已禁用
     backup:
-      ready: "§b{prefix}§f: 同步前备份已就绪，§3PrimeBackup§f §bv{version} §f位于 §7{path}"
-      unavailable: "§b{prefix}§f: §c同步前备份不可用，修复之前所有同步都会被拒绝: {reason}"
+      ready: "§b{prefix}§f：同步前备份已就绪，§3PrimeBackup§f §bv{version} §f位于 §7{path}"
+      unavailable: "§b{prefix}§f：§c同步前备份不可用，修复之前所有同步都会被拒绝：{reason}"
   
   command:
 
@@ -77,7 +77,7 @@ mirror_mcsmcdr:
       others: §c你不能确认其他人的任务
 
     log:
-      status: "§b{server_name} §f控制台日志输出: {status}"
+      status: "§b{server_name} §f控制台日志输出：{status}"
       enabled: "§a已启用"
       enabled_remaining: "§a已启用§f，还将输出 §b{count} §f行"
       set_enable: "§b{server_name} §f控制台日志输出§a已启用"
@@ -85,12 +85,12 @@ mirror_mcsmcdr:
       disabled: "§c已禁用"
       set_disable: "§b{server_name} §f控制台日志输出§c已禁用"
       invalid_count: "§c输出行数必须是正整数"
-      help: "§7用法: {prefix} log enable|disable|<count>"
+      help: "§7用法：{prefix} log enable|disable|<count>"
       output_end: "§a输出 §b{count} §a行结束"
       reset_on_stop: "§7Subprocess 线程已停止"
       unavailable: "§c此命令仅在使用 §7subprocess§c 代理时可用"
     input:
-      sent: "§a命令已发送: §f{cmd}"
+      sent: "§a命令已发送：§f{cmd}"
       failed: "§c命令发送失败"
       not_running: "§b{server_name} §c未运行，无法发送命令"
       unavailable: "§c此命令仅在使用 §7subprocess§c 代理时可用"
@@ -103,22 +103,22 @@ mirror_mcsmcdr:
       success: 已接管
       no_console: "§e未找到可以输入指令的控制台，只能使用 §7{prefix} kill -f §e结束它"
       found:
-        title: "§e启动目录中未跟踪的{server_type}§7: §b{count} §f个"
-        count: "§e启动目录中未跟踪的{server_type}§7: §b{count} §f个"
+        title: "§e启动目录中未跟踪的{server_type}§7：§b{count} §f个"
+        count: "§e启动目录中未跟踪的{server_type}§7：§b{count} §f个"
       adopted:
-        title: "§e已接管的进程§7:"
+        title: "§e已接管的进程§7："
         count: "§e已接管 §b{count} §f个进程"
       auto:
         adopted: "§e已自动接管未跟踪的 §b{server_name}§e，详情见控制台"
         found: "§e发现未跟踪的 §b{server_name}§e，未自动接管，可使用 §7{prefix} recover §e接管，详情见控制台"
-        error: "§c查找未跟踪的 §b{server_name} §c时出错: {e}"
+        error: "§c查找未跟踪的 §b{server_name} §c时出错：{e}"
         console:
-          adopted: "已自动接管启动目录中未跟踪的{server_type}:"
-          found: "启动目录中有未跟踪的{server_type}，terminal.auto_recover 为 false，未自动接管:"
-          plain: "启动目录中有未跟踪的服务端，is_mcdr 为 false 时不会自动接管:"
-          ambiguous: "启动目录中有多个未跟踪的{server_type}，未自动接管，请使用 {prefix} recover <pid> 指定:"
-          foreign_listener: "启动目录中有未跟踪的{server_type}，但端口被它以外的进程占用，未自动接管:"
-          gone: "启动目录中未跟踪的{server_type}，在接管时退出了:"
+          adopted: "已自动接管启动目录中未跟踪的{server_type}："
+          found: "启动目录中有未跟踪的{server_type}，terminal.auto_recover 为 false，未自动接管："
+          plain: "启动目录中有未跟踪的服务端，is_mcdr 为 false 时不会自动接管："
+          ambiguous: "启动目录中有多个未跟踪的{server_type}，未自动接管，请使用 {prefix} recover <pid> 指定："
+          foreign_listener: "启动目录中有未跟踪的{server_type}，但端口被它以外的进程占用，未自动接管："
+          gone: "启动目录中未跟踪的{server_type}，在接管时退出了："
       fail:
         unsupported: 当前配置文件不支持 §7recover§f 命令，需要启用 §7'terminal'§f 并关闭 §7'mcsm'
         tracked: 插件正在跟踪 §b{server_name} §f的进程，无需接管
@@ -137,12 +137,12 @@ mirror_mcsmcdr:
       mcdr_only: 服务端已停止，MCDR 仍在运行
 
     anomaly:
-      orphan_screen: "§c已分离（Java: 未启动；Screen: 已启动）"
+      orphan_screen: "§c已分离（Java：未启动；Screen：已启动）"
       orphan_process: "§c已失去控制台（进程仍在运行）"
       mcdr_missing: "§c未找到 MCDR 进程"
 
     detail:
-      line: "§e详情§7: §f{detail}"
+      line: "§e详情§7：§f{detail}"
       panel: 状态由 MCSManager 报告
       foreign_listener: 端口被不是插件启动的进程占用，可使用 §7{prefix} kill -f §f结束这些进程
       untracked: 启动目录中有正在运行的未跟踪{server_type}，可使用 §7{prefix} recover §f接管它
@@ -167,19 +167,19 @@ mirror_mcsmcdr:
 
     status:
       unsupported: 当前配置文件不支持 §7status§f 命令，需要配置 §7'mcsm'§f 或 §7'terminal'
-      mcdr: "§eMCDR§7: §f{process}"
-      server: "§e服务端§7: §f{process}"
-      children: "§e子进程§7: §f{processes}"
-      others: "§e其他进程§7: §b{count} §f个"
+      mcdr: "§eMCDR§7：§f{process}"
+      server: "§e服务端§7：§f{process}"
+      children: "§e子进程§7：§f{processes}"
+      others: "§e其他进程§7：§b{count} §f个"
       port:
-        listening: "§e端口 §b{port}§7: §f已监听"
-        closed: "§e端口 §b{port}§7: §f未监听"
+        listening: "§e端口 §b{port}§7：§f已监听"
+        closed: "§e端口 §b{port}§7：§f未监听"
       foreign:
-        title: "§e端口 §b{port}§7: §c被以下 §b{count} §c个不是插件启动的进程占用:"
-        count: "§e端口 §b{port}§7: §c被 §b{count} §c个不是插件启动的进程占用"
+        title: "§e端口 §b{port}§7：§c被以下 §b{count} §c个不是插件启动的进程占用："
+        count: "§e端口 §b{port}§7：§c被 §b{count} §c个不是插件启动的进程占用"
       untracked:
-        title: "§e启动目录中未跟踪的{server_type}§7: §c以下 §b{count} §c个进程:"
-        count: "§e启动目录中未跟踪的{server_type}§7: §b{count} §c个进程"
+        title: "§e启动目录中未跟踪的{server_type}§7：§c以下 §b{count} §c个进程："
+        count: "§e启动目录中未跟踪的{server_type}§7：§b{count} §c个进程"
       not_running: 未运行
       running: 运行中
       count: "§b{count} §f个"
@@ -196,7 +196,7 @@ mirror_mcsmcdr:
         adopted: 插件接管的进程
         picked: 即将接管的进程
         untracked: 插件未跟踪的进程
-      console: "§b{prefix}§f: {name} (PID §b{pid}§f)，{origin}，命令行: §7{cmdline}"
+      console: "§b{prefix}§f：{name}（PID §b{pid}§f），{origin}，命令行：§7{cmdline}"
 
     start:
       success: 正在启动
@@ -221,7 +221,7 @@ mirror_mcsmcdr:
         unsupported: 当前配置文件不支持 §7kill§f 命令，需要配置 §7'mcsm'§f 或 §7'terminal'
         unsupported_force: 当前配置文件不支持 §7kill -f§f 命令，需要启用 §7'terminal'§f 并关闭 §7'mcsm'
       targets:
-        title: "§7{prefix} kill -f §f将§c强制终止§f以下 §b{count} §f个进程:"
+        title: "§7{prefix} kill -f §f将§c强制终止§f以下 §b{count} §f个进程："
         count: "§7{prefix} kill -f §f将§c强制终止 §b{count} §f个进程，其中 §b{foreign} §f个不是插件启动的"
 
     sync:
@@ -229,15 +229,15 @@ mirror_mcsmcdr:
         task_exist: §b{server_name} §c已有正在进行中的同步任务
         target: "§c同步已取消，无法读取镜像服的 MCDR 配置文件，不能确定同步目标。请检查镜像服的 config.yml，或填写 §7'sync.target'§c。详情见控制台"
         overlap: "§c同步已取消，源服务器要同步的路径与 §b{server_name} §c的对应路径是同一个，或者一个在另一个里面。详情见控制台"
-        overlap_path: "源路径与目标路径重叠: {source} -> {target}"
+        overlap_path: "源路径与目标路径重叠：{source} -> {target}"
         missing: "§c同步已取消，同步设置中有 §b{count} §c个路径或规则不存在或不可用。详情见控制台"
         nothing: "§c同步已取消，要同步的内容都因不存在而被跳过，没有可复制的内容。详情见控制台"
         source_unreadable: "§c同步已取消，源服务器有 §b{count} §c个要同步的目录无法读取。详情见控制台"
-        source_unreadable_path: "源目录无法读取: {path} ({reason})"
+        source_unreadable_path: "源目录无法读取：{path}（{reason}）"
         vanished: "§c同步已中止，要同步的路径从源服务器上消失了，§b{server_name} §c中的内容可能不完整。详情见控制台"
-        vanished_path: "源路径在复制前消失: {path}"
+        vanished_path: "源路径在复制前消失：{path}"
         clash: "§c同步已取消，§7'sync.extra_patterns'§c 选中的路径中有 §b{count} §c个在一边是文件、另一边是目录。详情见控制台"
-        clash_path: "源路径与目标路径类型不同: {source} -> {target}"
+        clash_path: "源路径与目标路径类型不同：{source} -> {target}"
         unsupported: §c操作失败 / §b{server_name} §c当前配置文件不支持获取运行状态，需要配置 §7'mcsm'§c 或 §7'terminal'
       hint:
         running: "§f请先停止 §b{server_name} §f再进行同步"
@@ -248,28 +248,28 @@ mirror_mcsmcdr:
         exiting: §b{server_name} §f的 MCDR 进程未停止，自动关闭 §b{server_name}§f MCDR 并进行同步...
         fail: §c自动关闭失败，§b{server_name} §f{status}
       success: §b{server_name} §a正在进行同步...
-      world_file: "'sync.world' 匹配到的是文件而不是世界目录，不会被同步；要同步它，请加入 'sync.extra_patterns': {path}"
+      world_file: "'sync.world' 匹配到的是文件而不是世界目录，不会被同步；要同步它，请加入 'sync.extra_patterns'：{path}"
       skipped: "§e按 §7'sync.missing'§e 的设置，跳过了同步设置中 §b{count} §e个不存在的路径或规则。详情见控制台"
       missing:
-        source_world: "世界规则在 {source} 中没有选中任何目录: {pattern}"
-        extra_pattern: "额外规则在 {source} 中世界以外没有匹配到任何内容: {pattern}"
-        target: "目标目录不存在: {path}"
-        target_parent: "目标目录的上级目录不存在，无法创建: {path}"
-        target_not_directory: "目标不是目录: {path}"
-        target_world: "目标中没有这个世界: {path}"
+        source_world: "世界规则在 {source} 中没有选中任何目录：{pattern}"
+        extra_pattern: "额外规则在 {source} 中世界以外没有匹配到任何内容：{pattern}"
+        target: "目标目录不存在：{path}"
+        target_parent: "目标目录的上级目录不存在，无法创建：{path}"
+        target_not_directory: "目标不是目录：{path}"
+        target_world: "目标中没有这个世界：{path}"
       completed: §a同步完成！§f用时 §b{time}s §7/ §f更新了 §b{changed_files_count} §f个文件
       identical: §a文件完全相同，无需同步
       error: "§c同步时发生错误，请前往终端查看错误信息"
       backup:
-        start: "§b{server_name}§f: 正在用其 §3PrimeBackup §f备份..."
+        start: "§b{server_name}§f：正在用其 §3PrimeBackup §f备份..."
         done: "§a已创建 §b{server_name} §a的备份 §b#{backup_id}"
         skipped: "§b{server_name} §f中还没有要同步的内容，无需备份"
-        unavailable: "§c同步已取消，无法进行备份: {reason}。详情见控制台"
-        failed: "§c同步已取消，备份失败: {reason}。详情见控制台"
-        stale: "§c同步已在复制前取消: {reason}。备份已不是最新的"
+        unavailable: "§c同步已取消，无法进行备份：{reason}。详情见控制台"
+        failed: "§c同步已取消，备份失败：{reason}。详情见控制台"
+        stale: "§c同步已在复制前取消：{reason}。备份已不是最新的"
         warnings: "§b{server_name} §e的 §3PrimeBackup §e有 §b{count} §e项设置与同步设置不一致，备份可能不包含同步将覆盖的全部内容。详情见控制台"
-        detail: "§b{server_name} §f的同步前备份: {detail}"
-        output: "§3PrimeBackup §7输出的最后几行:\n§f{output}"
+        detail: "§b{server_name} §f的同步前备份：{detail}"
+        output: "§3PrimeBackup §7输出的最后几行：\n§f{output}"
         reason:
           plain_server: "§7'is_mcdr'§c 为 false 时不支持同步前备份，请关闭 §7'sync.backup.enable'"
           mcdr_path_not_found: "§c镜像服的 MCDR 目录不存在"
@@ -288,46 +288,46 @@ mirror_mcsmcdr:
           timeout: "§3PrimeBackup §c未在 {timeout} 秒内完成"
           exit_code: "§3PrimeBackup §c退出码为 {code}"
           no_backup_id: "§3PrimeBackup §c没有报告备份编号"
-          backup_id_mismatch: "§3PrimeBackup §c报告了不同的备份编号: {ids}"
+          backup_id_mismatch: "§3PrimeBackup §c报告了不同的备份编号：{ids}"
         warning:
-          source_mismatch: "§b{server_name} §f的同步前备份: §e其 §3PrimeBackup §e备份的目录 §7{source} §e不是任何一个同步目标 §7({targets})§e，同步覆盖的内容不会被备份"
-          targets_not_backed_up: "§b{server_name} §f的同步前备份: §e以下同步目标不是其 §3PrimeBackup §e备份的目录，会在没有备份的情况下被覆盖: §7{targets}"
-          worlds_not_targeted: "§b{server_name} §f的同步前备份: §e其 §3PrimeBackup §e的 §7'backup.targets' [{targets}] §e不包含以下被同步的顶层条目: §7{worlds}"
-          ignored: "§b{server_name} §f的同步前备份: §e其 §3PrimeBackup §e不备份以下内容 (§7'ignore_patterns'§e / §7'ignored_files'§e)，这些规则不在 §7'sync.ignore_patterns'§e 或 §7'sync.retain_patterns'§e 中: §7{patterns}"
-          retained: "§b{server_name} §f的同步前备份: §e其 §3PrimeBackup §e的 §7'retain_patterns'§e 让以下内容不进入备份，这些规则不在 §7'sync.ignore_patterns'§e 或 §7'sync.retain_patterns'§e 中: §7{patterns}"
-          reuse_stat_unchanged_file: "§b{server_name} §f的同步前备份: §e其 §3PrimeBackup §e开启了 §7'reuse_stat_unchanged_file'§e，大小和修改时间未变的文件不会被读取，备份中可能是旧内容"
-          creation_skip_missing_file: "§b{server_name} §f的同步前备份: §e其 §3PrimeBackup §e开启了 §7'creation_skip_missing_file'§e，备份过程中消失的文件会被直接跳过"
-          storage_in_world: "§b{server_name} §f的同步前备份: §3PrimeBackup §e的存储目录 §7{storage} §e位于被同步的路径 §7{world} §e中，同步会删除备份"
+          source_mismatch: "§b{server_name} §f的同步前备份：§e其 §3PrimeBackup §e备份的目录 §7{source} §e不是任何一个同步目标§7（{targets}）§e，同步覆盖的内容不会被备份"
+          targets_not_backed_up: "§b{server_name} §f的同步前备份：§e以下同步目标不是其 §3PrimeBackup §e备份的目录，会在没有备份的情况下被覆盖：§7{targets}"
+          worlds_not_targeted: "§b{server_name} §f的同步前备份：§e其 §3PrimeBackup §e的 §7'backup.targets' [{targets}] §e不包含以下被同步的顶层条目：§7{worlds}"
+          ignored: "§b{server_name} §f的同步前备份：§e其 §3PrimeBackup §e不备份以下内容（§7'ignore_patterns'§e / §7'ignored_files'§e），这些规则不在 §7'sync.ignore_patterns'§e 或 §7'sync.retain_patterns'§e 中：§7{patterns}"
+          retained: "§b{server_name} §f的同步前备份：§e其 §3PrimeBackup §e的 §7'retain_patterns'§e 让以下内容不进入备份，这些规则不在 §7'sync.ignore_patterns'§e 或 §7'sync.retain_patterns'§e 中：§7{patterns}"
+          reuse_stat_unchanged_file: "§b{server_name} §f的同步前备份：§e其 §3PrimeBackup §e开启了 §7'reuse_stat_unchanged_file'§e，大小和修改时间未变的文件不会被读取，备份中可能是旧内容"
+          creation_skip_missing_file: "§b{server_name} §f的同步前备份：§e其 §3PrimeBackup §e开启了 §7'creation_skip_missing_file'§e，备份过程中消失的文件会被直接跳过"
+          storage_in_world: "§b{server_name} §f的同步前备份：§3PrimeBackup §e的存储目录 §7{storage} §e位于被同步的路径 §7{world} §e中，同步会删除备份"
     
     history:
       record:
-        success: "§e[{time}] §b{operator} §a成功 §7| §f变化文件: §b{change_file_count} §f个 耗时: §b{duration}s"
-        identical: "§e[{time}] §b{operator} §a无变化 §7| §f耗时: §b{duration}s"
-        failed: "§e[{time}] §b{operator} §c失败 §7| §f异常: §4{exception}"
-        backup: " §7| §f备份: §b#{backup_id}"
+        success: "§e[{time}] §b{operator} §a成功 §7| §f变化文件：§b{change_file_count} §f个 耗时：§b{duration}s"
+        identical: "§e[{time}] §b{operator} §a无变化 §7| §f耗时：§b{duration}s"
+        failed: "§e[{time}] §b{operator} §c失败 §7| §f异常：§4{exception}"
+        backup: " §7| §f备份：§b#{backup_id}"
   
   mcsm:
     disabled: §cMCSM-API 未启用
     error:
-      request: "§cMCSM 请求错误，请报告管理员: §4{e}"
-      "400": "[400] 请求参数错误，请尝试前往 GitHub 提交 issue 以解决 ({error})"
-      "403": "[403] 请求权限不足，请报告服务器管理员 ({error})"
-      "500": "[500] 未知的服务器内部错误 ({error})"
+      request: "§cMCSM 请求错误，请报告管理员：§4{e}"
+      "400": "[400] 请求参数错误，请尝试前往 GitHub 提交 issue 以解决（{error}）"
+      "403": "[403] 请求权限不足，请报告服务器管理员（{error}）"
+      "500": "[500] 未知的服务器内部错误（{error}）"
       "503": "[503] 请求过于频繁"
 
   screen:
     error: "§cScreen 错误，请报告管理员，详情见控制台"
-    error_detail: "Screen 错误: {e}"
+    error_detail: "Screen 错误：{e}"
 
   process_record:
-    unreadable: "§e无法读取进程记录 §7{path}§e，之前启动的镜像服不再被跟踪: §4{error}"
-    unwritable: "§e无法写入进程记录 §7{path}§e，插件重载后将无法跟踪正在运行的镜像服: §4{error}"
+    unreadable: "§e无法读取进程记录 §7{path}§e，之前启动的镜像服不再被跟踪：§4{error}"
+    unwritable: "§e无法写入进程记录 §7{path}§e，插件重载后将无法跟踪正在运行的镜像服：§4{error}"
 
   config_loader:
     merged: "§a已自动补全配置文件中缺失的项"
     created: "§e配置文件不存在，使用默认值创建 config.yml"
     legacy_json: "§econfig.json 格式已弃用，自动转换为 config.yml；原文件备份为 config.json.bak"
-    unknown_key: "配置项 §b{prefix}§f: 已移除未知项 §7'{path}'§f（值: §7{value}§f）"
+    unknown_key: "配置项 §b{prefix}§f：已移除未知项 §7'{path}'§f（值：§7{value}§f）"
     backup: "旧配置文件已备份到 §7{path}"
     unknown_removed: "§e已从配置文件中移除 §b{count} §e个未知项，详见控制台"
   
