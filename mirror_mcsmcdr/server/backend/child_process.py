@@ -49,7 +49,6 @@ class SubprocessProxy(TerminalProxy):
         if not os.path.isdir(self.path):
             return result.reject(ActionResult.Outcome.PATH_NOT_FOUND)
 
-        encoding = "oem" if os.name == "nt" else "utf-8"
         self.process = subprocess.Popen(
             self.command,
             cwd=self.path,
@@ -58,7 +57,7 @@ class SubprocessProxy(TerminalProxy):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            encoding=encoding,
+            encoding="utf-8",
             errors="replace",
             bufsize=1,
             # its own process group, so that the shell can be signalled together with the server it launched
