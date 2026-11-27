@@ -79,7 +79,7 @@ class Region:
 class World:
 
     def __init__(self, world_path: str) -> None:
-        self.loaded_region = {}
+        self.loaded_region: dict[tuple[int, int, str], Region] = {}
         self.world_path = world_path
     
     def get_region(self, region_x: int, region_z: int, dimension: str) -> Region:

@@ -14,23 +14,26 @@ mirror_mcsmcdr:
 
   multi_manager:
     init:
-      error: "An error occurred when configuring {prefix}: {e}"
-      success: "{prefix} §bloaded successfully"
-      fail: "{prefix} §cloaded unsuccessfully"
-      prefix_notfound: "§cConfig file for {prefix} is missing, instance has been disabled"
+      error: "An error occurred when configuring §b{prefix}§f: §4{e}"
+      success: "§b{prefix} §aloaded successfully"
+      fail: "{prefix} §cfailed to load"
+      prefix_notfound: "§cConfig file for §b{prefix}§c is missing, instance has been disabled"
 
   manager: 
-    load: "{prefix} loaded"
+    load: "§b{prefix} §aloaded"
     reload:
       success: §aConfig file reloaded successfully§7 ({prefix})
       fail: §cInvalid config file §7({prefix})§c, please check the console and address the error
-      fail.proxy: §cInterface §7({prefix})§c config §4{proxy} §cmisses valid value(s) §4'{keys}'
+      fail.proxy: "§cConfig §7({prefix})§c: interface §4'{proxy}' §cis missing valid value(s) §4'{keys}'"
       fail.syncing: §cCannot reload config §7({prefix})§c while a synchronization is in progress
-      fail.starting: §cCannot reload config §7({prefix})§c while §b{server_name}§c is starting. Wait for it, or run {prefix} kill first
+      fail.starting: §cCannot reload config §7({prefix})§c while §b{server_name}§c is starting. Wait for it, or run §7{prefix} kill§c first
     permission_denied: §b{server_name}§c Permission denied
     console_only: §b{server_name}§c Console-only command
     mcsm_disabled: §cMCSM-API is disabled
-    unavailable: §cConfig error, §4{prefix}§c instance disabled
+    unavailable: §cConfig error, §b{prefix}§c instance disabled
+    backup:
+      ready: "§b{prefix}§f: pre-sync backup ready, §3PrimeBackup§f §bv{version}§f at §7{path}"
+      unavailable: "§b{prefix}§f: §cpre-sync backup unavailable, every sync will be refused until this is fixed: {reason}"
   
   command:
 
@@ -41,15 +44,16 @@ mirror_mcsmcdr:
     help:
       info: "§7----- §e{TITLE} §bv{VERSION} §7-----§f"
       help: §7{prefix} help §fShow this help message
-      status: §7{prefix} status §fCheck the status of {server_name}
-      start: §7{prefix} start §fStart {server_name}
-      stop: §7{prefix} stop §fStop {server_name}
-      kill: §7{prefix} kill [-f|--force] §fKill {server_name}
-      sync: §7{prefix} sync §fSynchronize {server_name}
+      status: §7{prefix} status §fCheck the status of §b{server_name}§f
+      start: §7{prefix} start §fStart §b{server_name}§f
+      stop: §7{prefix} stop §fStop §b{server_name}§f
+      kill: §7{prefix} kill [-f|--force] §fKill §b{server_name}§f
+      recover: §7{prefix} recover [pid] §fAdopt an untracked §b{server_name}§f
+      sync: §7{prefix} sync §fSynchronize §b{server_name}§f
       history: §7{prefix} history [page] §fView synchronization history
-      reload: §7{prefix} reload §fReload config of {server_name}
-      log: §7{prefix} log [count]|enable|disable §fControl subprocess proxy logs
-      execute: §7{prefix} execute <command> §fSend a command through the subprocess proxy
+      reload: §7{prefix} reload §fReload config of §b{server_name}§f
+      log: §7{prefix} log [count]|enable|disable §fControl §7subprocess§f proxy logs
+      input: §7{prefix} input <command> §fSend a command through the §7subprocess§f proxy
 
     proxy:
       title: "§eInterface Status"
@@ -58,111 +62,272 @@ mirror_mcsmcdr:
       error: "§cConfig error"
 
     confirm:
-      prompt: §7{prefix} confirm §fto confirm operation
+      prompt: §7{prefix} confirm §fto confirm the operation
+      prompts:
+        start: §b{server_name}§f will start; §7{prefix} confirm §fto confirm
+        stop: §b{server_name}§f will stop; §7{prefix} confirm §fto confirm
+        kill: §b{server_name}§f will be killed; §7{prefix} confirm §fto confirm
+        forcekill: §fThe processes of §b{server_name}§f listed above will be §cforce-killed§f; §7{prefix} confirm §fto confirm
+        sync: §b{server_name}§f will be synced; §7{prefix} confirm §fto confirm
+        recover: §fThe processes listed above will be adopted; §7{prefix} confirm §fto confirm
       cancel: Operation §b{server_name}-{action}§c cancelled
       previous: Previous operation §b{server_name}-{action}§c cancelled
-      timeout: Operation §b{server_name}-{action}§c timed out
+      timeout: Operation §b{server_name}-{action}§c timed out and was cancelled
       none: §cNo tasks to confirm
-      others: §cYou cannot confirm other people's task
+      others: §cYou cannot confirm other people's tasks
 
     log:
-      status: "{server_name} console log output: {status}"
+      status: "§b{server_name}§f console log output: {status}"
       enabled: "§aEnabled"
-      set_enable: "{server_name} console log output §aenabled"
-      enabled_count: "{server_name} console log output §aenabled§f, stopping after §b{count} §flines"
+      enabled_remaining: "§aEnabled§f, §b{count} §fmore line(s) to output"
+      set_enable: "§b{server_name}§f console log output §aenabled"
+      enabled_count: "§b{server_name}§f console log output §aenabled§f, stopping after §b{count} §flines"
       disabled: "§cDisabled"
-      set_disable: "{server_name} console log output §cdisabled"
+      set_disable: "§b{server_name}§f console log output §cdisabled"
       invalid_count: "§cOutput count must be a positive integer"
       help: "§7Usage: {prefix} log enable|disable|<count>"
-      output_end: "§aOutput of §b{count} §alines ended"
+      output_end: "§aFinished outputting §b{count} §alines"
       reset_on_stop: "§7Subprocess thread stopped"
-    execute:
+      unavailable: "§cThis command is only available with the §7subprocess§c proxy"
+    input:
       sent: "§aCommand sent: §f{cmd}"
       failed: "§cFailed to send command"
-      not_running: "§cThe mirror server is not running; cannot send command"
-      not_available: "§cThis command is only available with the subprocess proxy"
+      not_running: "§b{server_name}§c is not running; cannot send command"
+      unavailable: "§cThis command is only available with the §7subprocess§c proxy"
+      unknown: "§cThe status of §b{server_name}§c is unknown; cannot send command. Check §7{prefix} status§c first"
+    recover:
+      server_type:
+        mcdr: MCDR
+        server: server
+      success: adopted
+      no_console: "§eNo console to type commands into was found; only §7{prefix} kill -f§e can end it"
+      found:
+        title: "§eUntracked {server_type} in the launch path§7: §b{count}"
+        count: "§eUntracked {server_type} in the launch path§7: §b{count}"
+      adopted:
+        title: "§eAdopted processes§7:"
+        count: "§eAdopted §b{count} §fprocess(es)"
+      auto:
+        adopted: "§eAdopted an untracked §b{server_name}§e; see the console for details"
+        found: "§eFound an untracked §b{server_name}§e and did not adopt it; §7{prefix} recover§e adopts it. See the console for details"
+        error: "§cError while looking for an untracked §b{server_name}§c: {e}"
+        console:
+          adopted: "Adopted the untracked {server_type} in the launch path:"
+          found: "An untracked {server_type} runs in the launch path; terminal.auto_recover is false, so it was not adopted:"
+          plain: "An untracked server runs in the launch path; with is_mcdr set to false it is never adopted automatically:"
+          ambiguous: "Several untracked {server_type} processes run in the launch path; none was adopted, pick one with {prefix} recover <pid>:"
+          foreign_listener: "An untracked {server_type} runs in the launch path, but the port is held by a process outside it; it was not adopted:"
+          gone: "The untracked {server_type} exited while it was being adopted:"
+      fail:
+        unsupported: The current config does not support the §7recover§f command; enable §7'terminal'§f and disable §7'mcsm'
+        tracked: "the plugin is tracking the processes of §b{server_name}§f; there is nothing to adopt"
+        none_found: there is no untracked {server_type} in the launch path
+        ambiguous: several untracked {server_type} processes were found; pick one with §7{prefix} recover <pid>
+        not_found: PID §b{pid}§f is not an untracked {server_type} that can be adopted
+        foreign_listener: the port is held by a process outside this {server_type}; nothing was adopted
+        gone: the process has exited; nothing was adopted
+        syncing: syncing; please wait until the sync has finished
     state:
       unknown: status unknown
       stopped: stopped
       stopping: stopping
       starting: starting
       running: running
+      mcdr_only: server stopped, MCDR still running
 
     anomaly:
       orphan_screen: "§cDetached (Java: not running; Screen: running)"
-      orphan_process: "§cDetached (Java: running; Screen: not running)"
-      probe_conflict: "§cStatus error. The RCON status does not match the port(terminal) status"
+      orphan_process: "§cConsole lost (processes still running)"
+      mcdr_missing: "§cMCDR process not found"
+
+    detail:
+      line: "§eDetail§7: §f{detail}"
+      panel: reported by MCSManager
+      foreign_listener: "the port is held by untracked processes; §7{prefix} kill -f§f ends them"
+      untracked: "an untracked {server_type} is running in the launch path; §7{prefix} recover§f adopts it"
+      start_pending: "starting command sent; waiting for the server to open the port"
+      port_closed: "the server process is running but the port is not open; it may be starting or exiting. If it stays so, check §7'port'§f in the config, or end it with §7{prefix} kill"
+      port_released: "the server has closed the port and is exiting; if it stays so, end it with §7{prefix} kill"
+      stop_pending: "stopping command sent; waiting for the processes to exit"
+      console_closing: the console is closing
+      mcdr_only: "MCDR may be idle or exiting; §7{prefix} start§f starts the server in it, §7{prefix} stop§f makes MCDR exit, §7{prefix} kill§f ends it"
+      orphan_screen: "the launch command has ended but the terminal is left; §7{prefix} kill§f closes it"
+      orphan_process: "the plugin can no longer send commands to these processes; if they have not exited after a while, end them with §7{prefix} kill -f"
+      mcdr_missing: "the server is running but MCDR has exited or cannot be recognized; §7{prefix} kill§f ends it"
 
     outcome:
-      path_not_found: Cannot find available launch path, please check if {server_name} server is created and plugins' config is configured correctly
-      force_required: Screen is unavailable. Use {prefix} kill -f to forcefully terminate the remaining process
-      timeout: The process did not exit in time. Use {prefix} kill -f to forcefully terminate it
+      path_not_found: Cannot find a valid launch path; check that the §b{server_name}§f server exists and the plugin config is correct
+      force_required: Screen no longer exists; if the remaining processes have not exited after a while, end them with §7{prefix} kill -f
+      timeout: The process did not exit in time. Use §7{prefix} kill -f§f to forcefully terminate it
+      no_target: There is no process to terminate
+      unreadable_listener: The port is held by a process whose PID cannot be read (possibly of another user); nothing was terminated
+      targets_changed: The processes to terminate changed after they were listed; nothing was terminated. Run §7{prefix} kill -f§f again to review them
+      console_input_failed: Cannot send the command to the console of §b{server_name}§f; please try again later
 
     status:
-      unsupported: Current config does not support status command. You need to configure MCSM, terminal or RCON
+      unsupported: The current config does not support the §7status§f command; configure §7'mcsm'§f or §7'terminal'
+      mcdr: "§eMCDR§7: §f{process}"
+      server: "§eServer§7: §f{process}"
+      children: "§eChild processes§7: §f{processes}"
+      others: "§eOther processes§7: §b{count}"
+      port:
+        listening: "§ePort §b{port}§7: §flistening"
+        closed: "§ePort §b{port}§7: §fnot listening"
+      foreign:
+        title: "§ePort §b{port}§7: §cheld by the following §b{count} §cuntracked process(es):"
+        count: "§ePort §b{port}§7: §cheld by §b{count} §cuntracked process(es)"
+      untracked:
+        title: "§eUntracked {server_type} in the launch path§7: §cthe following §b{count} §cprocess(es):"
+        count: "§eUntracked {server_type} in the launch path§7: §b{count} §cprocess(es)"
+      not_running: not running
+      running: running
+      count: "§b{count}"
+
+    process:
+      item:
+        launched: "§7- §f{process}"
+        adopted: "§7- §f{process} §e(adopted)"
+        picked: "§7- §f{process} §e(to be adopted)"
+        untracked: "§7- §f{process} §c(not tracked)"
+      unreadable: "a process that cannot be read"
+      origin:
+        launched: started by the plugin
+        adopted: adopted by the plugin
+        picked: about to be adopted
+        untracked: not tracked by the plugin
+      console: "§b{prefix}§f: {name} (PID §b{pid}§f), {origin}, command line: §7{cmdline}"
 
     start:
-      success: starting command sent
+      success: is starting
+      ready: has started
+      not_ready: "§cStart not completed / §b{server_name} §f{status}"
       fail:
-        unknown: status unknown, please report this problem to operators
-        stopping: stopping, please restart after {server_name} stopped
-        starting: starting, please wait for a moment
-        unsupported: Current config does not support start command. You need to configure MCSM or terminal
-        orphan_screen: "Screen process is running but Java is not, please use the kill command to terminate the Screen process"
-        orphan_process: "Java process is running but Screen is not, please terminate the Java process first"
+        unsupported: The current config does not support the §7start§f command; configure §7'mcsm'§f or §7'terminal'
+        syncing: syncing; please wait until the sync has finished
+      hint:
+        stopping: "§fPlease start again after §b{server_name}§f has stopped"
 
     stop:
-      success: stopping command sent
+      success: is stopping
       fail:
-        unknown: status unknown, please report this problem to operators
-        stopping: stopping, please wait for a moment
-        starting: starting, please stop after §b{server_name}§c started
-        unsupported: Current config does not support stop command. You need to configure MCSM, RCON, or terminal
-        orphan_screen: Cannot stop, Screen is running without Java; please try the kill command
-        orphan_process: Cannot stop, Java is running without Screen; please close the Java process in the console first
+        unsupported: The current config does not support the §7stop§f command; configure §7'mcsm'§f or §7'terminal'
+      hint:
+        starting: "§fPlease stop again after §b{server_name}§f has started"
 
     kill:
       success: forced termination in progress...
       fail:
-        unknown: status unknown, please report this problem to operators
-        unsupported: Current config does not support kill command. You need to configure MCSM or terminal
+        unsupported: The current config does not support the §7kill§f command; configure §7'mcsm'§f or §7'terminal'
+        unsupported_force: The current config does not support the §7kill -f§f command; enable §7'terminal'§f and disable §7'mcsm'
+      targets:
+        title: "§7{prefix} kill -f §fwill §cforcefully terminate §b{count} §fprocess(es):"
+        count: "§7{prefix} kill -f §fwill §cforcefully terminate §b{count} §fprocess(es), §b{foreign} §fof them untracked"
 
     sync:
       fail:
-        task_exist: §b{server_name}§cOther tasks in progress
-        unknown: §cOperation failed / §b{server_name}§c status unknown, please report this problem to operators
-        stopping: §cOperation failed / §b{server_name}§c stopping, please sync after {server_name} stopped
-        starting: §cOperation failed / §b{server_name}§c starting, please stop {server_name} first then sync
-        running: §cOperation failed / §b{server_name}§c running, please stop {server_name} first then sync
-        probe_conflict: §cOperation failed / §b{server_name}§c status error. The RCON status does not match the port(terminal) status
-        unsupported: §cOperation failed / §b{server_name}§c current config does not support detecting status. You need to configure MCSM, terminal or RCON
-        orphan_screen: "§cOperation failed / §b{server_name}§c Screen and Java processes detached (Java not running). Please terminate the Screen process first"
-        orphan_process: "§cOperation failed / §b{server_name}§c Screen and Java processes detached (Screen not running). Please terminate the Java process first"
+        task_exist: §b{server_name} §calready has a sync in progress
+        target: "§cSync cancelled: cannot read the mirror's MCDR config to tell the sync target. Check the mirror's config.yml, or set §7'sync.target'§c. See the console for details"
+        overlap: "§cSync cancelled: a path to sync of the source server and one of §b{server_name}§c are the same, or one is inside the other. See the console for details"
+        overlap_path: "Source path and target path overlap: {source} -> {target}"
+        missing: "§cSync cancelled: §b{count}§c path(s) or pattern(s) in the sync config are missing or unusable. See the console for details"
+        nothing: "§cSync cancelled: everything to sync was skipped as missing, nothing is left to copy. See the console for details"
+        source_unreadable: "§cSync cancelled: §b{count}§c directory(ies) to sync on the source server cannot be read. See the console for details"
+        source_unreadable_path: "Source directory cannot be read: {path} ({reason})"
+        vanished: "§cSync stopped: a path to sync disappeared from the source server; §b{server_name}§c may hold an incomplete copy. See the console for details"
+        vanished_path: "Source path disappeared before it was copied: {path}"
+        clash: "§cSync cancelled: §b{count}§c path(s) of §7'sync.extra_patterns'§c are a file on one side and a directory on the other. See the console for details"
+        clash_path: "Source path and target path differ in type: {source} -> {target}"
+        unsupported: "§cOperation failed / §b{server_name}§c: the current config does not support querying the status; configure §7'mcsm'§c or §7'terminal'"
+      hint:
+        running: "§fPlease stop §b{server_name}§f first, then sync"
+        starting: "§fPlease wait for §b{server_name}§f to finish starting or stopping, then sync"
+        stopping: "§fPlease sync after §b{server_name}§f has stopped"
       auto_restart:
-        restarting: §b{server_name}§f running, auto-stopping {server_name} and syncing...
-        fail: §cAuto-stopping failed, §b{server_name}§c§f{status}
+        restarting: §b{server_name}§f is still running; stopping it automatically and syncing...
+        exiting: §b{server_name}§f's MCDR is still running; stopping it automatically and syncing...
+        fail: §cAuto-stop failed, §b{server_name} §f{status}
       success: §b{server_name}§a is syncing...
-      skip_dictionary: "Cannot find the following directories below §b{server_name}§c, so MirrorMcsmcdr skipped it: §f`§7{paths}§f`"
-      completed: §aSynchronization completed!! §fTime taken | §b{time}s §7/ §f§b{changed_files_count}§f files updated
+      world_file: "Matched by 'sync.world' but a file, not a world directory; not synced, add it to 'sync.extra_patterns' to sync it: {path}"
+      skipped: "§eSkipped §b{count}§e missing path(s) or pattern(s) of the sync config, as §7'sync.missing'§e says. See the console for details"
+      missing:
+        source_world: "World pattern selects no directory in {source}: {pattern}"
+        extra_pattern: "Extra pattern matches nothing outside the worlds in {source}: {pattern}"
+        target: "Target directory does not exist: {path}"
+        target_parent: "Target directory cannot be created, as its parent does not exist: {path}"
+        target_not_directory: "Target is not a directory: {path}"
+        target_world: "Target has no such world: {path}"
+      completed: "§aSync completed! §fTime: §b{time}s §7/ §b{changed_files_count} §ffiles updated"
       identical: §aNo changes detected
       error: "§cAn error occurred while syncing, please check the console for details"
+      backup:
+        start: "§b{server_name}§f: backing up with its §3PrimeBackup§f..."
+        done: "§aBackup §b#{backup_id}§a of §b{server_name}§a created"
+        skipped: "§b{server_name}§f holds nothing of what is synchronized yet, nothing to back up"
+        unavailable: "§cSync cancelled, no backup can be made: {reason}. See the console for details"
+        failed: "§cSync cancelled, the backup failed: {reason}. See the console for details"
+        stale: "§cSync cancelled before copying: {reason}. The backup is no longer current"
+        warnings: "§b{count} §esetting(s) of §b{server_name}§e's §3PrimeBackup§e differ from the sync settings, so the backup may not hold everything the sync overwrites. See the console for details"
+        detail: "Pre-sync backup of §b{server_name}§f: {detail}"
+        output: "§7Last lines of the §3PrimeBackup§7 output:\n§f{output}"
+        reason:
+          plain_server: "§cno pre-sync backup while §7'is_mcdr'§c is false; turn §7'sync.backup.enable'§c off"
+          mcdr_path_not_found: "§cthe mirror's MCDR directory does not exist"
+          mcdr_config_unreadable: "§ccannot read the mirror's MCDR config"
+          mcdr_config_invalid: "§cinvalid value of §4'{option}'§c in the mirror's MCDR config"
+          plugin_not_found: "§cno §3PrimeBackup§c plugin in the plugin directories of the mirror's MCDR"
+          plugin_directory_unreadable: "§ccannot read a plugin directory of the mirror's MCDR"
+          plugin_duplicated: "§cmore than one §3PrimeBackup§c plugin in the mirror's MCDR"
+          plugin_too_old: "§cthe mirror's §3PrimeBackup§c has version {version}, at least 1.13.0 is required"
+          pb_config_unreadable: "§ccannot read the mirror's §3PrimeBackup§c config"
+          pb_config_invalid: "§cinvalid value of §4'{option}'§c in the mirror's §3PrimeBackup§c config"
+          database_not_found: "§cthe mirror's §3PrimeBackup§c database does not exist"
+          mirror_not_stopped: "§b{server_name}§c is {status}, not stopped"
+          probe_failed: "§cthe §3PrimeBackup§c command line tool exited with code {code}; are its Python dependencies installed?"
+          launch: "§ccannot start the §3PrimeBackup§c command line tool"
+          timeout: "§3PrimeBackup§c did not finish within {timeout} seconds"
+          exit_code: "§3PrimeBackup§c exited with code {code}"
+          no_backup_id: "§3PrimeBackup§c did not report a backup id"
+          backup_id_mismatch: "§3PrimeBackup§c reported different backup ids: {ids}"
+        warning:
+          source_mismatch: "Pre-sync backup of §b{server_name}§f: §eits §3PrimeBackup§e backs up §7{source}§e, which is none of the sync targets §7({targets})§e; what the sync overwrites is not backed up"
+          targets_not_backed_up: "Pre-sync backup of §b{server_name}§f: §ethese sync targets are not the directory its §3PrimeBackup§e backs up, they are overwritten without a backup: §7{targets}"
+          worlds_not_targeted: "Pre-sync backup of §b{server_name}§f: §7'backup.targets' [{targets}] §eof its §3PrimeBackup§e does not include these synchronized top-level entries: §7{worlds}"
+          ignored: "Pre-sync backup of §b{server_name}§f: §eits §3PrimeBackup§e leaves these out of the backup (§7'ignore_patterns'§e / §7'ignored_files'§e), which are not in §7'sync.ignore_patterns'§e or §7'sync.retain_patterns'§e: §7{patterns}"
+          retained: "Pre-sync backup of §b{server_name}§f: §7'retain_patterns'§e of its §3PrimeBackup§e keeps these out of the backup, which are not in §7'sync.ignore_patterns'§e or §7'sync.retain_patterns'§e: §7{patterns}"
+          reuse_stat_unchanged_file: "Pre-sync backup of §b{server_name}§f: §eits §3PrimeBackup§e has §7'reuse_stat_unchanged_file'§e on; files with unchanged size and time are not read and may be stored with older content"
+          creation_skip_missing_file: "Pre-sync backup of §b{server_name}§f: §eits §3PrimeBackup§e has §7'creation_skip_missing_file'§e on; files that disappear during the backup are skipped silently"
+          storage_in_world: "Pre-sync backup of §b{server_name}§f: §ethe §3PrimeBackup§e storage §7{storage} §eis inside the synchronized path §7{world}§e, the sync would delete the backup"
     
     history:
       record:
         success: "§e[{time}] §b{operator} §aSuccess §7| §fChanged files: §b{change_file_count} §fTime taken: §b{duration}s"
         identical: "§e[{time}] §b{operator} §aNo changes §7| §fTime taken: §b{duration}s"
-        failed: "§e[{time}] §b{operator} §cFailed §7| §fException: §c{exception}"
+        failed: "§e[{time}] §b{operator} §cFailed §7| §fException: §4{exception}"
+        backup: " §7| §fBackup: §b#{backup_id}"
   
   mcsm:
     disabled: §cMCSM-API is disabled
     error:
       request: "§cMCSM request error, please report this problem to operators: §4{e}"
-      "400": "[400] Bad Request, please visit GitHub to submit the issue ({error})"
+      "400": "[400] Bad Request, please open an issue on GitHub ({error})"
       "403": "[403] Forbidden, please report this problem to operators ({error})"
       "500": "[500] Internal Server Error ({error})"
       "503": "[503] Server Unavailable"
 
   screen:
-    error: "§cScreen error, please report this problem to operators: §4{e}"
+    error: "§cScreen error, please report this problem to operators; see the console for details"
+    error_detail: "Screen error: {e}"
+
+  process_record:
+    unreadable: "§eCannot read the process record §7{path}§e; mirrors launched before are no longer tracked: §4{error}"
+    unwritable: "§eCannot write the process record §7{path}§e; after a plugin reload the running mirror will no longer be tracked: §4{error}"
+
+  config_loader:
+    merged: "§aAdded the missing keys to the config file"
+    created: "§eConfig file missing; created config.yml with default values"
+    legacy_json: "§econfig.json is deprecated; converted it to config.yml and kept the original as config.json.bak"
+    unknown_key: "Config §b{prefix}§f: removed unknown key §7'{path}'§f (value: §7{value}§f)"
+    backup: "Backed up the old config to §7{path}"
+    unknown_removed: "§eRemoved §b{count} §eunknown config key(s), see the console"
   
   error.unknown: §cUnknown error, please check the console for details

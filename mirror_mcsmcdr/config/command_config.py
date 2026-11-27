@@ -1,5 +1,5 @@
 from mcdreforged.api.all import Serializable
-from typing import Union, Literal
+from typing import Optional, Union, Literal
 
 PermissionRequirement = Union[int, Literal["console"]]
 
@@ -11,9 +11,9 @@ class CommandPermissionConfig(Serializable):
     sync: PermissionRequirement = 2
     history: PermissionRequirement = 0
     confirm: PermissionRequirement = 0
-    abort: PermissionRequirement = 0
     log: PermissionRequirement = "console"
-    execute: PermissionRequirement = "console"
+    input: PermissionRequirement = "console"
+    recover: PermissionRequirement = 3
 
     def requirement_of(self, command: str) -> PermissionRequirement:
         return getattr(self, command)
@@ -40,9 +40,10 @@ class SaveWorldConfig(Serializable):
 
 class SyncActionConfig(ActionConfig):
     ensure_server_closed: bool = True
+    # the server is running: stop it before the sync, start it again afterwards
     auto_server_restart: bool = False
-    check_status_interval: int = 5
-    max_attempt_times: int = 3
+    # only MCDR is running: make it exit before the sync, nothing is started afterwards
+    auto_mcdr_stop: bool = False
     save_world: SaveWorldConfig = SaveWorldConfig()
 
 class HistoryActionConfig(ActionConfig):
@@ -52,22 +53,21 @@ class ConfirmActionConfig(Serializable):
     timeout: int = 30
     cancel_anymsg: bool = True
 
-class AbortActionConfig(Serializable):
-    operator: str = "everyone"
-
 class CommandActionConfig(Serializable):
     status: ActionConfig = ActionConfig()
     start: StartActionConfig = StartActionConfig()
     stop: StopActionConfig = StopActionConfig(require_confirm=True)
+    # the longest gap in seconds between two full checks while waiting for the status to change
+    check_status_interval: int = 5
     kill: ActionConfig = ActionConfig(require_confirm=True)
     sync: SyncActionConfig = SyncActionConfig(require_confirm=True)
     history: HistoryActionConfig = HistoryActionConfig()
     confirm: ConfirmActionConfig = ConfirmActionConfig()
-    abort: AbortActionConfig = AbortActionConfig()
 
     def requires_confirm(self, command: str) -> bool:
-        action: ActionConfig = getattr(self, command)
-        return action.require_confirm
+        # a command without an action config, such as recover, asks for a confirmation by itself where it needs one
+        action: Optional[ActionConfig] = getattr(self, command, None)
+        return action is not None and action.require_confirm
 
 class CommandConfig(Serializable):
     permission: CommandPermissionConfig = CommandPermissionConfig()

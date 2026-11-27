@@ -1,16 +1,17 @@
 import platform
+import re
 from typing import Callable, Dict, List, Sequence, Tuple
 
 from mcdreforged.api.all import Serializable
 
-from mirror_mcsmcdr.config import MirrorConfig, TerminalConfig
+from mirror_mcsmcdr.config import MirrorConfig
 from mirror_mcsmcdr.server.backend.base import ServerBackend, TerminalProxy
 from mirror_mcsmcdr.server.backend.child_process import SubprocessProxy
 from mirror_mcsmcdr.server.backend.linux import LinuxProxy
 from mirror_mcsmcdr.server.backend.mcsm import MCSManagerProxy
-from mirror_mcsmcdr.server.backend.rcon import RConProxy
 from mirror_mcsmcdr.server.backend.windows import WindowsProxy
 from mirror_mcsmcdr.server.system_utils.screen_utils import ScreenError
+from mirror_mcsmcdr.server.tracker import ProcessTracker
 
 
 class ProxySettingException(Exception):
@@ -27,37 +28,37 @@ def _require(proxy: str, config: Serializable, keys: Sequence[str]) -> None:
         raise ProxySettingException(proxy, missing_keys)
 
 
-def _build_terminal(config: TerminalConfig) -> TerminalProxy:
-    terminal_types: Dict[str, Callable[[TerminalConfig], TerminalProxy]] = {"linux": LinuxProxy, "windows": WindowsProxy, "subprocess": SubprocessProxy}
-    terminal_type = terminal_types.get(config.proxy_type or platform.system().lower())
+def _build_terminal(config: MirrorConfig, tracker: ProcessTracker) -> TerminalProxy:
+    terminal_types: Dict[str, Callable[[MirrorConfig, ProcessTracker], TerminalProxy]] = {"linux": LinuxProxy, "windows": WindowsProxy, "subprocess": SubprocessProxy}
+    terminal_type = terminal_types.get(config.terminal.proxy_type or platform.system().lower())
     if terminal_type is None:
         raise ProxySettingException("terminal", ["proxy_type"])
-    _require("terminal", config, ["launch_path", "launch_command"] + ([] if terminal_type is SubprocessProxy else ["port"]))
+    _require("terminal", config.terminal, ["launch_command", "port"])
     try:
-        return terminal_type(config)
+        return terminal_type(config, tracker)
     except ScreenError as e:
         # the only thing a screen can refuse before it is used is its name
         raise ProxySettingException("terminal", ["terminal_name"]) from e
+    except re.error as e:
+        raise ProxySettingException("terminal", ["java_name"]) from e
 
 
-def build_backends(config: MirrorConfig) -> Tuple[List[ServerBackend], List[ProxySettingException]]:
+def build_backends(config: MirrorConfig, tracker: ProcessTracker) -> Tuple[List[ServerBackend], List[ProxySettingException]]:
     """
     Build the backends the config enables, in the order they are preferred for an action.
 
+    :param tracker: what the terminal records its launches in; it outlives the backends
     :return: the backends, and an error for each enabled one that could not be set up
     """
     def build_mcsm() -> ServerBackend:
         _require("mcsm", config.mcsm, ["url", "uuid", "remote_uuid", "apikey"])
         return MCSManagerProxy(config.mcsm)
 
-    def build_rcon() -> ServerBackend:
-        _require("rcon", config.rcon, ["address", "port", "password"])
-        return RConProxy(config.rcon)
-
+    # The panel controls the mirror wherever it runs, possibly on another host: a local terminal beside it would
+    # force-kill and adopt local processes that may have nothing to do with it, so it is not used at all
     builders: Tuple[Tuple[bool, Callable[[], ServerBackend]], ...] = (
         (config.mcsm.enable, build_mcsm),
-        (config.rcon.enable, build_rcon),
-        (config.terminal.enable, lambda: _build_terminal(config.terminal)),
+        (config.terminal.enable and not config.mcsm.enable, lambda: _build_terminal(config, tracker)),
     )
     backends: List[ServerBackend] = []
     errors: List[ProxySettingException] = []

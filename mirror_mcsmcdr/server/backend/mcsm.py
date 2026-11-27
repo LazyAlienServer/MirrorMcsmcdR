@@ -32,13 +32,15 @@ class MCSManagerProxy(ServerBackend):
         2: ServerState.STARTING,
         3: ServerState.RUNNING,
     }
+    # seconds a request may take; without a limit, a panel that stops answering would hold up whoever waits on it
+    _REQUEST_TIMEOUT = 10
 
     def __init__(self, config: MCSMConfig) -> None:
         self.url = config.url.rstrip("/")
         self.params = {"uuid": config.uuid, "remote_uuid": config.remote_uuid, "apikey": config.apikey}
 
     def _request(self, path: str) -> Any:
-        req: Response = requests.get(url=self.url + path, params=self.params)
+        req: Response = requests.get(url=self.url + path, params=self.params, timeout=self._REQUEST_TIMEOUT)
         if req.status_code != 200:
             raise MCSManagerProxyError(req)
         return json.loads(req.text)

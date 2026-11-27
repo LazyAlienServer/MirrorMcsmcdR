@@ -7,24 +7,22 @@ from typing import Optional
 
 from mcdreforged.api.all import RText, ServerInterface
 
-from mirror_mcsmcdr.config.proxy_config import TerminalConfig
+from mirror_mcsmcdr.config.mirror_config import MirrorConfig
 from mirror_mcsmcdr.server.action import Action, ActionResult
-from mirror_mcsmcdr.server.backend.base import TerminalProxy
-from mirror_mcsmcdr.server.status import Evidence
-from mirror_mcsmcdr.server.system_utils.port_utils import PortListener
+from mirror_mcsmcdr.server.backend.base import KillTargets, TerminalProxy
+from mirror_mcsmcdr.server.tracker import ProcessTracker, TreeView
 
 
 class SubprocessProxy(TerminalProxy):
     """Run the mirror server as a child process with piped console I/O."""
 
+    name = "subprocess"
     supports = frozenset(Action)
 
-    def __init__(self, config: TerminalConfig) -> None:
-        super().__init__(config)
-        # without a port the server cannot be told apart from one that is still starting
-        self.listener = PortListener(config.port, config.regex_strict) if config.port else None
+    def __init__(self, config: MirrorConfig, tracker: ProcessTracker) -> None:
+        super().__init__(config, tracker)
         self.process: Optional[subprocess.Popen] = None
-        self.console_log_enabled = config.console_log
+        self.console_log_enabled = config.terminal.console_log
         self.console_log_limit: Optional[int] = None
         self._output_count = 0
         self._output_thread: Optional[Thread] = None
@@ -34,13 +32,12 @@ class SubprocessProxy(TerminalProxy):
     def alive(self) -> bool:
         return self.process is not None and self.process.poll() is None
 
-    def observe(self) -> Evidence:
-        return Evidence(
-            process_alive=self.alive,
-            port_listening=self.listener.is_listening() if self.listener is not None else None,
-        )
+    def _endpoint_alive(self, view: TreeView) -> bool:
+        # the pipes of the child process, which only the proxy that launched it holds
+        process = self.process
+        return view.root_alive and process is not None and view.record is not None and process.pid == view.record.root.pid
 
-    def _start(self, result: ActionResult) -> ActionResult:
+    def _launch(self, result: ActionResult) -> ActionResult:
         if self.alive:
             return result.reject(ActionResult.Outcome.WRONG_STATE)
 
@@ -52,7 +49,6 @@ class SubprocessProxy(TerminalProxy):
         if not os.path.isdir(self.path):
             return result.reject(ActionResult.Outcome.PATH_NOT_FOUND)
 
-        encoding = "oem" if os.name == "nt" else "utf-8"
         self.process = subprocess.Popen(
             self.command,
             cwd=self.path,
@@ -61,7 +57,7 @@ class SubprocessProxy(TerminalProxy):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            encoding=encoding,
+            encoding="utf-8",
             errors="replace",
             bufsize=1,
             # its own process group, so that the shell can be signalled together with the server it launched
@@ -73,13 +69,14 @@ class SubprocessProxy(TerminalProxy):
             daemon=True,
         )
         self._output_thread.start()
+        self.tracker.register(self.name, self.path, self.command, self.terminal_name, self.process.pid)
         return result
 
-    def _stop(self, result: ActionResult) -> ActionResult:
-        if not self.send_command(self.stop_command):
-            self.reset_log_limit()
-            return result.reject(ActionResult.Outcome.WRONG_STATE)
-        return result
+    def _type(self, view: TreeView, command: str) -> bool:
+        if self.send_command(command):
+            return True
+        self.reset_log_limit()
+        return False
 
     def _kill(self, result: ActionResult) -> ActionResult:
         process = self.process
@@ -92,12 +89,26 @@ class SubprocessProxy(TerminalProxy):
             self._cleanup_process()
         return result
 
-    def _forcekill(self, result: ActionResult) -> ActionResult:
-        self.forcekill()
-        return result
-
     def forcekill(self) -> None:
-        """Kill the child process, if there is one, and wait until it is gone."""
+        """
+        Kill what this proxy launched, and wait until the child process is gone; for a reload or an unload,
+        after which nothing could reach its pipes any more. A mirror it did not launch, adopted ones included, is left running.
+        """
+        process = self.process
+        if process is None:
+            return
+        view = self.tracker.observe(self.listener)
+        record = view.record
+        if record is not None and record.backend == self.name and record.adoption is None and record.root.pid == process.pid:
+            self._kill_all(live.process for live in view.members)
+        self._reap()
+
+    def _end(self, targets: KillTargets) -> list[Exception]:
+        errors = super()._end(targets)
+        self._reap()
+        return errors
+
+    def _reap(self) -> None:
         process = self.process
         if process is None:
             return
@@ -164,6 +175,13 @@ class SubprocessProxy(TerminalProxy):
     def set_console_log_limit(self, limit: int) -> None:
         self.console_log_limit = limit
         self._output_count = 0
+
+    @property
+    def remaining_log_lines(self) -> Optional[int]:
+        """How many lines a ``log <count>`` still shows; None when no count is active or it has been used up."""
+        if self.console_log_limit is None or self._output_count >= self.console_log_limit:
+            return None
+        return self.console_log_limit - self._output_count
 
     def reset_log_limit(self) -> None:
         self.console_log_limit = None
