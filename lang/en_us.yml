@@ -119,7 +119,7 @@ mirror_mcsmcdr:
           foreign_listener: "An untracked {server_type} runs in the launch path, but the port is held by a process outside it; it was not adopted:"
           gone: "The untracked {server_type} exited while it was being adopted:"
       fail:
-        unsupported: The current config does not support the §7recover§f command; configure §7'terminal'
+        unsupported: The current config does not support the §7recover§f command; enable §7'terminal'§f and disable §7'mcsm'
         tracked: "the plugin is tracking the processes of §b{server_name}§f; there is nothing to adopt"
         none_found: there is no untracked {server_type} in the launch path
         ambiguous: several untracked {server_type} processes were found; pick one with §7{prefix} recover <pid>
@@ -218,6 +218,7 @@ mirror_mcsmcdr:
       success: forced termination in progress...
       fail:
         unsupported: The current config does not support the §7kill§f command; configure §7'mcsm'§f or §7'terminal'
+        unsupported_force: The current config does not support the §7kill -f§f command; enable §7'terminal'§f and disable §7'mcsm'
       targets:
         title: "§7{prefix} kill -f §fwill §cforcefully terminate §b{count} §fprocess(es):"
         count: "§7{prefix} kill -f §fwill §cforcefully terminate §b{count} §fprocess(es), §b{foreign} §fof them not started by the plugin"

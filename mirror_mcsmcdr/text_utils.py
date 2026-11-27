@@ -2,7 +2,7 @@ from typing import Any, Protocol
 
 from mcdreforged.api.all import RTextBase, RTextList, ServerInterface, RAction
 from mirror_mcsmcdr.constants import PLUGIN_ID, REPLY_TITLE, TITLE
-from mirror_mcsmcdr.server import ActionResult, StatusSnapshot
+from mirror_mcsmcdr.server import Action, ActionResult, StatusSnapshot
 
 
 class Translator(Protocol):
@@ -60,5 +60,9 @@ def rejection_lines(tr: Translator, command: str, result: ActionResult) -> list[
     outcome = result.outcome
     if outcome in (ActionResult.Outcome.WRONG_STATE, ActionResult.Outcome.ANOMALY):
         return refusal_lines(tr, command, result.snapshot)
-    key = f"command.{command}.fail.unsupported" if outcome is ActionResult.Outcome.UNSUPPORTED else f"command.outcome.{outcome.value}"
+    if outcome is ActionResult.Outcome.UNSUPPORTED:
+        # with a panel, a kill is supported but a forced one is not, so it is told apart
+        key = f"command.{command}.fail.unsupported" + ("_force" if result.action is Action.FORCEKILL else "")
+    else:
+        key = f"command.outcome.{outcome.value}"
     return [tr("command._execute.fail", prompt=tr(key, title=False).to_legacy_text())]
