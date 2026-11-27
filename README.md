@@ -38,7 +38,7 @@
 
 新版本要求MCDReforged`>=2.16.0`，请注意升级。
 
-旧版本启动的镜像服不在新版本的记录中（见[镜像服状态](#镜像服状态)）。升级时镜像服可以保持运行：插件加载时会自动接管它（见[接管镜像服](#接管镜像服)）。无法自动接管时，插件会在控制台和游戏内提示，此时请用`!!mirror recover`手动接管，或手动停止镜像服。`is_mcdr`为`false`时，插件只提示、不自动接管，请用`!!mirror recover`手动接管。
+旧版本启动的镜像服不在新版本的记录中（见[镜像服状态](#镜像服状态)）。升级时镜像服可以保持运行：插件加载时会自动接管它（见[接管镜像服](#接管镜像服)）。无法自动接管时，插件会在控制台和游戏内提示，此时请用`!!mirror recover`手动接管，或手动停止镜像服。`is_mcdr`为`false`时，插件只提示、不自动接管，请用`!!mirror recover`手动接管。镜像服不在screen或命令行窗口中运行时（例如用`nohup`启动的），接管后没有控制台，只能用`!!mirror kill -f`结束。
 
 升级后请检查配置文件：
 - `rcon`配置已删除，旧配置中的`rcon`会被忽略。需要跨主机控制镜像服时，请使用MCSManager；
@@ -47,9 +47,11 @@
 - `command.action.sync.max_attempt_times`已删除。同步自动停服后，最多等待`command.action.stop.timeout`秒（默认60秒，以前默认15秒）；
 - `command.action.sync.check_status_interval`移到了`command.action.check_status_interval`。旧位置的值会被忽略，恢复为默认值`5`；
 - `!!mirror execute`改名为`!!mirror input`，旧指令不再可用。权限配置`command.permission.execute`随之改为`command.permission.input`，旧的`execute`会被忽略，恢复为默认值`console`；
-- `terminal.launch_path`改为顶层的[`root_path`](#root_path--is_mcdr-镜像服目录与类型)，`terminal.is_mcdr`改为顶层的`is_mcdr`，`sync.backup.mcdr_path`已删除（备份改用`root_path`）。旧的项会被忽略，`root_path`恢复为默认值`./Mirror`，`is_mcdr`恢复为默认值`true`，请**手动修改**。以前设置了`terminal.is_mcdr: false`的普通服务端镜像服，要重新设置`is_mcdr: false`（后续镜像服会继承第一个镜像服的值）；
+- `terminal.launch_path`改为顶层的[`root_path`](#root_path--is_mcdr-镜像服目录与类型)，`terminal.is_mcdr`改为顶层的`is_mcdr`，`sync.backup.mcdr_path`已删除（备份改用`root_path`）。旧的项会被忽略，`root_path`恢复为默认值`./Mirror`，`is_mcdr`恢复为默认值`true`，请**手动修改**。以前设置了`terminal.is_mcdr: false`的普通服务端镜像服，要重新设置`is_mcdr: false`（后续镜像服会继承第一个镜像服的值）。`is_mcdr`为`false`时不支持同步前备份，启用`sync.backup.enable`时所有同步都会被拒绝；
+- 镜像服MCDR用`--config`指定其他配置文件启动时，请填写`sync.target`，这种情况下不支持同步前备份，见[`root_path`](#root_path--is_mcdr-镜像服目录与类型)；
 - `command.permission.abort`和`command.action.abort`已删除，它们从未对应任何指令；
 - 同时启用`mcsm`和`terminal`时，现在只使用MCSM，`terminal`配置不再生效（只有subprocess代理提供的`log`、`input`也不可用）。这样做是为了避免`kill -f`和接管镜像服误操作本机上与MCSM实例无关的进程；
+- Windows上的`subprocess`代理改为按UTF-8读取镜像服的输出，以前按系统代码页读取。镜像服MCDR的输出是UTF-8，`log`中的中文不再乱码；普通服务端（`is_mcdr`为`false`）的输出不是UTF-8时，`log`中会出现乱码；
 - `sync.source`和`sync.target`可以留空，分别使用本MCDR的`working_directory`和由`root_path`推导出的目录。原有的值仍然有效；
 - `sync.world`现在是[gitignore规则](#sync-文件同步相关的配置文件)。直接写目录名的含义不变，但区分大小写，Windows上也一样：以前写`World`也能同步`world`，现在要写成实际的名字，否则同步被拒绝。同步时，只存在于镜像服世界中的空目录现在也会被删除；
 - `sync.ignore_files`已删除，改为`sync.ignore_patterns`和`sync.retain_patterns`，旧的值不会迁移，请**手动修改**。以前`ignore_files`中的文件（如`carpet.conf`、`pca.conf`）会保留镜像服中原有的那份，对应现在的`retain_patterns`；`session.lock`默认在`ignore_patterns`中，镜像服中的会被删除；
