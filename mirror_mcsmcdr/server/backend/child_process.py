@@ -176,6 +176,13 @@ class SubprocessProxy(TerminalProxy):
         self.console_log_limit = limit
         self._output_count = 0
 
+    @property
+    def remaining_log_lines(self) -> Optional[int]:
+        """How many lines a ``log <count>`` still shows; None when no count is active or it has been used up."""
+        if self.console_log_limit is None or self._output_count >= self.console_log_limit:
+            return None
+        return self.console_log_limit - self._output_count
+
     def reset_log_limit(self) -> None:
         self.console_log_limit = None
         self._output_count = 0

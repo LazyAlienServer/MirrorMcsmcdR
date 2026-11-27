@@ -79,6 +79,7 @@ mirror_mcsmcdr:
     log:
       status: "§b{server_name}§f console log output: {status}"
       enabled: "§aEnabled"
+      enabled_remaining: "§aEnabled§f, §b{count} §fmore line(s) to output"
       set_enable: "§b{server_name}§f console log output §aenabled"
       enabled_count: "§b{server_name}§f console log output §aenabled§f, stopping after §b{count} §flines"
       disabled: "§cDisabled"

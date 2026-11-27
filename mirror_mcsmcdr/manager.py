@@ -774,8 +774,12 @@ class MirrorManager:
         if terminal is None:
             source.reply(self.rtr("command.log.unavailable"))
             return
-        status = "enabled" if terminal.console_log_enabled else "disabled"
-        source.reply(self.rtr("command.log.status", status=self.rtr(f"command.log.{status}", title=False).to_legacy_text()))
+        remaining = terminal.remaining_log_lines
+        if remaining is not None:
+            status = self.rtr("command.log.enabled_remaining", title=False, count=remaining)
+        else:
+            status = self.rtr(f"command.log.{'enabled' if terminal.console_log_enabled else 'disabled'}", title=False)
+        source.reply(self.rtr("command.log.status", status=status.to_legacy_text()))
         source.reply(self.rtr("command.log.help"))
 
     def set_console_log(self, source: CommandSource, context: CommandContext, enabled: bool) -> None:

@@ -79,6 +79,7 @@ mirror_mcsmcdr:
     log:
       status: "§b{server_name} §f控制台日志输出: {status}"
       enabled: "§a已启用"
+      enabled_remaining: "§a已启用§f，还将输出 §b{count} §f行"
       set_enable: "§b{server_name} §f控制台日志输出§a已启用"
       enabled_count: "§b{server_name} §f控制台日志输出§a已启用§f，输出 §b{count} §f行后停止"
       disabled: "§c已禁用"
