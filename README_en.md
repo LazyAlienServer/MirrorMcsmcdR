@@ -42,7 +42,7 @@ A mirror server started by an older version is not in the new version's record (
 
 After upgrading, check the configuration file:
 - The `rcon` section is removed, and an old `rcon` section is ignored. Use MCSManager to control a mirror server on another host;
-- `terminal.regex_strict` is removed. Whenever the configured port is held by any process the plugin did not start, the status is `status unknown`;
+- `terminal.regex_strict` is removed. Whenever the configured port is held by any process the plugin does not track, the status is `status unknown`;
 - The `subprocess` proxy now requires `terminal.port` as well; without it the terminal proxy is unavailable;
 - `command.action.sync.max_attempt_times` is removed. After an automatic stop for a sync, the plugin waits up to `command.action.stop.timeout` seconds (60 by default; 15 before);
 - `command.action.sync.check_status_interval` moved to `command.action.check_status_interval`. A value at the old place is ignored, and the default `5` applies;
@@ -71,7 +71,7 @@ The default command prefix is `!!mirror`.
 | `!!mirror stop`                         | Stop the mirror server                                  |
 | `!!mirror kill`                         | Terminate the mirror server                             |
 | `!!mirror kill -f`                      | Force-terminate the mirror server (terminal proxies) |
-| `!!mirror recover [pid]`                | Adopt a mirror server the plugin did not start (terminal proxies) |
+| `!!mirror recover [pid]`                | Adopt an untracked mirror server (terminal proxies) |
 | `!!mirror sync`                         | Synchronize files                                       |
 | `!!mirror confirm`                      | Confirm a pending operation                             |
 | `!!mirror reload`                       | Hot-reload the mirror configuration                     |
@@ -222,7 +222,7 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 - The title of the new command prompt, the name of the new screen, or the prefix used for subprocess proxy log output. As a screen name it must not exceed 64 bytes or contain control characters.
 
 > [!IMPORTANT]
-> `!!mirror kill -f` and `!!mirror kill --force` are available for every terminal proxy. They forcefully terminate every process the plugin started and recorded (the Linux proxy then closes the screen); when the status is unknown, they also terminate processes holding the configured port that the plugin did not start. The processes are listed to the command source first, and only listed processes are terminated: if a process that was not listed turns up when the kill runs (after confirmation, too), nothing is terminated and the command has to be run again to review them. If the port is held by a process whose PID cannot be read (such as a process of another user), nothing is terminated. Confirm that `port` is correct to avoid terminating other services.
+> `!!mirror kill -f` and `!!mirror kill --force` are available for every terminal proxy. They forcefully terminate every process the plugin started and recorded (the Linux proxy then closes the screen); when the status is unknown, they also terminate untracked processes holding the configured port. The processes are listed to the command source first, and only listed processes are terminated: if a process that was not listed turns up when the kill runs (after confirmation, too), nothing is terminated and the command has to be run again to review them. If the port is held by a process whose PID cannot be read (such as a process of another user), nothing is terminated. Confirm that `port` is correct to avoid terminating other services.
 >
 > The plugin can only read processes the current user is allowed to inspect. When the port is held by a process of another user, the plugin may be unable to read its PID, and `kill -f` then terminates nothing.
 
@@ -238,14 +238,14 @@ Note: The `linux` proxy controls the mirror server through screen. With the `win
 - Whether to output the subprocess proxy's mirror server console logs to the MCDR console by default. This option only applies to the `subprocess` proxy.
 
 **auto_recover** `bool`
-- Whether the plugin, when it loads with no running process in its record, adopts an MCDR it did not start that runs in `root_path`. Defaults to `true`. It adopts only when it finds exactly one, and the configured port is free or listened on by that MCDR and its children; it then lists the processes in the console and tells the game once. Otherwise, and with `false`, it only reports what it found; `!!mirror recover` adopts it by hand. With `is_mcdr` set to `false`, nothing is ever adopted automatically. See [Adopting a mirror server](#adopting-a-mirror-server).
+- Whether the plugin, when it loads with no running process in its record, adopts an untracked MCDR that runs in `root_path`. Defaults to `true`. It adopts only when it finds exactly one, and the configured port is free or listened on by that MCDR and its children; it then lists the processes in the console and tells the game once. Otherwise, and with `false`, it only reports what it found; `!!mirror recover` adopts it by hand. With `is_mcdr` set to `false`, nothing is ever adopted automatically. See [Adopting a mirror server](#adopting-a-mirror-server).
 
 **java_name** `str`
 - With `is_mcdr` set to `false`, the plugin looks for an untracked server in `root_path` among the processes whose name matches this regular expression, case-insensitively. The default matches `java`, `javaw`, `java17`, `java21.exe` and the like. Change it if the Java executable goes by another name.
 
 #### Mirror server status
 
-The plugin judges the status of the mirror server only from **the processes it started itself** and the configured `port`. Each time a terminal proxy starts the mirror server, the plugin records the processes it started, and on every later status check it adds the processes they have started since. The record is kept in `config/mirror_mcsmcdr/<command prefix>/process.json` and survives plugin reloads.
+The plugin judges the status of the mirror server only from **the processes in its record** (those it started or adopted) and the configured `port`. Each time a terminal proxy starts the mirror server, the plugin records the processes it started, and on every later status check it adds the processes they have started since. The record is kept in `config/mirror_mcsmcdr/<command prefix>/process.json` and survives plugin reloads.
 
 > [!IMPORTANT]
 > `launch_command` must run the mirror server in the foreground and end only when the mirror server exits. Do not let the mirror server detach from the process that started it, for example with `nohup ... &`, `setsid`, `start` or `screen -dm`. Detached processes are not in the record, and the plugin can neither judge nor control them.
@@ -265,8 +265,8 @@ The recorded processes fall into these groups:
 | running | The port is held by a recorded process | `stop`, `kill`, `kill -f`; `sync` with `auto_server_restart` |
 | stopping | The stop command was sent, or the server closed the port the plugin had seen it open (for example, it was stopped from the mirror's own console); waiting for the processes to exit | `kill`, `kill -f` |
 | server stopped, MCDR still running | The server has exited; MCDR is idle or exiting | `start`, `stop`, `kill`, `kill -f`; `sync` with `auto_mcdr_stop` |
-| status unknown | The port is held by a process the plugin did not start | `kill -f` |
-| status unknown | An MCDR the plugin did not start (a Java process with `is_mcdr` set to `false`) is running in `root_path` (see below) | `recover` |
+| status unknown | The port is held by an untracked process | `kill -f` |
+| status unknown | An untracked MCDR (a Java process with `is_mcdr` set to `false`) is running in `root_path` (see below) | `recover` |
 
 In `server stopped, MCDR still running`, `start` and `stop` do not launch another mirror server; they type a command into the console of the MCDR that is still running: `start` types `!!MCDR server start`, which starts the server in that MCDR, and `stop` types `!!MCDR server exit`, which makes MCDR exit. An MCDR that is exiting refuses to start the server; the status then becomes `stopped`.
 

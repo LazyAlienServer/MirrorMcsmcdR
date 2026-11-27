@@ -42,7 +42,7 @@
 
 升级后请检查配置文件：
 - `rcon`配置已删除，旧配置中的`rcon`会被忽略。需要跨主机控制镜像服时，请使用MCSManager；
-- `terminal.regex_strict`已删除。配置的端口被任何不是插件启动的进程占用时，状态都显示为`状态未知`；
+- `terminal.regex_strict`已删除。配置的端口被任何插件未跟踪的进程占用时，状态都显示为`状态未知`；
 - `subprocess`代理现在也必须配置`terminal.port`，未配置时terminal代理不可用；
 - `command.action.sync.max_attempt_times`已删除。同步自动停服后，最多等待`command.action.stop.timeout`秒（默认60秒，以前默认15秒）；
 - `command.action.sync.check_status_interval`移到了`command.action.check_status_interval`。旧位置的值会被忽略，恢复为默认值`5`；
@@ -71,7 +71,7 @@
 | `!!mirror stop`                         | 停止镜像服                          |
 | `!!mirror kill`                         | 终止镜像服                          |
 | `!!mirror kill -f`                      | 强制终止镜像服（terminal 代理） |
-| `!!mirror recover [pid]`                | 接管不是插件启动的镜像服（terminal 代理） |
+| `!!mirror recover [pid]`                | 接管未跟踪的镜像服（terminal 代理） |
 | `!!mirror sync`                         | 同步文件                            |
 | `!!mirror confirm`                      | 确认待执行操作                      |
 | `!!mirror reload`                       | 热重载镜像服配置                    |
@@ -218,7 +218,7 @@ terminal:
 - 新命令行终端的标题、新screen的名称，或subprocess代理日志输出使用的前缀。作为screen名称时不能超过64字节，也不能包含控制字符。
 
 > [!IMPORTANT]
-> `!!mirror kill -f`和`!!mirror kill --force`适用于所有terminal代理。它会强制终止插件启动并记录的全部进程（Linux代理随后关闭screen）；状态未知时，还会终止占用配置端口、但不是插件启动的进程。执行前会向执行者列出这些进程，之后只终止列出的进程：执行时（包括确认后）若出现了未列出的进程，则不终止任何进程，需要重新执行查看。若端口被无法读取PID的进程（例如其他用户的进程）占用，则不终止任何进程。请确认`port`配置正确，避免终止其他服务。
+> `!!mirror kill -f`和`!!mirror kill --force`适用于所有terminal代理。它会强制终止插件启动并记录的全部进程（Linux代理随后关闭screen）；状态未知时，还会终止占用配置端口、但插件未跟踪的进程。执行前会向执行者列出这些进程，之后只终止列出的进程：执行时（包括确认后）若出现了未列出的进程，则不终止任何进程，需要重新执行查看。若端口被无法读取PID的进程（例如其他用户的进程）占用，则不终止任何进程。请确认`port`配置正确，避免终止其他服务。
 >
 > 插件只能读取当前用户有权查看的进程。占用端口的进程属于其他用户时，插件可能读不到它的PID，`kill -f`将不终止任何进程。
 
@@ -234,14 +234,14 @@ terminal:
 - 是否默认将`subprocess`代理的镜像服控制台日志输出到MCDR控制台。此配置仅对`subprocess`代理生效。
 
 **auto_recover** `bool`
-- 插件加载时，如果记录中没有运行的进程，而`root_path`中有不是插件启动的MCDR，是否自动接管它，默认为`true`。只有恰好找到一个、且配置的端口空闲或由它及其子进程监听时，插件才会接管，并在控制台列出进程、在游戏内提示一次。其他情况下，以及设置为`false`时，插件只提示，可以用`!!mirror recover`手动接管。`is_mcdr`为`false`时，插件从不自动接管。见[接管镜像服](#接管镜像服)。
+- 插件加载时，如果记录中没有运行的进程，而`root_path`中有未跟踪的MCDR，是否自动接管它，默认为`true`。只有恰好找到一个、且配置的端口空闲或由它及其子进程监听时，插件才会接管，并在控制台列出进程、在游戏内提示一次。其他情况下，以及设置为`false`时，插件只提示，可以用`!!mirror recover`手动接管。`is_mcdr`为`false`时，插件从不自动接管。见[接管镜像服](#接管镜像服)。
 
 **java_name** `str`
 - `is_mcdr`为`false`时，插件在`root_path`中查找未跟踪的服务端，只看进程名与此正则表达式匹配的进程，不区分大小写。默认值匹配`java`、`javaw`、`java17`、`java21.exe`等。把Java可执行文件改成了其他名字时，请相应修改。
 
 #### 镜像服状态
 
-插件只根据**自己启动的进程**和配置的`port`判断镜像服状态。每次通过terminal代理启动镜像服时，插件都会记录启动的进程，并在之后每次查询状态时把它们新启动的子进程加入记录。记录保存在`config/mirror_mcsmcdr/<指令前缀>/process.json`，重载插件后仍然有效。
+插件只根据**记录中的进程**（插件启动或接管的进程）和配置的`port`判断镜像服状态。每次通过terminal代理启动镜像服时，插件都会记录启动的进程，并在之后每次查询状态时把它们新启动的子进程加入记录。记录保存在`config/mirror_mcsmcdr/<指令前缀>/process.json`，重载插件后仍然有效。
 
 > [!IMPORTANT]
 > `launch_command`必须在前台运行镜像服，直到镜像服退出才结束。不要在命令或脚本中让镜像服脱离启动它的进程，例如`nohup ... &`、`setsid`、`start`或`screen -dm`。脱离的进程不在记录中，插件无法判断和控制它们。
@@ -261,8 +261,8 @@ terminal:
 | 正在运行 | 端口由记录中的进程监听 | `stop`、`kill`、`kill -f`；开启`auto_server_restart`时可`sync` |
 | 正在停止 | 已发送关闭指令，或服务端关闭了插件见过它打开的端口（例如在镜像服自己的控制台中停服），正在等待进程退出 | `kill`、`kill -f` |
 | 服务端已停止, MCDR仍在运行 | 服务端已退出，MCDR空闲或正在退出 | `start`、`stop`、`kill`、`kill -f`；开启`auto_mcdr_stop`时可`sync` |
-| 状态未知 | 端口被不是插件启动的进程占用 | `kill -f` |
-| 状态未知 | `root_path`中有不是插件启动的MCDR（`is_mcdr`为`false`时为Java进程）在运行（见下文） | `recover` |
+| 状态未知 | 端口被插件未跟踪的进程占用 | `kill -f` |
+| 状态未知 | `root_path`中有未跟踪的MCDR（`is_mcdr`为`false`时为Java进程）在运行（见下文） | `recover` |
 
 `服务端已停止, MCDR仍在运行`时，`start`和`stop`不会再启动一个镜像服，而是向仍在运行的MCDR的控制台输入指令：`start`输入`!!MCDR server start`，在这个MCDR中启动服务端；`stop`输入`!!MCDR server exit`，让MCDR退出。MCDR正在退出时会拒绝启动服务端，此时状态会变为`已停止`。
 
